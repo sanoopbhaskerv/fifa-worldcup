@@ -11,6 +11,11 @@ const BracketPage = lazy(() => import("../pages/BracketPage"));
 const ScorersPage = lazy(() => import("../pages/ScorersPage"));
 const MatchPage = lazy(() => import("../pages/MatchPage"));
 
+/**
+ * Defines the top-level route tree with lazy-loaded competition sections.
+ *
+ * @returns Application router element.
+ */
 export const App = () => (
   <Suspense fallback={<div className="loading-screen" role="status">Loading view…</div>}>
     <Routes>

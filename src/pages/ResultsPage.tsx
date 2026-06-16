@@ -4,6 +4,11 @@ import { MatchCard } from "../features/matches/MatchCard";
 import { filterMatches, formatDate, groupMatchesByDate } from "../utils/football";
 import { EmptyState, PageHeading } from "./FixturesPage";
 
+/**
+ * Displays newest-first completed matches with stage and team filters.
+ *
+ * @returns Results route page.
+ */
 export default function ResultsPage() {
   const { data } = useCompetition();
   const [search, setSearch] = useState("");

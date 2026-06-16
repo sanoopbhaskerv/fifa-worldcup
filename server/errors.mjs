@@ -1,4 +1,13 @@
+/** Provider-facing error with HTTP status and stable application error code. */
 export class ProviderError extends Error {
+  /**
+   * Creates a provider error that can be converted into a stable JSON API response.
+   *
+   * @param message - Human-readable error message.
+   * @param status - HTTP status code that should be returned to the client.
+   * @param code - Stable application error code.
+   * @param retryAfter - Optional retry hint from an upstream provider.
+   */
   constructor(message, status = 502, code = "PROVIDER_ERROR", retryAfter) {
     super(message);
     this.name = "ProviderError";
@@ -8,6 +17,12 @@ export class ProviderError extends Error {
   }
 }
 
+/**
+ * Converts unknown errors into JSON API error payloads.
+ *
+ * @param error - Unknown error thrown by provider or routing code.
+ * @returns HTTP status and JSON body suitable for the API response helper.
+ */
 export const jsonError = (error) => {
   if (error?.name === "TimeoutError" || error?.name === "AbortError") {
     return {

@@ -16,15 +16,29 @@ const env = {
   apiFootballDailyBudget: import.meta.env.VITE_API_FOOTBALL_DAILY_BUDGET ?? "90",
 };
 
+/** Indicates whether build-time public provider keys are present. */
 export const hasStaticLiveKeys = Boolean(
   env.footballDataKey && env.apiFootballKey,
 );
 
+/** Temporary static-hosting provider that calls football APIs from the browser bundle. */
 export class StaticLiveFootballDataProvider implements FootballDataProvider {
+  /**
+   * Returns the static catalog because provider mappings are local.
+   *
+   * @returns Supported competition catalog.
+   */
   async getCompetitions() {
     return competitionCatalog;
   }
 
+  /**
+   * Loads live competition data using build-time public keys and rewrite base URLs.
+   *
+   * @param competitionId - Internal competition id to load.
+   * @param editionId - Edition or season id to load.
+   * @returns Normalized live competition data with a static-mode notice.
+   */
   async getCompetitionData(competitionId: string, editionId: string) {
     const competition = competitionCatalog.find((item) => item.id === competitionId);
     if (!competition) throw new Error("Competition not found");
@@ -41,6 +55,12 @@ export class StaticLiveFootballDataProvider implements FootballDataProvider {
     };
   }
 
+  /**
+   * Loads live match enrichment using build-time public API-Football credentials.
+   *
+   * @param match - Match whose kickoff and team names are used for fixture matching.
+   * @returns Match detail enrichment from API-Football.
+   */
   async getMatchDetails(match: Match) {
     return getLiveMatchDetails(
       {

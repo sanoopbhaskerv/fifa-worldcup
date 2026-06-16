@@ -3,6 +3,11 @@ import { StandingsTable } from "../features/standings/StandingsTable";
 import type { Standing } from "../types/domain";
 import { PageHeading } from "./FixturesPage";
 
+/**
+ * Displays one standings table per group or a single league table.
+ *
+ * @returns Standings route page.
+ */
 export default function StandingsPage() {
   const { data } = useCompetition();
   const groups = data.standings.reduce<Record<string, Standing[]>>((result, standing) => {

@@ -4,6 +4,7 @@ import type {
   CompetitionEdition,
 } from "../types/domain";
 
+/** Capability preset for international tournaments with groups, brackets, and scorers. */
 const fullTournament: CompetitionCapabilities = {
   hasStandings: true,
   hasGroups: true,
@@ -15,6 +16,7 @@ const fullTournament: CompetitionCapabilities = {
   hasTwoLeggedTies: false,
 };
 
+/** Capability preset for domestic leagues with standings but no bracket. */
 const league: CompetitionCapabilities = {
   hasStandings: true,
   hasGroups: false,
@@ -26,12 +28,19 @@ const league: CompetitionCapabilities = {
   hasTwoLeggedTies: false,
 };
 
+/** Capability preset for continental club tournaments with knockout ties. */
 const clubTournament: CompetitionCapabilities = {
   ...fullTournament,
   hasGroups: false,
   hasTwoLeggedTies: true,
 };
 
+/**
+ * Builds edition metadata from compact season identifiers.
+ *
+ * @param values - Edition ids such as `2026` or season ids such as `2025-26`.
+ * @returns Edition objects with deterministic start and end dates.
+ */
 const editions = (...values: string[]): CompetitionEdition[] =>
   values.map((value) => {
     const startYear = Number(value.slice(0, 4));
@@ -44,6 +53,12 @@ const editions = (...values: string[]): CompetitionEdition[] =>
     };
   });
 
+/**
+ * Creates a catalog entry and marks the newest supplied edition as active.
+ *
+ * @param input - Competition metadata plus the compact edition id list.
+ * @returns Complete competition catalog entry.
+ */
 const competition = (
   input: Omit<Competition, "editions" | "activeEditionId"> & {
     editionIds: string[];
@@ -54,6 +69,7 @@ const competition = (
   activeEditionId: input.editionIds[0],
 });
 
+/** Static competition catalog used by demo data and provider coverage mapping. */
 export const competitionCatalog: Competition[] = [
   competition({
     id: "world-cup",

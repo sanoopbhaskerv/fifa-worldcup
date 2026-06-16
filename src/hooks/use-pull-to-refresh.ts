@@ -3,6 +3,15 @@ import { useEffect, useRef, useState } from "react";
 const threshold = 72;
 const maxPull = 118;
 
+/**
+ * Adds mobile pull-down detection for refreshing competition data.
+ *
+ * @param options - Pull-to-refresh behavior and state flags.
+ * @param options.disabled - Whether touch listeners should be disabled.
+ * @param options.isRefreshing - Whether a refresh is already in progress.
+ * @param options.onRefresh - Async callback invoked after the pull threshold is crossed.
+ * @returns Pull distance and readiness state for rendering the refresh affordance.
+ */
 export const usePullToRefresh = ({
   disabled,
   isRefreshing,
@@ -15,6 +24,12 @@ export const usePullToRefresh = ({
   const [pullDistance, setPullDistance] = useState(0);
   const pullDistanceRef = useRef(0);
 
+  /**
+   * Keeps state and the event-handler ref in sync without reattaching listeners.
+   *
+   * @param distance - Current pull distance in CSS pixels.
+   * @returns Nothing; updates both state and ref.
+   */
   const updatePullDistance = (distance: number) => {
     pullDistanceRef.current = distance;
     setPullDistance(distance);

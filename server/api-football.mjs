@@ -5,6 +5,12 @@ import { providerCompetitions } from "./provider-config.mjs";
 let budgetDate = new Date().toISOString().slice(0, 10);
 let requestsToday = 0;
 
+/**
+ * Removes common punctuation and club suffixes for provider name matching.
+ *
+ * @param value - Raw team or club name.
+ * @returns Lowercase normalized name suitable for fuzzy comparisons.
+ */
 const normalizedName = (value = "") =>
   value
     .normalize("NFKD")
@@ -13,6 +19,13 @@ const normalizedName = (value = "") =>
     .replace(/\b(fc|afc|cf|ac|sc|club|football)\b/g, "")
     .replace(/[^a-z0-9]/g, "");
 
+/**
+ * Scores two team names for fuzzy fixture matching.
+ *
+ * @param left - Expected team name from football-data.org.
+ * @param right - Candidate team name from API-Football.
+ * @returns Similarity score, where higher values represent stronger matches.
+ */
 const similarity = (left, right) => {
   const a = normalizedName(left);
   const b = normalizedName(right);
@@ -27,6 +40,13 @@ const similarity = (left, right) => {
   return overlap;
 };
 
+/**
+ * Enforces the process-local API-Football daily request budget.
+ *
+ * @param limit - Maximum number of API-Football requests allowed per UTC day.
+ * @returns Nothing; increments the request count when budget remains.
+ * @throws ProviderError when the daily request budget has already been reached.
+ */
 const checkBudget = (limit) => {
   const today = new Date().toISOString().slice(0, 10);
   if (today !== budgetDate) {
@@ -43,6 +63,14 @@ const checkBudget = (limit) => {
   requestsToday += 1;
 };
 
+/**
+ * Calls API-Football and normalizes transport and provider errors.
+ *
+ * @param path - API-Football path and query string to append to the base URL.
+ * @param env - Provider configuration with key, base URL, and optional budget hook.
+ * @returns Parsed API-Football response body.
+ * @throws ProviderError when configuration, rate limit, or provider errors occur.
+ */
 const apiFetch = async (path, env) => {
   if (!env.apiFootballKey) {
     throw new ProviderError(
@@ -87,11 +115,28 @@ const apiFetch = async (path, env) => {
   return body;
 };
 
+/**
+ * Loads all fixtures for a date so a football-data match can be cross-matched.
+ *
+ * @param date - ISO date key in `YYYY-MM-DD` format.
+ * @param env - Provider configuration passed to API-Football.
+ * @returns Cached API-Football fixtures response for the date.
+ */
 const fixtureCandidates = (date, env) =>
   cached(`api-football:fixtures:${date}`, 5 * 60_000, () =>
     apiFetch(`/fixtures?date=${encodeURIComponent(date)}`, env),
   );
 
+/**
+ * Finds the API-Football fixture that best matches a football-data match.
+ *
+ * @param competitionId - Internal competition id used to apply league bonus scoring.
+ * @param date - Match date in `YYYY-MM-DD` format.
+ * @param homeName - Expected home team name from football-data.org.
+ * @param awayName - Expected away team name from football-data.org.
+ * @param env - Provider configuration passed to API-Football.
+ * @returns Best matching API-Football fixture, or `null` when confidence is too low.
+ */
 const findFixture = async (
   competitionId,
   date,
@@ -114,6 +159,13 @@ const findFixture = async (
   return candidates[0]?.score >= 10 ? candidates[0].fixture : null;
 };
 
+/**
+ * Converts API-Football event type/detail fields into app event types.
+ *
+ * @param type - Raw API-Football event type.
+ * @param detail - Raw API-Football event detail.
+ * @returns App event type, or `null` for unsupported provider events.
+ */
 const eventType = (type, detail) => {
   if (type === "Goal") return "goal";
   if (type === "subst") return "substitution";
@@ -124,6 +176,12 @@ const eventType = (type, detail) => {
   return null;
 };
 
+/**
+ * Normalizes goal, card, and substitution events.
+ *
+ * @param payload - API-Football events response payload.
+ * @returns App timeline events filtered to supported event types.
+ */
 const normalizeEvents = (payload) =>
   (payload.response ?? []).flatMap((entry, index) => {
     const type = eventType(entry.type, entry.detail);
@@ -143,6 +201,12 @@ const normalizeEvents = (payload) =>
     ];
   });
 
+/**
+ * Normalizes one API-Football lineup player.
+ *
+ * @param entry - API-Football lineup player wrapper.
+ * @returns App lineup player record.
+ */
 const normalizePlayer = (entry) => ({
   id: `af-player-${entry.player?.id ?? entry.player?.name}`,
   name: entry.player?.name ?? "Unknown player",
@@ -151,6 +215,12 @@ const normalizePlayer = (entry) => ({
   grid: entry.player?.grid ?? undefined,
 });
 
+/**
+ * Normalizes team lineup, substitutes, formation, and coach data.
+ *
+ * @param payload - API-Football lineups response payload.
+ * @returns App team lineup records.
+ */
 const normalizeLineups = (payload) =>
   (payload.response ?? []).map((lineup) => ({
     teamId: `af-team-${lineup.team?.id ?? ""}`,
@@ -175,6 +245,12 @@ const wantedStats = new Set([
   "expected_goals",
 ]);
 
+/**
+ * Normalizes selected team statistics from API-Football.
+ *
+ * @param payload - API-Football statistics response payload.
+ * @returns App team statistics records containing supported stat keys.
+ */
 const normalizeStatistics = (payload) =>
   (payload.response ?? []).map((teamStats) => ({
     teamId: `af-team-${teamStats.team?.id ?? ""}`,
@@ -187,6 +263,12 @@ const normalizeStatistics = (payload) =>
     ),
   }));
 
+/**
+ * Creates a successful partial detail response with an explanatory notice.
+ *
+ * @param message - Notice explaining why detailed provider data is absent.
+ * @returns Empty match detail payload marked as live provider data.
+ */
 const emptyDetails = (message) => ({
   events: [],
   lineups: [],
@@ -198,6 +280,14 @@ const emptyDetails = (message) => ({
   notice: message,
 });
 
+/**
+ * Returns API-Football enrichment for one match when fixture matching succeeds.
+ *
+ * @param query - Match lookup fields derived from the primary provider match.
+ * @param env - Provider configuration with API-Football credentials and base URL.
+ * @returns Match detail enrichment, or a partial payload with a notice.
+ * @throws ProviderError when required lookup fields are missing or provider calls fail.
+ */
 export const getLiveMatchDetails = async (query, env) => {
   const { competitionId, kickoff, home, away } = query;
   if (!competitionId || !kickoff || !home || !away) {

@@ -9,4 +9,9 @@ export interface CompetitionContextValue {
   refetch: () => Promise<unknown>;
 }
 
+/**
+ * Reads the active competition payload exposed by `CompetitionLayout`.
+ *
+ * @returns Competition data, edition metadata, and refresh state from the route outlet.
+ */
 export const useCompetition = () => useOutletContext<CompetitionContextValue>();

@@ -3,6 +3,14 @@ import { jsonError, ProviderError } from "./errors.mjs";
 import { getLiveCompetitionData } from "./football-data.mjs";
 import { providerEnv } from "./env.mjs";
 
+/**
+ * Builds a JSON API response descriptor shared by Node and Lambda-style callers.
+ *
+ * @param status - HTTP status code.
+ * @param body - JSON-serializable response body.
+ * @param extraHeaders - Additional headers to merge into the default JSON headers.
+ * @returns Normalized response descriptor.
+ */
 const response = (status, body, extraHeaders = {}) => ({
   status,
   headers: {
@@ -14,6 +22,15 @@ const response = (status, body, extraHeaders = {}) => ({
   body,
 });
 
+/**
+ * Routes same-origin `/api/*` requests to provider-backed handlers.
+ *
+ * @param request - Request metadata from Node, Vite middleware, or a Lambda adapter.
+ * @param request.method - HTTP method; only `GET` is supported.
+ * @param request.url - Request URL including path and query string.
+ * @param request.env - Environment-like object containing provider keys and base URLs.
+ * @returns Normalized JSON response descriptor.
+ */
 export const handleApiRequest = async ({
   method = "GET",
   url,
@@ -75,6 +92,13 @@ export const handleApiRequest = async ({
   }
 };
 
+/**
+ * Writes a normalized API response descriptor to a Node HTTP response.
+ *
+ * @param nodeResponse - Node HTTP response object.
+ * @param result - Response descriptor from `handleApiRequest`.
+ * @returns Nothing; writes headers and serialized JSON body to the response.
+ */
 export const sendNodeResponse = (nodeResponse, result) => {
   nodeResponse.writeHead(result.status, result.headers);
   nodeResponse.end(JSON.stringify(result.body));

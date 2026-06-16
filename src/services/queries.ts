@@ -2,6 +2,11 @@ import { useQuery } from "@tanstack/react-query";
 import { footballProvider } from "../providers";
 import type { Match } from "../types/domain";
 
+/**
+ * Loads the available competition catalog.
+ *
+ * @returns TanStack Query result containing supported competitions.
+ */
 export const useCompetitions = () =>
   useQuery({
     queryKey: ["competitions"],
@@ -9,6 +14,13 @@ export const useCompetitions = () =>
     staleTime: 1000 * 60 * 60,
   });
 
+/**
+ * Loads one competition edition and manages live polling while matches are live.
+ *
+ * @param competitionId - Internal competition id to load.
+ * @param editionId - Edition or season id to load.
+ * @returns TanStack Query result containing normalized competition data.
+ */
 export const useCompetitionData = (competitionId: string, editionId: string) =>
   useQuery({
     queryKey: ["competition", competitionId, editionId],
@@ -24,6 +36,12 @@ export const useCompetitionData = (competitionId: string, editionId: string) =>
         : false,
   });
 
+/**
+ * Loads on-demand match details, refreshing more often for live matches.
+ *
+ * @param match - Match to enrich with events, lineups, statistics, and officials.
+ * @returns TanStack Query result containing optional match detail data.
+ */
 export const useMatchDetails = (match?: Match) =>
   useQuery({
     queryKey: ["match-details", match?.id],

@@ -12,6 +12,14 @@ const statusLabel: Record<Match["status"], string> = {
   CANCELLED: "Cancelled",
 };
 
+/**
+ * Displays a navigable match summary card for fixtures and results.
+ *
+ * @param props - Component props.
+ * @param props.match - Match to summarize and link to.
+ * @param props.compact - Whether to hide secondary metadata for dense lists.
+ * @returns Link element pointing to the match detail route.
+ */
 export const MatchCard = ({ match, compact = false }: { match: Match; compact?: boolean }) => {
   const { competitionSlug, editionId } = useParams();
   const hasScore = match.homeScore !== undefined && match.awayScore !== undefined;

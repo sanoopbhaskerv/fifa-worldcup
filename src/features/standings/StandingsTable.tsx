@@ -10,6 +10,13 @@ const zoneLabels: Record<Standing["zone"], string> = {
   none: "",
 };
 
+/**
+ * Renders one standings table with sticky team column and zone labels.
+ *
+ * @param props - Component props.
+ * @param props.standings - Ordered standings rows for one league table or group.
+ * @returns Scrollable standings table.
+ */
 export const StandingsTable = ({ standings }: { standings: Standing[] }) => (
   <div className="table-wrap">
     <table className="standings-table">

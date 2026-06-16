@@ -1,6 +1,13 @@
 import type { Scorer } from "../../types/domain";
 import { TeamBadge } from "../../components/TeamBadge";
 
+/**
+ * Renders ranked top scorers with team identity, assists, and goals.
+ *
+ * @param props - Component props.
+ * @param props.scorers - Ordered scorer rows to display.
+ * @returns Scorer leaderboard list.
+ */
 export const ScorerList = ({ scorers }: { scorers: Scorer[] }) => (
   <div className="scorer-list">
     {scorers.map((scorer) => (

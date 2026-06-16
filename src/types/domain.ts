@@ -1,6 +1,10 @@
+/** High-level catalog bucket used for filtering competitions. */
 export type CompetitionCategory = "International" | "Club";
+
+/** Competition structure used to drive standings, bracket, and routing behavior. */
 export type CompetitionFormat = "league" | "group-knockout" | "knockout" | "league-knockout";
 
+/** Feature flags that decide which routes and match-detail sections are visible. */
 export interface CompetitionCapabilities {
   hasStandings: boolean;
   hasGroups: boolean;
@@ -12,6 +16,7 @@ export interface CompetitionCapabilities {
   hasTwoLeggedTies: boolean;
 }
 
+/** A concrete season or edition that can be selected for a competition. */
 export interface CompetitionEdition {
   id: string;
   name: string;
@@ -19,6 +24,7 @@ export interface CompetitionEdition {
   endDate: string;
 }
 
+/** Catalog metadata for one supported football competition. */
 export interface Competition {
   id: string;
   slug: string;
@@ -37,6 +43,7 @@ export interface Competition {
   capabilities: CompetitionCapabilities;
 }
 
+/** Normalized team identity consumed by cards, tables, and detail views. */
 export interface Team {
   id: string;
   name: string;
@@ -50,8 +57,10 @@ export interface Team {
   };
 }
 
+/** Normalized match lifecycle used by filters and live refresh behavior. */
 export type MatchStatus = "LIVE" | "UPCOMING" | "COMPLETED" | "POSTPONED" | "CANCELLED";
 
+/** Normalized fixture/result model shared across list, overview, bracket, and detail pages. */
 export interface Match {
   id: string;
   competitionId: string;
@@ -82,8 +91,10 @@ export interface Match {
   lastUpdated?: string;
 }
 
+/** Display category for a team's position in a table. */
 export type StandingZone = "champion" | "qualified" | "playoff" | "eliminated" | "relegated" | "none";
 
+/** Normalized standings row with provider-specific table fields removed. */
 export interface Standing {
   position: number;
   group?: string;
@@ -99,6 +110,7 @@ export interface Standing {
   zone: StandingZone;
 }
 
+/** Normalized knockout tie rendered by the bracket view. */
 export interface KnockoutTie {
   id: string;
   round: string;
@@ -114,6 +126,7 @@ export interface KnockoutTie {
   date: string;
 }
 
+/** Top-scorer row normalized from provider or mock data. */
 export interface Scorer {
   rank: number;
   id: string;
@@ -126,6 +139,7 @@ export interface Scorer {
   penalties?: number;
 }
 
+/** Timeline event shown on match detail pages. */
 export interface MatchEvent {
   id: string;
   minute: number;
@@ -138,6 +152,7 @@ export interface MatchEvent {
   detail?: string;
 }
 
+/** Player entry for lineup sections. */
 export interface LineupPlayer {
   id: string;
   name: string;
@@ -146,6 +161,7 @@ export interface LineupPlayer {
   grid?: string;
 }
 
+/** Team lineup normalized from API-Football. */
 export interface TeamLineup {
   teamId: string;
   teamName: string;
@@ -156,6 +172,7 @@ export interface TeamLineup {
   substitutes: LineupPlayer[];
 }
 
+/** Team-level match statistics normalized from API-Football. */
 export interface TeamStatistics {
   teamId: string;
   teamName: string;
@@ -163,8 +180,10 @@ export interface TeamStatistics {
   values: Record<string, string | number | null>;
 }
 
+/** Identifies whether a response came from a live provider or bundled mock data. */
 export type DataSource = "live" | "mock";
 
+/** Optional per-match enrichment returned by the detail provider. */
 export interface MatchDetails {
   fixtureId?: string;
   events: MatchEvent[];
@@ -177,6 +196,7 @@ export interface MatchDetails {
   notice?: string;
 }
 
+/** Complete normalized data payload for a competition edition. */
 export interface CompetitionData {
   competition: Competition;
   matches: Match[];

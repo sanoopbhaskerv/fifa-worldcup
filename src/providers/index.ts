@@ -7,6 +7,7 @@ import {
   StaticLiveFootballDataProvider,
 } from "./static-live-football-provider";
 
+/** App-wide provider instance with live/static-live first and mock fallback second. */
 export const footballProvider: FootballDataProvider = new HybridFootballDataProvider(
   hasStaticLiveKeys
     ? new StaticLiveFootballDataProvider()

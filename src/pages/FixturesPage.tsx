@@ -10,6 +10,12 @@ const filters: { label: string; value: "ALL" | MatchStatus }[] = [
   { label: "Postponed", value: "POSTPONED" }, { label: "Completed", value: "COMPLETED" },
 ];
 
+/**
+ * Formats a local date key for choosing the current fixture group.
+ *
+ * @param date - Date to convert into a local `YYYY-MM-DD` key.
+ * @returns Local date key used to find the current fixture group.
+ */
 const localDateKey = (date: Date) => {
   const year = date.getFullYear();
   const month = String(date.getMonth() + 1).padStart(2, "0");
@@ -17,6 +23,11 @@ const localDateKey = (date: Date) => {
   return `${year}-${month}-${day}`;
 };
 
+/**
+ * Displays fixtures with filters and automatic scroll to the current fixture date.
+ *
+ * @returns Fixtures route page.
+ */
 export default function FixturesPage() {
   const { data } = useCompetition();
   const didAutoScroll = useRef(false);
@@ -69,5 +80,23 @@ export default function FixturesPage() {
   );
 }
 
+/**
+ * Renders the shared heading block for section pages.
+ *
+ * @param props - Component props.
+ * @param props.eyebrow - Small label shown above the title.
+ * @param props.title - Main page title.
+ * @param props.description - Supporting page description.
+ * @returns Page heading element.
+ */
 export const PageHeading = ({ eyebrow, title, description }: { eyebrow: string; title: string; description: string }) => <header className="page-heading"><span className="eyebrow">{eyebrow}</span><h1>{title}</h1><p>{description}</p></header>;
+
+/**
+ * Renders the empty-state card used when filters produce no matches.
+ *
+ * @param props - Component props.
+ * @param props.title - Empty-state title.
+ * @param props.body - Empty-state explanatory body copy.
+ * @returns Empty-state element.
+ */
 export const EmptyState = ({ title, body }: { title: string; body: string }) => <div className="empty-state"><span>90:00</span><h2>{title}</h2><p>{body}</p></div>;

@@ -5,8 +5,14 @@ import { TeamBadge } from "../components/TeamBadge";
 import { useMatchDetails } from "../services/queries";
 import { formatDate, formatKickoff } from "../utils/football";
 
+/** Human-readable labels for provider event types. */
 const eventLabels = { goal: "Goal", "yellow-card": "Yellow card", "red-card": "Red card", substitution: "Substitution" };
 
+/**
+ * Presents match score, timeline, metadata, lineups, and statistics for one route.
+ *
+ * @returns Match detail page for the route's `matchId` parameter.
+ */
 export default function MatchPage() {
   const { data } = useCompetition();
   const { matchId } = useParams();
@@ -47,6 +53,13 @@ export default function MatchPage() {
   );
 }
 
+/**
+ * Renders a side-by-side comparison of provider-supplied team statistics.
+ *
+ * @param props - Component props.
+ * @param props.statistics - Team statistics for the home and away sides.
+ * @returns Statistics comparison section, or `null` when either team is missing.
+ */
 const StatisticsSection = ({ statistics }: { statistics: import("../types/domain").TeamStatistics[] }) => {
   const [home, away] = statistics;
   if (!home || !away) return null;
@@ -54,6 +67,13 @@ const StatisticsSection = ({ statistics }: { statistics: import("../types/domain
   return <section className="content-section details-section"><div className="section-heading"><div><span className="eyebrow">By the numbers</span><h2>Team statistics</h2></div></div><div className="stats-comparison"><header><strong>{home.teamName}</strong><strong>{away.teamName}</strong></header>{labels.map((label) => <div className="stats-comparison__row" key={label}><strong>{String(home.values[label] ?? "–")}</strong><span>{label.replace("expected_goals", "Expected goals")}</span><strong>{String(away.values[label] ?? "–")}</strong></div>)}</div></section>;
 };
 
+/**
+ * Renders provider-supplied starting elevens and substitute benches.
+ *
+ * @param props - Component props.
+ * @param props.lineups - Team lineup payloads to display.
+ * @returns Lineup section for the match detail page.
+ */
 const LineupsSection = ({ lineups }: { lineups: import("../types/domain").TeamLineup[] }) => (
   <section className="content-section details-section"><div className="section-heading"><div><span className="eyebrow">Starting elevens</span><h2>Lineups</h2></div></div><div className="lineups">{lineups.map((lineup) => <article key={lineup.teamId}><header><strong>{lineup.teamName}</strong><span>{lineup.formation ?? "Formation TBC"}</span></header>{lineup.coach && <p>Coach · {lineup.coach}</p>}<ol>{lineup.starters.map((player) => <li key={player.id}><span>{player.number ?? "–"}</span><strong>{player.name}</strong><small>{player.position}</small></li>)}</ol><details><summary>Substitutes ({lineup.substitutes.length})</summary><ul>{lineup.substitutes.map((player) => <li key={player.id}>{player.number ?? "–"} · {player.name}</li>)}</ul></details></article>)}</div></section>
 );

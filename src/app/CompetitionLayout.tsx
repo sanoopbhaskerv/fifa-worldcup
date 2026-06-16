@@ -21,6 +21,11 @@ const navMeta = {
   scorers: { label: "Scorers", icon: PlayerIcon },
 };
 
+/**
+ * Owns competition data loading, navigation, refresh, and picker state.
+ *
+ * @returns Routed competition shell with desktop, mobile, and nested section UI.
+ */
 export const CompetitionLayout = () => {
   const { competitionSlug = "", editionId = "" } = useParams();
   const navigate = useNavigate();
@@ -130,11 +135,35 @@ export const CompetitionLayout = () => {
   );
 };
 
+/**
+ * Renders one navigation link for a competition section.
+ *
+ * @param props - Component props.
+ * @param props.section - Section id this link targets.
+ * @param props.competition - Competition whose route slug should be used.
+ * @param props.editionId - Active edition id for route construction.
+ * @param props.compact - Whether to render the compact tab variant.
+ * @param props.bottom - Whether to render the bottom-navigation variant.
+ * @returns Navigation link with the section icon and active state.
+ */
 const SectionLink = ({ section, competition, editionId, compact, bottom }: { section: Section; competition: Competition; editionId: string; compact?: boolean; bottom?: boolean }) => {
   const meta = navMeta[section];
   const Icon = meta.icon;
   return <NavLink end={section === "overview"} className={({ isActive }) => `section-link ${isActive ? "section-link--active" : ""} ${compact ? "section-link--compact" : ""} ${bottom ? "section-link--bottom" : ""}`} to={sectionPath(competition, editionId, section)}><Icon /><span>{meta.label}</span></NavLink>;
 };
 
+/**
+ * Renders the full-page loading state for initial catalog or competition fetches.
+ *
+ * @returns Loading screen element.
+ */
 const LoadingScreen = () => <div className="loading-screen" role="status"><span className="loading-mark">F</span><strong>Loading the competition…</strong></div>;
+
+/**
+ * Renders the full-page recoverable provider error state.
+ *
+ * @param props - Component props.
+ * @param props.retry - Callback invoked when the user retries the data request.
+ * @returns Error screen with retry affordance.
+ */
 const ErrorScreen = ({ retry }: { retry: () => void }) => <div className="error-screen"><span className="eyebrow">Provider unavailable</span><h1>We couldn’t load this competition.</h1><p>Your saved data is safe. Check your connection and try again.</p><button className="button button--primary" onClick={retry}>Try again</button></div>;

@@ -5,6 +5,11 @@ import { MatchCard } from "../features/matches/MatchCard";
 import { useCompetition } from "../app/competition-context";
 import { formatDate, formatKickoff, sectionPath } from "../utils/football";
 
+/**
+ * Displays the competition landing page with hero match, key stats, and quick links.
+ *
+ * @returns Overview route page.
+ */
 export default function OverviewPage() {
   const { data, editionId } = useCompetition();
   const { competition, matches, standings, scorers } = data;

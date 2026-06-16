@@ -40,20 +40,44 @@ const statusMap = {
   CANCELLED: "CANCELLED",
 };
 
+/**
+ * Converts provider enum values into human-readable title case labels.
+ *
+ * @param value - Provider enum value such as `GROUP_STAGE`.
+ * @returns Title-cased display label.
+ */
 const titleCase = (value = "") =>
   value
     .toLowerCase()
     .replaceAll("_", " ")
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 
+/**
+ * Generates a stable fallback badge color from a provider id or name.
+ *
+ * @param id - Provider id or name used as the deterministic color seed.
+ * @returns HSL color string for fallback team badges.
+ */
 const colorFor = (id) => {
   const hue = Math.abs(Number(id) || hashString(String(id))) % 360;
   return `hsl(${hue} 58% 46%)`;
 };
 
+/**
+ * Produces a deterministic numeric hash for string fallback ids.
+ *
+ * @param value - String value to hash.
+ * @returns Signed 32-bit hash value.
+ */
 const hashString = (value) =>
   [...value].reduce((total, character) => (total * 31 + character.charCodeAt(0)) | 0, 0);
 
+/**
+ * Normalizes football-data.org team payloads into the app team model.
+ *
+ * @param team - Raw football-data.org team object.
+ * @returns Normalized app team record.
+ */
 const normalizeTeam = (team = {}) => ({
   id: `fd-team-${team.id ?? hashString(team.name ?? "team")}`,
   name: team.name ?? "TBD",
@@ -64,8 +88,20 @@ const normalizeTeam = (team = {}) => ({
   externalIds: { footballData: String(team.id ?? "") },
 });
 
+/**
+ * Normalizes football-data.org stage enum values.
+ *
+ * @param stage - Raw stage enum from football-data.org.
+ * @returns User-facing stage label.
+ */
 const normalizeStage = (stage) => STAGE_LABELS[stage] ?? titleCase(stage) ?? "Competition";
 
+/**
+ * Normalizes football-data.org group enum values such as `GROUP_A`.
+ *
+ * @param group - Raw group enum or missing value.
+ * @returns User-facing group label, or `undefined` when no group exists.
+ */
 const normalizeGroup = (group) => {
   if (!group) return undefined;
   return group
@@ -74,12 +110,27 @@ const normalizeGroup = (group) => {
     .replace(/\b\w/g, (letter) => letter.toUpperCase());
 };
 
+/**
+ * Reads the most useful score part for one side.
+ *
+ * @param score - Raw football-data.org score object.
+ * @param side - Score side to read, either `home` or `away`.
+ * @returns Full-time, regular-time, or extra-time score when present.
+ */
 const scorePart = (score, side) =>
   score?.fullTime?.[side] ??
   score?.regularTime?.[side] ??
   score?.extraTime?.[side] ??
   undefined;
 
+/**
+ * Normalizes one football-data.org match into the app match model.
+ *
+ * @param raw - Raw football-data.org match object.
+ * @param competitionId - Internal competition id assigned to the match.
+ * @param editionId - Edition id assigned to the match.
+ * @returns Normalized app match record.
+ */
 const normalizeMatch = (raw, competitionId, editionId) => {
   const stage = normalizeStage(raw.stage);
   const group = normalizeGroup(raw.group);
@@ -118,6 +169,15 @@ const normalizeMatch = (raw, competitionId, editionId) => {
   };
 };
 
+/**
+ * Determines table zone semantics for a position.
+ *
+ * @param position - One-based table position.
+ * @param total - Number of teams in the table.
+ * @param format - Competition format from provider configuration.
+ * @param grouped - Whether the table represents a group stage.
+ * @returns App zone label used for standings display.
+ */
 const zoneFor = (position, total, format, grouped) => {
   if (grouped) return position <= 2 ? "qualified" : "eliminated";
   if (format === "league-knockout") {
@@ -131,6 +191,13 @@ const zoneFor = (position, total, format, grouped) => {
   return "none";
 };
 
+/**
+ * Normalizes only the `TOTAL` standings tables from football-data.org.
+ *
+ * @param payload - Raw standings endpoint response.
+ * @param format - Competition format from provider configuration.
+ * @returns Flattened app standings rows.
+ */
 const normalizeStandings = (payload, format) => {
   const totalTables = (payload.standings ?? []).filter(
     (standing) => standing.type === "TOTAL",
@@ -162,6 +229,12 @@ const normalizeStandings = (payload, format) => {
   });
 };
 
+/**
+ * Builds a team-id to group-name map from match payloads.
+ *
+ * @param matchesPayload - Raw matches endpoint response.
+ * @returns Map from football-data.org team id to normalized group label.
+ */
 const groupByTeamIdFromMatches = (matchesPayload) => {
   const groups = new Map();
   for (const match of matchesPayload.matches ?? []) {
@@ -176,6 +249,14 @@ const groupByTeamIdFromMatches = (matchesPayload) => {
   return groups;
 };
 
+/**
+ * Applies match-derived groups when standings are returned as one flattened table.
+ *
+ * @param standings - Normalized standings rows.
+ * @param matchesPayload - Raw matches endpoint response used to infer groups.
+ * @param format - Competition format from provider configuration.
+ * @returns Standings rows grouped, sorted, and re-positioned when group data is inferable.
+ */
 const applyMatchDerivedStandingGroups = (standings, matchesPayload, format) => {
   if (standings.some((standing) => standing.group)) return standings;
   const groups = groupByTeamIdFromMatches(matchesPayload);
@@ -228,6 +309,12 @@ const applyMatchDerivedStandingGroups = (standings, matchesPayload, format) => {
   });
 };
 
+/**
+ * Normalizes provider top-scorer rows.
+ *
+ * @param payload - Raw scorers endpoint response.
+ * @returns App scorer rows ordered by provider rank.
+ */
 const normalizeScorers = (payload) =>
   (payload.scorers ?? []).map((entry, index) => ({
     rank: index + 1,
@@ -241,6 +328,12 @@ const normalizeScorers = (payload) =>
     penalties: entry.penalties ?? undefined,
   }));
 
+/**
+ * Normalizes knockout-stage matches into bracket ties.
+ *
+ * @param matches - Normalized matches paired with their raw stage metadata.
+ * @returns Knockout ties for bracket rendering.
+ */
 const normalizeTies = (matches) =>
   matches
     .filter((match) => KNOCKOUT_STAGES.has(match.rawStage))
@@ -273,6 +366,14 @@ const normalizeTies = (matches) =>
       };
     });
 
+/**
+ * Calls football-data.org and maps HTTP/provider errors into `ProviderError`.
+ *
+ * @param url - Fully qualified football-data.org API URL.
+ * @param env - Provider configuration with API key and base URL.
+ * @returns Parsed football-data.org response body.
+ * @throws ProviderError when configuration, rate limit, or provider errors occur.
+ */
 const providerFetch = async (url, env) => {
   if (!env.footballDataKey) {
     throw new ProviderError(
@@ -305,9 +406,24 @@ const providerFetch = async (url, env) => {
   return body;
 };
 
+/**
+ * Reads and caches a provider resource for the requested TTL.
+ *
+ * @param url - Fully qualified provider resource URL.
+ * @param env - Provider configuration passed to the fetcher.
+ * @param ttlMs - Cache duration for successful responses.
+ * @returns Cached or newly fetched provider response.
+ */
 const getResource = (url, env, ttlMs) =>
   cached(`football-data:${url}`, ttlMs, () => providerFetch(url, env));
 
+/**
+ * Returns fallback data for optional provider resources with unsupported status codes.
+ *
+ * @param promise - Provider resource promise.
+ * @param fallback - Value returned for unsupported optional resources.
+ * @returns Provider result or fallback value.
+ */
 const optionalResource = async (promise, fallback) => {
   try {
     return await promise;
@@ -322,6 +438,15 @@ const optionalResource = async (promise, fallback) => {
   }
 };
 
+/**
+ * Returns normalized live competition data from football-data.org.
+ *
+ * @param competitionId - Internal competition id used for provider mapping.
+ * @param editionId - Edition or season id requested by the app.
+ * @param env - Provider configuration with football-data.org credentials.
+ * @returns Complete normalized live competition payload.
+ * @throws ProviderError when the competition or edition is unsupported.
+ */
 export const getLiveCompetitionData = async (
   competitionId,
   editionId,

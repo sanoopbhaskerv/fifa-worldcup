@@ -11,6 +11,7 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
 const dist = path.join(root, "dist");
 const port = Number(process.env.PORT ?? 4173);
 
+/** Content types served by the lightweight production preview server. */
 const contentTypes = {
   ".css": "text/css; charset=utf-8",
   ".html": "text/html; charset=utf-8",
@@ -20,6 +21,14 @@ const contentTypes = {
   ".webmanifest": "application/manifest+json",
 };
 
+/**
+ * Streams a built asset with conservative cache headers for HTML and long-lived
+ * immutable cache headers for hashed Vite assets.
+ *
+ * @param response - Node HTTP response object.
+ * @param filePath - Absolute path to the built file to serve.
+ * @returns Promise that resolves after the response body is written.
+ */
 const serveFile = async (response, filePath) => {
   const body = await readFile(filePath);
   const extension = path.extname(filePath);
@@ -37,6 +46,12 @@ const serveFile = async (response, filePath) => {
   response.end(body);
 };
 
+/**
+ * HTTP server that handles API routes first, then falls back to the SPA shell.
+ *
+ * @remarks This server is used for production preview/local hosting. AWS Amplify
+ * static hosting uses the built assets directly.
+ */
 const server = createServer(async (request, response) => {
   try {
     if (request.url?.startsWith("/api/")) {

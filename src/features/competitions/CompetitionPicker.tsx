@@ -14,6 +14,20 @@ interface CompetitionPickerProps {
   onToggleFavorite: (id: string) => void;
 }
 
+/**
+ * Renders the modal picker for searching, filtering, favoriting, and switching competitions.
+ *
+ * @param props - Component props.
+ * @param props.open - Whether the dialog is visible.
+ * @param props.competitions - Full competition catalog to search and filter.
+ * @param props.currentId - Currently selected competition id.
+ * @param props.favorites - Favorite competition ids.
+ * @param props.recents - Recently viewed competition ids.
+ * @param props.onClose - Callback invoked when the dialog should close.
+ * @param props.onSelect - Callback invoked when a competition is selected.
+ * @param props.onToggleFavorite - Callback invoked when a favorite is toggled.
+ * @returns Animated competition picker dialog.
+ */
 export const CompetitionPicker = ({
   open,
   competitions,
@@ -77,6 +91,18 @@ export const CompetitionPicker = ({
   );
 };
 
+/**
+ * Renders one grouped list inside the competition picker.
+ *
+ * @param props - Component props.
+ * @param props.title - Section heading for this group.
+ * @param props.competitions - Competitions to render in the group.
+ * @param props.currentId - Currently selected competition id.
+ * @param props.favorites - Favorite competition ids.
+ * @param props.onSelect - Callback invoked when a competition is selected.
+ * @param props.onToggleFavorite - Callback invoked when a favorite is toggled.
+ * @returns Picker group section.
+ */
 const CompetitionGroup = ({
   title,
   competitions,

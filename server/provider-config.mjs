@@ -1,3 +1,4 @@
+/** Provider mapping for competitions covered by football-data.org and API-Football. */
 export const providerCompetitions = {
   "world-cup": {
     footballDataCode: "WC",
@@ -41,4 +42,10 @@ export const providerCompetitions = {
   },
 };
 
+/**
+ * Extracts the season start year from an app edition id.
+ *
+ * @param editionId - Edition id such as `2026` or `2025-26`.
+ * @returns Numeric start year used by provider season parameters.
+ */
 export const seasonYear = (editionId) => Number(editionId.slice(0, 4));

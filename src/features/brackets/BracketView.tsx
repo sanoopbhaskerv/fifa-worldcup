@@ -2,6 +2,13 @@ import type { KnockoutTie } from "../../types/domain";
 import { TeamBadge } from "../../components/TeamBadge";
 import { formatDate } from "../../utils/football";
 
+/**
+ * Displays knockout ties grouped by round in a horizontally scrollable bracket.
+ *
+ * @param props - Component props.
+ * @param props.ties - Knockout ties to group and render by round.
+ * @returns Bracket view for knockout-capable competitions.
+ */
 export const BracketView = ({ ties }: { ties: KnockoutTie[] }) => {
   const rounds = ties.reduce<Record<string, KnockoutTie[]>>((groups, tie) => {
     (groups[tie.round] ??= []).push(tie);

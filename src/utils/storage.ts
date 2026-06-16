@@ -9,6 +9,13 @@ export interface StoredSelection {
   editionId: string;
 }
 
+/**
+ * Safely reads a JSON value from `localStorage`.
+ *
+ * @param key - Storage key to read.
+ * @param fallback - Value returned when storage is unavailable or malformed.
+ * @returns Parsed storage value or the provided fallback.
+ */
 const read = <T>(key: string, fallback: T): T => {
   try {
     const value = localStorage.getItem(key);
@@ -18,6 +25,13 @@ const read = <T>(key: string, fallback: T): T => {
   }
 };
 
+/**
+ * Safely writes a JSON value to `localStorage`.
+ *
+ * @param key - Storage key to write.
+ * @param value - JSON-serializable value to persist.
+ * @returns Nothing; storage failures are intentionally ignored.
+ */
 const write = (key: string, value: unknown) => {
   try {
     localStorage.setItem(key, JSON.stringify(value));
@@ -26,6 +40,12 @@ const write = (key: string, value: unknown) => {
   }
 };
 
+/**
+ * Versioned persistence facade for user choices and recent navigation.
+ *
+ * @remarks The methods intentionally hide JSON parsing and storage failures from
+ * callers so the app can continue in restricted browser storage modes.
+ */
 export const storage = {
   getFavorites: () => read<string[]>(KEYS.favorites, []),
   setFavorites: (value: string[]) => write(KEYS.favorites, value),

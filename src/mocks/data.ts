@@ -11,6 +11,15 @@ import type {
 
 const badgeColors = ["#3f8cff", "#f45b69", "#ffb33f", "#48c78e", "#a77bff", "#25b7d3", "#ec6aca", "#79ad43"];
 
+/**
+ * Creates a deterministic team record for mock competitions.
+ *
+ * @param id - Stable mock team identifier.
+ * @param name - Display name for the team.
+ * @param code - Short team code shown in compact UI.
+ * @param index - Index used to assign a fallback badge color.
+ * @returns Normalized team record.
+ */
 const team = (id: string, name: string, code: string, index: number): Team => ({
   id,
   name,
@@ -19,6 +28,7 @@ const team = (id: string, name: string, code: string, index: number): Team => ({
   badge: badgeColors[index % badgeColors.length],
 });
 
+/** National teams used by international mock competitions. */
 const nationalTeams = [
   team("arg", "Argentina", "ARG", 0),
   team("fra", "France", "FRA", 1),
@@ -30,6 +40,7 @@ const nationalTeams = [
   team("ned", "Netherlands", "NED", 7),
 ];
 
+/** Club teams used by domestic and continental club mock competitions. */
 const clubTeams = [
   team("north-london", "North London FC", "NLF", 0),
   team("manchester-blue", "Manchester Blue", "MCB", 1),
@@ -41,8 +52,23 @@ const clubTeams = [
   team("milan-blue", "Milan Blue", "MIL", 7),
 ];
 
+/**
+ * Returns a stable UTC kickoff timestamp for the mock tournament calendar.
+ *
+ * @param day - June 2026 day of month.
+ * @param hour - UTC hour of kickoff.
+ * @returns ISO timestamp string.
+ */
 const at = (day: number, hour: number) => `2026-06-${String(day).padStart(2, "0")}T${String(hour).padStart(2, "0")}:00:00Z`;
 
+/**
+ * Builds a mixed fixture list covering completed, live, upcoming, and unavailable states.
+ *
+ * @param competition - Competition metadata that determines league versus tournament shape.
+ * @param editionId - Edition id assigned to every generated match.
+ * @param teams - Team pool used to create fixtures.
+ * @returns Deterministic mock matches for the competition edition.
+ */
 const makeMatches = (
   competition: Competition,
   editionId: string,
@@ -79,6 +105,13 @@ const makeMatches = (
   });
 };
 
+/**
+ * Builds standings rows, optionally assigning teams into mock groups.
+ *
+ * @param teams - Team pool to rank.
+ * @param grouped - Whether standings should be split into Group A and Group B.
+ * @returns Deterministic standings rows.
+ */
 const makeStandings = (teams: Team[], grouped: boolean): Standing[] =>
   teams.map((entry, index) => {
     const played = 3 + (index % 3);
@@ -101,6 +134,13 @@ const makeStandings = (teams: Team[], grouped: boolean): Standing[] =>
     };
   });
 
+/**
+ * Builds knockout ties, including aggregate labels when the competition supports two legs.
+ *
+ * @param teams - Team pool used to seed tie participants.
+ * @param twoLegged - Whether to include aggregate score labels.
+ * @returns Deterministic knockout tie list.
+ */
 const makeTies = (teams: Team[], twoLegged: boolean): KnockoutTie[] => {
   const rounds = ["Quarter-finals", "Quarter-finals", "Semi-finals", "Semi-finals", "Final", "Third place"];
   return rounds.map((round, index) => {
@@ -128,6 +168,12 @@ const makeTies = (teams: Team[], twoLegged: boolean): KnockoutTie[] => {
 
 const playerNames = ["Mateo Silva", "Noah Laurent", "Leo Costa", "Jude Carter", "Dani Ruiz", "Kai Weber", "Rafael Santos", "Milan de Boer"];
 
+/**
+ * Builds the scorer leaderboard for a mock competition.
+ *
+ * @param teams - Team pool used to assign each scorer to a team.
+ * @returns Deterministic scorer rows ordered by rank.
+ */
 const makeScorers = (teams: Team[]): Scorer[] =>
   playerNames.map((name, index) => ({
     rank: index + 1,
@@ -141,6 +187,12 @@ const makeScorers = (teams: Team[]): Scorer[] =>
     penalties: index % 3 === 0 ? 1 : 0,
   }));
 
+/**
+ * Builds partial timeline events for the first few mock matches.
+ *
+ * @param matches - Matches that should receive demo event timelines.
+ * @returns Record of match id to timeline events.
+ */
 const makeEvents = (matches: Match[]): Record<string, MatchEvent[]> =>
   Object.fromEntries(
     matches.slice(0, 4).map((match, index) => [
@@ -153,6 +205,13 @@ const makeEvents = (matches: Match[]): Record<string, MatchEvent[]> =>
     ]),
   );
 
+/**
+ * Assembles a complete deterministic competition payload for offline/demo use.
+ *
+ * @param competition - Competition metadata used to select teams and capabilities.
+ * @param editionId - Edition id to generate.
+ * @returns Complete normalized competition data payload.
+ */
 export const buildCompetitionData = (
   competition: Competition,
   editionId: string,
