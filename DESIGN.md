@@ -141,11 +141,11 @@ bundled into browser JavaScript.
 
 Static hosting cannot keep runtime provider keys secret. The repository
 therefore separates the static PWA build from any future API backend. The
-current deployment path is `yarn build` and publishing `dist/` to the user's
-existing AWS static hosting setup. As a temporary tradeoff, GitHub Actions can
-inject provider keys into `VITE_*` build variables, and the browser will call
-the providers directly. Those keys are exposed in built assets and this path
-must be replaced by a backend before public launch.
+current deployment path is AWS Amplify Hosting using `amplify.yml` to run Yarn
+checks and publish `dist/`. As a temporary tradeoff, Amplify environment
+variables can inject provider keys into `VITE_*` build variables, and the
+browser will call the providers directly. Those keys are exposed in built assets
+and this path must be replaced by a backend before public launch.
 
 ### State Ownership
 

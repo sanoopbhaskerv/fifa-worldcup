@@ -123,9 +123,9 @@ Use `yarn build && yarn start` for realistic service-worker testing.
 
 ## Deployment
 
-Static hosting cannot keep API keys secret because it only serves files. The
-current deployment target is the built PWA in `dist/`. Deploy that folder to
-your existing AWS static hosting setup.
+Amplify Hosting is serving a static Vite build. Static hosting cannot keep API
+keys secret because it only serves files. The current deployment target is the
+built PWA in `dist/`.
 
 Build the static artifact:
 
@@ -133,26 +133,29 @@ Build the static artifact:
 yarn build
 ```
 
-Your static host should serve `dist/index.html` as the SPA fallback for deep
-links such as `/competitions/world-cup/2026`.
+Amplify should serve `dist/index.html` as the SPA fallback for deep links such
+as `/competitions/world-cup/2026`.
 
 Temporary live-data mode is available by setting `VITE_FOOTBALL_DATA_API_KEY`
 and `VITE_API_FOOTBALL_API_KEY` at build time. This embeds the provider keys in
 the generated browser assets. Use it only while you accept that users can
 extract those keys from `dist/`.
 
-### GitHub Actions Secrets
+### AWS Amplify Environment Variables
 
-GitHub Actions secrets can provide the temporary build-time `VITE_*` provider
-keys. The included `.github/workflows/static-build.yml` maps:
+The included `amplify.yml` installs dependencies with Yarn, runs lint,
+typecheck, tests, and builds `dist/`.
 
-```yaml
-VITE_FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
-VITE_API_FOOTBALL_API_KEY: ${{ secrets.API_FOOTBALL_API_KEY }}
-```
+For temporary static live mode, add these environment variables in Amplify
+Hosting:
 
-That workflow builds and uploads `dist/` as an artifact. Add your existing AWS
-upload step after the build if you want the workflow to deploy automatically.
+- `VITE_FOOTBALL_DATA_API_KEY`
+- `VITE_API_FOOTBALL_API_KEY`
+- `VITE_API_FOOTBALL_DAILY_BUDGET` optional, defaults to `90`
+
+These values are available during the Amplify build and are embedded into the
+generated Vite assets. They are encrypted in Amplify configuration, but they are
+not secret after the static app is built.
 
 Current split:
 
@@ -160,8 +163,8 @@ Current split:
 - Static production: deploy `dist/`; with `VITE_*` keys it attempts direct live
   provider calls from the browser, otherwise it uses demo fallback when `/api/*`
   is unavailable.
-- GitHub Actions: store provider keys as repository secrets if using temporary
-  static live mode.
+- Amplify Hosting: set provider keys as branch environment variables if using
+  temporary static live mode.
 - Future live production: add a real backend and keep provider keys server-side.
 
 Provider CORS policies may still block direct browser calls. If that happens,
@@ -174,8 +177,8 @@ docker build -t full-time-football .
 docker run --env-file .env -p 4173:4173 full-time-football
 ```
 
-For any other GitHub-connected host, configure both keys as runtime secrets.
-Do not inject them into a frontend build or GitHub Pages workflow.
+For any server-capable host, configure both keys as runtime secrets. Do not
+inject provider keys into frontend builds once the app is public.
 
 ## Architecture
 

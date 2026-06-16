@@ -33,8 +33,8 @@ Use Yarn for every dependency and script command.
 - [x] 60-second live polling and provider-aware server caching
 - [x] API-Football 90-request daily safety budget
 - [x] Live/mock source indicators and transparent provider limitation notices
-- [x] Static production build output for deployment to an existing AWS hosting setup
-- [x] Temporary GitHub Actions build-time `VITE_*` key wiring for static live mode
+- [x] AWS Amplify Hosting build spec with Yarn lint/typecheck/test/build
+- [x] Temporary Amplify build-time `VITE_*` key wiring for static live mode
 
 ## Verification
 
@@ -90,7 +90,7 @@ These are future enhancements, not incomplete current features:
 
 > Read `DESIGN.md`, `README.md`, and `TODO.md` first. The public football PWA is
 > live-provider integration is complete and local/browser verified. Use Yarn
-> only. Temporary static production can inject provider keys from GitHub Actions
-> secrets into `VITE_*` variables, which exposes them in browser assets; remove
-> this when a backend is added. Preserve the normalized provider boundary,
-> server cache policy, and capability-driven UI.
+> only. Temporary static production on AWS Amplify can inject provider keys from
+> Amplify environment variables into `VITE_*` variables, which exposes them in
+> browser assets; remove this when a backend is added. Preserve the normalized
+> provider boundary, server cache policy, and capability-driven UI.
