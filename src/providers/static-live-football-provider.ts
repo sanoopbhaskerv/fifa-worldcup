@@ -10,11 +10,9 @@ const env = {
   footballDataKey: import.meta.env.VITE_FOOTBALL_DATA_API_KEY ?? "",
   apiFootballKey: import.meta.env.VITE_API_FOOTBALL_API_KEY ?? "",
   footballDataBaseUrl:
-    import.meta.env.VITE_FOOTBALL_DATA_BASE_URL ??
-    "https://api.football-data.org/v4",
+    import.meta.env.VITE_FOOTBALL_DATA_BASE_URL ?? "/football-data/v4",
   apiFootballBaseUrl:
-    import.meta.env.VITE_API_FOOTBALL_BASE_URL ??
-    "https://v3.football.api-sports.io",
+    import.meta.env.VITE_API_FOOTBALL_BASE_URL ?? "/api-football",
   apiFootballDailyBudget: import.meta.env.VITE_API_FOOTBALL_DAILY_BUDGET ?? "90",
 };
 
