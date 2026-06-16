@@ -4,6 +4,7 @@ import { NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } from "
 import { useRegisterSW } from "virtual:pwa-register/react";
 import { ArrowIcon, BracketIcon, CalendarIcon, ChevronIcon, HomeIcon, PlayerIcon, SignalIcon, TableIcon, TrophyIcon } from "../components/Icons";
 import { CompetitionPicker } from "../features/competitions/CompetitionPicker";
+import { PullToRefreshIndicator } from "../components/PullToRefreshIndicator";
 import { useFavorites } from "../hooks/use-favorites";
 import { useOnline } from "../hooks/use-online";
 import { usePullToRefresh } from "../hooks/use-pull-to-refresh";
@@ -36,7 +37,12 @@ export const CompetitionLayout = () => {
   const catalogQuery = useCompetitions();
   const competition = catalogQuery.data?.find((item) => item.slug === competitionSlug);
   const dataQuery = useCompetitionData(competition?.id ?? "", editionId);
-  const pullRefresh = usePullToRefresh({
+  const {
+    containerRef: pullRefreshContainerRef,
+    progress: pullRefreshProgress,
+    pullDistance,
+    state: pullRefreshState,
+  } = usePullToRefresh({
     disabled: !dataQuery.data,
     isRefreshing: dataQuery.isFetching,
     onRefresh: () => dataQuery.refetch(),
@@ -85,46 +91,48 @@ export const CompetitionLayout = () => {
   return (
     <div className="app" style={{ "--competition-accent": competition.accent } as React.CSSProperties}>
       <a className="skip-link" href="#main-content">Skip to content</a>
+      <PullToRefreshIndicator progress={pullRefreshProgress} pullDistance={pullDistance} state={pullRefreshState} />
       <div
-        className={`pull-refresh ${pullRefresh.ready ? "pull-refresh--ready" : ""} ${dataQuery.isFetching ? "pull-refresh--loading" : ""}`}
-        style={{ transform: `translate(-50%, ${pullRefresh.pullDistance}px)` }}
-        aria-hidden="true"
+        className={`app-scroll app-scroll--${pullRefreshState}`}
+        ref={pullRefreshContainerRef}
+        style={{
+          transform: pullRefreshState === "idle" ? "translateY(0)" : `translateY(${Math.min(pullDistance * 0.45, 40)}px)`,
+        }}
       >
-        {dataQuery.isFetching ? "Refreshing…" : pullRefresh.ready ? "Release to refresh" : "Pull to refresh"}
-      </div>
-      {!online && <div className="network-banner" role="status"><SignalIcon />You’re offline. Showing saved competition data.</div>}
-      <header className="topbar">
-        <div className="topbar__inner">
-          <NavLink className="brand" to="/"><span className="brand__mark">F</span><span>FULL TIME</span></NavLink>
-          <button className="competition-switcher" onClick={() => setPickerOpen(true)}>
-            <span className="competition-emblem" style={{ "--competition-accent": competition.accent } as React.CSSProperties}>{competition.emblem}</span>
-            <span><small>Competition</small><strong>{competition.shortName}</strong></span><ChevronIcon />
-          </button>
-          <label className="edition-select"><span className="sr-only">Edition</span><select value={editionId} onChange={(event) => selectEdition(event.target.value)}>{competition.editions.map((edition) => <option value={edition.id} key={edition.id}>{edition.name}</option>)}</select></label>
+        {!online && <div className="network-banner" role="status"><SignalIcon />You’re offline. Showing saved competition data.</div>}
+        <header className="topbar">
+          <div className="topbar__inner">
+            <NavLink className="brand" to="/"><span className="brand__mark">F</span><span>FULL TIME</span></NavLink>
+            <button className="competition-switcher" onClick={() => setPickerOpen(true)}>
+              <span className="competition-emblem" style={{ "--competition-accent": competition.accent } as React.CSSProperties}>{competition.emblem}</span>
+              <span><small>Competition</small><strong>{competition.shortName}</strong></span><ChevronIcon />
+            </button>
+            <label className="edition-select"><span className="sr-only">Edition</span><select value={editionId} onChange={(event) => selectEdition(event.target.value)}>{competition.editions.map((edition) => <option value={edition.id} key={edition.id}>{edition.name}</option>)}</select></label>
+          </div>
+        </header>
+        <div className="app-frame">
+          <aside className="desktop-nav" aria-label="Competition sections">
+            <div className="desktop-nav__identity">
+              <span className="competition-emblem competition-emblem--large" style={{ "--competition-accent": competition.accent } as React.CSSProperties}>{competition.emblem}</span>
+              <div><strong>{competition.name}</strong><span>{editionId} edition</span></div>
+            </div>
+            <nav>{sections.map((section) => <SectionLink key={section} section={section} competition={competition} editionId={editionId} />)}</nav>
+            <div className="desktop-nav__footer"><span>{dataQuery.data.source === "live" ? "Live provider" : "Demo fallback"}</span><small>{dataQuery.data.provider}</small><small>Updated {formatUpdated(dataQuery.data.updatedAt)}</small></div>
+          </aside>
+          <main id="main-content" className="main-content">
+            <div className="mobile-tabs" aria-label="Competition sections">{sections.map((section) => <SectionLink key={section} section={section} competition={competition} editionId={editionId} compact />)}</div>
+            <div className="freshness" role="status">
+              <span className={dataQuery.isFetching ? "freshness__pulse" : ""} />
+              {dataQuery.isFetching ? "Refreshing data…" : `${dataQuery.data.source === "live" ? "Live" : "Demo"} · ${online ? "Updated" : "Saved"} ${formatUpdated(dataQuery.data.updatedAt)}`}
+            </div>
+            {dataQuery.data.notice && <div className="data-notice" role="status">{dataQuery.data.notice}</div>}
+            <AnimatePresence mode="wait">
+              <motion.div key={location.pathname} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
+                <Outlet context={{ data: dataQuery.data, editionId, updatedAt: dataQuery.dataUpdatedAt, isFetching: dataQuery.isFetching, refetch: dataQuery.refetch }} />
+              </motion.div>
+            </AnimatePresence>
+          </main>
         </div>
-      </header>
-      <div className="app-frame">
-        <aside className="desktop-nav" aria-label="Competition sections">
-          <div className="desktop-nav__identity">
-            <span className="competition-emblem competition-emblem--large" style={{ "--competition-accent": competition.accent } as React.CSSProperties}>{competition.emblem}</span>
-            <div><strong>{competition.name}</strong><span>{editionId} edition</span></div>
-          </div>
-          <nav>{sections.map((section) => <SectionLink key={section} section={section} competition={competition} editionId={editionId} />)}</nav>
-          <div className="desktop-nav__footer"><span>{dataQuery.data.source === "live" ? "Live provider" : "Demo fallback"}</span><small>{dataQuery.data.provider}</small><small>Updated {formatUpdated(dataQuery.data.updatedAt)}</small></div>
-        </aside>
-        <main id="main-content" className="main-content">
-          <div className="mobile-tabs" aria-label="Competition sections">{sections.map((section) => <SectionLink key={section} section={section} competition={competition} editionId={editionId} compact />)}</div>
-          <div className="freshness" role="status">
-            <span className={dataQuery.isFetching ? "freshness__pulse" : ""} />
-            {dataQuery.isFetching ? "Refreshing data…" : `${dataQuery.data.source === "live" ? "Live" : "Demo"} · ${online ? "Updated" : "Saved"} ${formatUpdated(dataQuery.data.updatedAt)}`}
-          </div>
-          {dataQuery.data.notice && <div className="data-notice" role="status">{dataQuery.data.notice}</div>}
-          <AnimatePresence mode="wait">
-            <motion.div key={location.pathname} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
-              <Outlet context={{ data: dataQuery.data, editionId, updatedAt: dataQuery.dataUpdatedAt, isFetching: dataQuery.isFetching, refetch: dataQuery.refetch }} />
-            </motion.div>
-          </AnimatePresence>
-        </main>
       </div>
       <nav className="bottom-nav" aria-label="Primary mobile navigation">
         {sections.slice(0, 5).map((section) => <SectionLink key={section} section={section} competition={competition} editionId={editionId} bottom />)}

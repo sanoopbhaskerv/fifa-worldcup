@@ -1,86 +1,194 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 
-const threshold = 72;
-const maxPull = 118;
+export type PullToRefreshState = "idle" | "pulling" | "ready" | "refreshing" | "success";
+
+interface UsePullToRefreshOptions {
+  disabled?: boolean;
+  isRefreshing: boolean;
+  maxPull?: number;
+  onRefresh: () => Promise<unknown>;
+  successDuration?: number;
+  threshold?: number;
+}
+
+interface UsePullToRefreshReturn {
+  containerRef: React.RefObject<HTMLDivElement | null>;
+  progress: number;
+  pullDistance: number;
+  state: PullToRefreshState;
+}
+
+const resistance = 0.45;
+const minScrollTop = 2;
 
 /**
- * Adds mobile pull-down detection for refreshing competition data.
+ * Adds mobile pull-down detection to a scrollable container.
  *
  * @param options - Pull-to-refresh behavior and state flags.
  * @param options.disabled - Whether touch listeners should be disabled.
  * @param options.isRefreshing - Whether a refresh is already in progress.
+ * @param options.maxPull - Maximum indicator travel distance in pixels.
  * @param options.onRefresh - Async callback invoked after the pull threshold is crossed.
- * @returns Pull distance and readiness state for rendering the refresh affordance.
+ * @param options.successDuration - Milliseconds to show the success state before resetting.
+ * @param options.threshold - Pull distance required before release triggers refresh.
+ * @returns Container ref plus state needed to render the refresh affordance.
  */
 export const usePullToRefresh = ({
-  disabled,
+  disabled = false,
   isRefreshing,
+  maxPull = 120,
   onRefresh,
-}: {
-  disabled?: boolean;
-  isRefreshing: boolean;
-  onRefresh: () => Promise<unknown>;
-}) => {
+  successDuration = 700,
+  threshold = 80,
+}: UsePullToRefreshOptions): UsePullToRefreshReturn => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [state, setState] = useState<PullToRefreshState>("idle");
   const [pullDistance, setPullDistance] = useState(0);
-  const pullDistanceRef = useRef(0);
-
-  /**
-   * Keeps state and the event-handler ref in sync without reattaching listeners.
-   *
-   * @param distance - Current pull distance in CSS pixels.
-   * @returns Nothing; updates both state and ref.
-   */
-  const updatePullDistance = (distance: number) => {
-    pullDistanceRef.current = distance;
-    setPullDistance(distance);
-  };
+  const startYRef = useRef(0);
+  const isPullingRef = useRef(false);
+  const stateRef = useRef<PullToRefreshState>("idle");
+  const resetTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
-    if (disabled) return undefined;
+    stateRef.current = state;
+  }, [state]);
 
-    let startY = 0;
-    let pulling = false;
+  /**
+   * Triggers a light vibration on devices that support the Vibration API.
+   *
+   * @param milliseconds - Vibration duration.
+   * @returns Nothing; unsupported devices ignore the call.
+   */
+  const vibrate = (milliseconds: number) => {
+    navigator.vibrate?.(milliseconds);
+  };
 
-    const onTouchStart = (event: TouchEvent) => {
-      if (window.scrollY > 0 || isRefreshing) return;
-      startY = event.touches[0]?.clientY ?? 0;
-      pulling = true;
-    };
+  /**
+   * Resets pull state back to idle and clears the visible distance.
+   *
+   * @returns Nothing; state is updated in place.
+   */
+  const reset = useCallback(() => {
+    isPullingRef.current = false;
+    setState("idle");
+    setPullDistance(0);
+  }, []);
 
-    const onTouchMove = (event: TouchEvent) => {
-      if (!pulling) return;
-      const currentY = event.touches[0]?.clientY ?? 0;
-      const distance = currentY - startY;
-      if (distance <= 0) {
-        updatePullDistance(0);
-        return;
-      }
-      updatePullDistance(Math.min(maxPull, distance * 0.55));
-    };
+  /**
+   * Starts tracking a pull gesture when the scroll container is at the top.
+   *
+   * @param event - Native touch start event.
+   * @returns Nothing; gesture state is stored in refs.
+   */
+  const onTouchStart = useCallback((event: TouchEvent) => {
+    if (disabled || isRefreshing || stateRef.current === "refreshing") return;
+    const element = containerRef.current;
+    const firstTouch = event.touches[0];
+    if (!element || !firstTouch || element.scrollTop > minScrollTop) return;
 
-    const onTouchEnd = () => {
-      if (!pulling) return;
-      pulling = false;
-      const shouldRefresh = pullDistanceRef.current >= threshold;
-      updatePullDistance(0);
-      if (shouldRefresh) void onRefresh();
-    };
+    startYRef.current = firstTouch.clientY;
+    isPullingRef.current = true;
+  }, [disabled, isRefreshing]);
 
-    window.addEventListener("touchstart", onTouchStart, { passive: true });
-    window.addEventListener("touchmove", onTouchMove, { passive: true });
-    window.addEventListener("touchend", onTouchEnd, { passive: true });
-    window.addEventListener("touchcancel", onTouchEnd, { passive: true });
+  /**
+   * Updates pull distance and readiness while the user drags downward.
+   *
+   * @param event - Native touch move event.
+   * @returns Nothing; state updates drive the indicator UI.
+   */
+  const onTouchMove = useCallback((event: TouchEvent) => {
+    if (!isPullingRef.current || disabled) return;
+    const element = containerRef.current;
+    const firstTouch = event.touches[0];
+    if (!element || !firstTouch) return;
+
+    if (element.scrollTop > minScrollTop) {
+      reset();
+      return;
+    }
+
+    const deltaY = firstTouch.clientY - startYRef.current;
+    if (deltaY <= 0) {
+      setPullDistance(0);
+      setState("idle");
+      return;
+    }
+
+    event.preventDefault();
+
+    const nextDistance = Math.min(deltaY * resistance, maxPull);
+    const isNowReady = nextDistance >= threshold;
+    const wasReady = stateRef.current === "ready";
+
+    setPullDistance(nextDistance);
+    if (isNowReady && !wasReady) {
+      vibrate(25);
+      setState("ready");
+    } else if (!isNowReady && stateRef.current !== "pulling") {
+      vibrate(10);
+      setState("pulling");
+    }
+  }, [disabled, maxPull, reset, threshold]);
+
+  /**
+   * Finishes the pull gesture and runs refresh when the threshold was crossed.
+   *
+   * @returns Promise that resolves after the refresh handling completes.
+   */
+  const onTouchEnd = useCallback(async () => {
+    if (!isPullingRef.current || disabled) return;
+    isPullingRef.current = false;
+
+    if (stateRef.current !== "ready") {
+      reset();
+      return;
+    }
+
+    setState("refreshing");
+    setPullDistance(threshold);
+
+    try {
+      await onRefresh();
+      setState("success");
+      vibrate(25);
+      if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
+      resetTimerRef.current = window.setTimeout(reset, successDuration);
+    } catch {
+      reset();
+    }
+  }, [disabled, onRefresh, reset, successDuration, threshold]);
+
+  /**
+   * Cancels a pull gesture without triggering refresh.
+   *
+   * @returns Nothing; resets gesture state.
+   */
+  const onTouchCancel = useCallback(() => {
+    reset();
+  }, [reset]);
+
+  useEffect(() => {
+    const element = containerRef.current;
+    if (!element || disabled) return undefined;
+
+    element.addEventListener("touchstart", onTouchStart, { passive: true });
+    element.addEventListener("touchmove", onTouchMove, { passive: false });
+    element.addEventListener("touchend", onTouchEnd, { passive: true });
+    element.addEventListener("touchcancel", onTouchCancel, { passive: true });
 
     return () => {
-      window.removeEventListener("touchstart", onTouchStart);
-      window.removeEventListener("touchmove", onTouchMove);
-      window.removeEventListener("touchend", onTouchEnd);
-      window.removeEventListener("touchcancel", onTouchEnd);
+      element.removeEventListener("touchstart", onTouchStart);
+      element.removeEventListener("touchmove", onTouchMove);
+      element.removeEventListener("touchend", onTouchEnd);
+      element.removeEventListener("touchcancel", onTouchCancel);
+      if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
     };
-  }, [disabled, isRefreshing, onRefresh]);
+  }, [disabled, onTouchCancel, onTouchEnd, onTouchMove, onTouchStart]);
 
   return {
+    containerRef,
+    progress: Math.min(pullDistance / threshold, 1),
     pullDistance,
-    ready: pullDistance >= threshold,
+    state,
   };
 };
