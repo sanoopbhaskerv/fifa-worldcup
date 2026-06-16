@@ -38,6 +38,10 @@ export const CompetitionLayout = () => {
   const competition = catalogQuery.data?.find((item) => item.slug === competitionSlug);
   const dataQuery = useCompetitionData(competition?.id ?? "", editionId);
   const {
+    needRefresh: [needRefresh, setNeedRefresh],
+    updateServiceWorker,
+  } = useRegisterSW();
+  const {
     containerRef: pullRefreshContainerRef,
     progress: pullRefreshProgress,
     pullDistance,
@@ -47,10 +51,6 @@ export const CompetitionLayout = () => {
     isRefreshing: dataQuery.isFetching,
     onRefresh: () => dataQuery.refetch(),
   });
-  const {
-    needRefresh: [needRefresh, setNeedRefresh],
-    updateServiceWorker,
-  } = useRegisterSW();
 
   useEffect(() => {
     if (competition && competition.editions.some((edition) => edition.id === editionId)) {
