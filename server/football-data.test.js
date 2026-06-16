@@ -22,6 +22,7 @@ describe("football-data.org normalization", () => {
                 id: 42,
                 utcDate: "2026-06-15T19:00:00Z",
                 status: "IN_PLAY",
+                matchday: 1,
                 stage: "GROUP_STAGE",
                 group: "GROUP_A",
                 lastUpdated: "2026-06-15T19:30:00Z",
@@ -84,9 +85,137 @@ describe("football-data.org normalization", () => {
       status: "LIVE",
       group: "Group A",
       homeScore: 1,
+      matchday: 1,
+      matchNumber: "42",
     });
     expect(data.matches[0].home.crest).toBe("https://example.com/a.svg");
     expect(data.standings[0]).toMatchObject({ points: 3, zone: "qualified" });
     expect(data.scorers[0]).toMatchObject({ name: "A. Striker", goals: 1 });
+  });
+
+  it("derives group standings from match team ids when standings are flattened", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url) => {
+        if (String(url).includes("/matches")) {
+          return jsonResponse({
+            matches: [
+              {
+                id: 101,
+                utcDate: "2026-06-11T19:00:00Z",
+                status: "FINISHED",
+                matchday: 1,
+                stage: "GROUP_STAGE",
+                group: "GROUP_A",
+                homeTeam: { id: 769, name: "Mexico", shortName: "Mexico", tla: "MEX" },
+                awayTeam: { id: 774, name: "South Africa", shortName: "South Africa", tla: "RSA" },
+                score: { fullTime: { home: 2, away: 0 } },
+                referees: [],
+              },
+              {
+                id: 102,
+                utcDate: "2026-06-12T19:00:00Z",
+                status: "FINISHED",
+                matchday: 1,
+                stage: "GROUP_STAGE",
+                group: "GROUP_B",
+                homeTeam: { id: 759, name: "Germany", shortName: "Germany", tla: "GER" },
+                awayTeam: { id: 760, name: "Japan", shortName: "Japan", tla: "JPN" },
+                score: { fullTime: { home: 7, away: 1 } },
+                referees: [],
+              },
+            ],
+          });
+        }
+        if (String(url).includes("/standings")) {
+          return jsonResponse({
+            standings: [
+              {
+                type: "TOTAL",
+                table: [
+                  {
+                    position: 1,
+                    team: { id: 759, name: "Germany", shortName: "Germany", tla: "GER" },
+                    playedGames: 1,
+                    won: 1,
+                    draw: 0,
+                    lost: 0,
+                    goalsFor: 7,
+                    goalsAgainst: 1,
+                    points: 3,
+                    form: "W",
+                  },
+                  {
+                    position: 2,
+                    team: { id: 769, name: "Mexico", shortName: "Mexico", tla: "MEX" },
+                    playedGames: 1,
+                    won: 1,
+                    draw: 0,
+                    lost: 0,
+                    goalsFor: 2,
+                    goalsAgainst: 0,
+                    points: 3,
+                    form: "W",
+                  },
+                  {
+                    position: 3,
+                    team: { id: 774, name: "South Africa", shortName: "South Africa", tla: "RSA" },
+                    playedGames: 1,
+                    won: 0,
+                    draw: 0,
+                    lost: 1,
+                    goalsFor: 0,
+                    goalsAgainst: 2,
+                    points: 0,
+                    form: "L",
+                  },
+                  {
+                    position: 4,
+                    team: { id: 760, name: "Japan", shortName: "Japan", tla: "JPN" },
+                    playedGames: 1,
+                    won: 0,
+                    draw: 0,
+                    lost: 1,
+                    goalsFor: 1,
+                    goalsAgainst: 7,
+                    points: 0,
+                    form: "L",
+                  },
+                ],
+              },
+            ],
+          });
+        }
+        return jsonResponse({ scorers: [] });
+      }),
+    );
+
+    const data = await getLiveCompetitionData("world-cup", "2026", {
+      footballDataKey: "test",
+      footballDataBaseUrl: "https://example.com/v4",
+    });
+
+    expect(
+      data.standings.map((standing) => [
+        standing.group,
+        standing.position,
+        standing.team.code,
+      ]),
+    ).toEqual([
+      ["Group A", 1, "MEX"],
+      ["Group A", 2, "RSA"],
+      ["Group B", 1, "GER"],
+      ["Group B", 2, "JPN"],
+    ]);
+    expect(data.standings.find((standing) => standing.team.code === "GER")).toMatchObject({
+      position: 1,
+      group: "Group B",
+      zone: "qualified",
+    });
+    expect(data.standings.find((standing) => standing.team.code === "JPN")).toMatchObject({
+      position: 2,
+      group: "Group B",
+      zone: "qualified",
+    });
   });
 });

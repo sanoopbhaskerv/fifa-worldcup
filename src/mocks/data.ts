@@ -63,6 +63,8 @@ const makeMatches = (
       stage: stages[index % stages.length],
       round: isLeague ? `Matchweek ${index + 1}` : index < 6 ? "Round 1" : stages[index % stages.length],
       group: !isLeague && index < 6 ? `Group ${String.fromCharCode(65 + (index % 2))}` : undefined,
+      matchday: index + 1,
+      matchNumber: String(index + 1),
       kickoff: at(11 + index, 16 + (index % 4)),
       status,
       minute: status === "LIVE" ? 67 : undefined,

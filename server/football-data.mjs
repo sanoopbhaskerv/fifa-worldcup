@@ -84,6 +84,7 @@ const normalizeMatch = (raw, competitionId, editionId) => {
   const stage = normalizeStage(raw.stage);
   const group = normalizeGroup(raw.group);
   const matchday = raw.matchday ? `Matchday ${raw.matchday}` : undefined;
+  const rawMatchNumber = raw.matchNumber ?? raw.number ?? raw.id;
   return {
     id: `fd-${raw.id}`,
     competitionId,
@@ -91,6 +92,11 @@ const normalizeMatch = (raw, competitionId, editionId) => {
     stage,
     round: group ?? matchday ?? stage,
     group,
+    matchday: raw.matchday ?? undefined,
+    matchNumber:
+      rawMatchNumber === null || rawMatchNumber === undefined
+        ? undefined
+        : String(rawMatchNumber),
     kickoff: raw.utcDate,
     status: statusMap[raw.status] ?? "UPCOMING",
     minute:
@@ -153,6 +159,72 @@ const normalizeStandings = (payload, format) => {
         Boolean(group),
       ),
     }));
+  });
+};
+
+const groupByTeamIdFromMatches = (matchesPayload) => {
+  const groups = new Map();
+  for (const match of matchesPayload.matches ?? []) {
+    const group = normalizeGroup(match.group);
+    if (!group) continue;
+    for (const team of [match.homeTeam, match.awayTeam]) {
+      if (team?.id !== null && team?.id !== undefined) {
+        groups.set(String(team.id), group);
+      }
+    }
+  }
+  return groups;
+};
+
+const applyMatchDerivedStandingGroups = (standings, matchesPayload, format) => {
+  if (standings.some((standing) => standing.group)) return standings;
+  const groups = groupByTeamIdFromMatches(matchesPayload);
+  if (!groups.size) return standings;
+
+  const grouped = standings
+    .map((standing) => ({
+      ...standing,
+      group: groups.get(standing.team.externalIds?.footballData ?? ""),
+    }))
+    .sort((left, right) => {
+      if (left.group && right.group && left.group !== right.group) {
+        return left.group.localeCompare(right.group, undefined, {
+          numeric: true,
+        });
+      }
+      if (left.group && !right.group) return -1;
+      if (!left.group && right.group) return 1;
+      const points = right.points - left.points;
+      if (points !== 0) return points;
+      const goalDifference =
+        right.goalsFor -
+        right.goalsAgainst -
+        (left.goalsFor - left.goalsAgainst);
+      if (goalDifference !== 0) return goalDifference;
+      const goalsFor = right.goalsFor - left.goalsFor;
+      if (goalsFor !== 0) return goalsFor;
+      return left.team.name.localeCompare(right.team.name);
+    });
+  const groupSizes = grouped.reduce((sizes, standing) => {
+    if (standing.group) sizes.set(standing.group, (sizes.get(standing.group) ?? 0) + 1);
+    return sizes;
+  }, new Map());
+  const positions = new Map();
+
+  return grouped.map((standing) => {
+    if (!standing.group) return standing;
+    const nextPosition = (positions.get(standing.group) ?? 0) + 1;
+    positions.set(standing.group, nextPosition);
+    return {
+      ...standing,
+      position: nextPosition,
+      zone: zoneFor(
+        nextPosition,
+        groupSizes.get(standing.group) ?? 0,
+        format,
+        true,
+      ),
+    };
   });
 };
 
@@ -302,7 +374,11 @@ export const getLiveCompetitionData = async (
 
   return {
     matches,
-    standings: normalizeStandings(standingsPayload, config.format),
+    standings: applyMatchDerivedStandingGroups(
+      normalizeStandings(standingsPayload, config.format),
+      matchesPayload,
+      config.format,
+    ),
     ties: normalizeTies(matchesWithStage),
     scorers: normalizeScorers(scorersPayload),
     events: {},

@@ -59,6 +59,8 @@ export interface Match {
   stage: string;
   round: string;
   group?: string;
+  matchday?: number;
+  matchNumber?: string;
   kickoff: string;
   status: MatchStatus;
   minute?: number;

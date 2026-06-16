@@ -15,13 +15,16 @@ const statusLabel: Record<Match["status"], string> = {
 export const MatchCard = ({ match, compact = false }: { match: Match; compact?: boolean }) => {
   const { competitionSlug, editionId } = useParams();
   const hasScore = match.homeScore !== undefined && match.awayScore !== undefined;
+  const primaryMeta = match.group ?? match.round;
+  const matchNumber = match.matchNumber ? `Match ${match.matchNumber}` : undefined;
   return (
     <Link className={`match-card ${compact ? "match-card--compact" : ""}`} to={`/competitions/${competitionSlug}/${editionId}/matches/${match.id}`} aria-label={`${match.home.name} versus ${match.away.name}`}>
       <div className="match-card__meta">
         <span className={`status status--${match.status.toLowerCase()}`}>
           {match.status === "LIVE" ? (match.minute ? `${match.minute}'` : "Live") : statusLabel[match.status]}
         </span>
-        <span>{match.group ?? match.round}</span>
+        <span>{primaryMeta}</span>
+        {matchNumber && !compact && <span>{matchNumber}</span>}
         <span className="match-card__time">{formatKickoff(match.kickoff)}</span>
       </div>
       <div className="match-card__teams">
