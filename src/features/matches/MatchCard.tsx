@@ -1,0 +1,34 @@
+import { Link, useParams } from "react-router-dom";
+import type { Match } from "../../types/domain";
+import { formatKickoff } from "../../utils/football";
+import { TeamBadge } from "../../components/TeamBadge";
+import { ChevronIcon } from "../../components/Icons";
+
+const statusLabel: Record<Match["status"], string> = {
+  LIVE: "Live",
+  UPCOMING: "Upcoming",
+  COMPLETED: "Full time",
+  POSTPONED: "Postponed",
+  CANCELLED: "Cancelled",
+};
+
+export const MatchCard = ({ match, compact = false }: { match: Match; compact?: boolean }) => {
+  const { competitionSlug, editionId } = useParams();
+  const hasScore = match.homeScore !== undefined && match.awayScore !== undefined;
+  return (
+    <Link className={`match-card ${compact ? "match-card--compact" : ""}`} to={`/competitions/${competitionSlug}/${editionId}/matches/${match.id}`} aria-label={`${match.home.name} versus ${match.away.name}`}>
+      <div className="match-card__meta">
+        <span className={`status status--${match.status.toLowerCase()}`}>
+          {match.status === "LIVE" ? (match.minute ? `${match.minute}'` : "Live") : statusLabel[match.status]}
+        </span>
+        <span>{match.group ?? match.round}</span>
+        <span className="match-card__time">{formatKickoff(match.kickoff)}</span>
+      </div>
+      <div className="match-card__teams">
+        <div className="match-team"><TeamBadge team={match.home} size="sm" /><span>{match.home.name}</span><strong>{hasScore ? match.homeScore : "–"}</strong></div>
+        <div className="match-team"><TeamBadge team={match.away} size="sm" /><span>{match.away.name}</span><strong>{hasScore ? match.awayScore : "–"}</strong></div>
+      </div>
+      {!compact && <div className="match-card__venue"><span>{match.venue}, {match.city}</span><ChevronIcon /></div>}
+    </Link>
+  );
+};

@@ -1,0 +1,256 @@
+import { cached } from "./cache.mjs";
+import { ProviderError } from "./errors.mjs";
+import { providerCompetitions } from "./provider-config.mjs";
+
+let budgetDate = new Date().toISOString().slice(0, 10);
+let requestsToday = 0;
+
+const normalizedName = (value = "") =>
+  value
+    .normalize("NFKD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .replace(/\b(fc|afc|cf|ac|sc|club|football)\b/g, "")
+    .replace(/[^a-z0-9]/g, "");
+
+const similarity = (left, right) => {
+  const a = normalizedName(left);
+  const b = normalizedName(right);
+  if (!a || !b) return 0;
+  if (a === b) return 10;
+  if (a.includes(b) || b.includes(a)) return 7;
+  const aWords = new Set(left.toLowerCase().split(/\W+/).filter(Boolean));
+  const overlap = right
+    .toLowerCase()
+    .split(/\W+/)
+    .filter((word) => aWords.has(word)).length;
+  return overlap;
+};
+
+const checkBudget = (limit) => {
+  const today = new Date().toISOString().slice(0, 10);
+  if (today !== budgetDate) {
+    budgetDate = today;
+    requestsToday = 0;
+  }
+  if (requestsToday >= limit) {
+    throw new ProviderError(
+      "The API-Football daily safety budget has been reached.",
+      429,
+      "DETAIL_BUDGET_REACHED",
+    );
+  }
+  requestsToday += 1;
+};
+
+const apiFetch = async (path, env) => {
+  if (!env.apiFootballKey) {
+    throw new ProviderError(
+      "API_FOOTBALL_API_KEY is not configured.",
+      503,
+      "MISSING_DETAIL_KEY",
+    );
+  }
+  const budget = Number(env.apiFootballDailyBudget ?? 90);
+  const limit = Number.isFinite(budget) ? budget : 90;
+  if (env.consumeApiFootballBudget) {
+    await env.consumeApiFootballBudget(limit);
+  } else {
+    checkBudget(limit);
+  }
+
+  const response = await fetch(`${env.apiFootballBaseUrl}${path}`, {
+    headers: { "x-apisports-key": env.apiFootballKey },
+    signal: AbortSignal.timeout(20_000),
+  });
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    throw new ProviderError(
+      `API-Football returned ${response.status}.`,
+      response.status === 429 ? 429 : 502,
+      response.status === 429 ? "RATE_LIMITED" : "API_FOOTBALL_ERROR",
+      response.headers.get("retry-after") ?? undefined,
+    );
+  }
+  const providerErrors = body.errors;
+  if (
+    providerErrors &&
+    ((Array.isArray(providerErrors) && providerErrors.length > 0) ||
+      (!Array.isArray(providerErrors) &&
+        Object.keys(providerErrors).length > 0))
+  ) {
+    const message = Array.isArray(providerErrors)
+      ? providerErrors.join(", ")
+      : Object.values(providerErrors).join(", ");
+    throw new ProviderError(message, 422, "DETAIL_NOT_AVAILABLE");
+  }
+  return body;
+};
+
+const fixtureCandidates = (date, env) =>
+  cached(`api-football:fixtures:${date}`, 5 * 60_000, () =>
+    apiFetch(`/fixtures?date=${encodeURIComponent(date)}`, env),
+  );
+
+const findFixture = async (
+  competitionId,
+  date,
+  homeName,
+  awayName,
+  env,
+) => {
+  const payload = await fixtureCandidates(date, env);
+  const expectedLeague = providerCompetitions[competitionId]?.apiFootballLeagueId;
+  const candidates = (payload.response ?? []).map((fixture) => {
+    const leagueBonus =
+      expectedLeague && fixture.league?.id === expectedLeague ? 6 : 0;
+    const score =
+      similarity(homeName, fixture.teams?.home?.name) +
+      similarity(awayName, fixture.teams?.away?.name) +
+      leagueBonus;
+    return { fixture, score };
+  });
+  candidates.sort((left, right) => right.score - left.score);
+  return candidates[0]?.score >= 10 ? candidates[0].fixture : null;
+};
+
+const eventType = (type, detail) => {
+  if (type === "Goal") return "goal";
+  if (type === "subst") return "substitution";
+  if (type === "Card" && String(detail).toLowerCase().includes("red")) {
+    return "red-card";
+  }
+  if (type === "Card") return "yellow-card";
+  return null;
+};
+
+const normalizeEvents = (payload) =>
+  (payload.response ?? []).flatMap((entry, index) => {
+    const type = eventType(entry.type, entry.detail);
+    if (!type) return [];
+    return [
+      {
+        id: `af-event-${index}-${entry.time?.elapsed ?? 0}`,
+        minute: Number(entry.time?.elapsed ?? 0),
+        extraMinute: entry.time?.extra ?? undefined,
+        type,
+        teamId: `af-team-${entry.team?.id ?? ""}`,
+        teamName: entry.team?.name ?? undefined,
+        player: entry.player?.name ?? "Unknown player",
+        assist: entry.assist?.name ?? undefined,
+        detail: entry.detail ?? entry.comments ?? undefined,
+      },
+    ];
+  });
+
+const normalizePlayer = (entry) => ({
+  id: `af-player-${entry.player?.id ?? entry.player?.name}`,
+  name: entry.player?.name ?? "Unknown player",
+  number: entry.player?.number ?? undefined,
+  position: entry.player?.pos ?? undefined,
+  grid: entry.player?.grid ?? undefined,
+});
+
+const normalizeLineups = (payload) =>
+  (payload.response ?? []).map((lineup) => ({
+    teamId: `af-team-${lineup.team?.id ?? ""}`,
+    teamName: lineup.team?.name ?? "Team",
+    crest: lineup.team?.logo ?? undefined,
+    formation: lineup.formation ?? undefined,
+    coach: lineup.coach?.name ?? undefined,
+    starters: (lineup.startXI ?? []).map(normalizePlayer),
+    substitutes: (lineup.substitutes ?? []).map(normalizePlayer),
+  }));
+
+const wantedStats = new Set([
+  "Ball Possession",
+  "Total Shots",
+  "Shots on Goal",
+  "Corner Kicks",
+  "Fouls",
+  "Yellow Cards",
+  "Red Cards",
+  "Goalkeeper Saves",
+  "Passes %",
+  "expected_goals",
+]);
+
+const normalizeStatistics = (payload) =>
+  (payload.response ?? []).map((teamStats) => ({
+    teamId: `af-team-${teamStats.team?.id ?? ""}`,
+    teamName: teamStats.team?.name ?? "Team",
+    crest: teamStats.team?.logo ?? undefined,
+    values: Object.fromEntries(
+      (teamStats.statistics ?? [])
+        .filter((stat) => wantedStats.has(stat.type))
+        .map((stat) => [stat.type, stat.value]),
+    ),
+  }));
+
+const emptyDetails = (message) => ({
+  events: [],
+  lineups: [],
+  statistics: [],
+  officials: [],
+  source: "live",
+  provider: "API-Football",
+  updatedAt: new Date().toISOString(),
+  notice: message,
+});
+
+export const getLiveMatchDetails = async (query, env) => {
+  const { competitionId, kickoff, home, away } = query;
+  if (!competitionId || !kickoff || !home || !away) {
+    throw new ProviderError(
+      "Match lookup parameters are incomplete.",
+      400,
+      "INVALID_MATCH_LOOKUP",
+    );
+  }
+
+  const date = kickoff.slice(0, 10);
+  let fixture;
+  try {
+    fixture = await findFixture(competitionId, date, home, away, env);
+  } catch (error) {
+    if (
+      error instanceof ProviderError &&
+      ["DETAIL_NOT_AVAILABLE", "DETAIL_BUDGET_REACHED"].includes(error.code)
+    ) {
+      return emptyDetails(error.message);
+    }
+    throw error;
+  }
+
+  if (!fixture) {
+    return emptyDetails(
+      "API-Football does not expose this fixture on the current free-plan date window.",
+    );
+  }
+
+  const fixtureId = fixture.fixture.id;
+  const terminal = ["FT", "AET", "PEN"].includes(fixture.fixture.status?.short);
+  const ttl = terminal ? 24 * 60 * 60_000 : 60_000;
+  const [eventsPayload, lineupsPayload, statisticsPayload] = await Promise.all([
+    cached(`api-football:events:${fixtureId}`, ttl, () =>
+      apiFetch(`/fixtures/events?fixture=${fixtureId}`, env),
+    ),
+    cached(`api-football:lineups:${fixtureId}`, ttl, () =>
+      apiFetch(`/fixtures/lineups?fixture=${fixtureId}`, env),
+    ),
+    cached(`api-football:statistics:${fixtureId}`, ttl, () =>
+      apiFetch(`/fixtures/statistics?fixture=${fixtureId}`, env),
+    ),
+  ]);
+
+  return {
+    fixtureId: String(fixtureId),
+    events: normalizeEvents(eventsPayload),
+    lineups: normalizeLineups(lineupsPayload),
+    statistics: normalizeStatistics(statisticsPayload),
+    officials: fixture.fixture.referee ? [fixture.fixture.referee] : [],
+    source: "live",
+    provider: "API-Football",
+    updatedAt: new Date().toISOString(),
+  };
+};
