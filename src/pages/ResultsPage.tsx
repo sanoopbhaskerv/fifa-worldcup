@@ -9,7 +9,13 @@ export default function ResultsPage() {
   const [search, setSearch] = useState("");
   const [stage, setStage] = useState("ALL");
   const stages = [...new Set(data.matches.map((match) => match.stage))];
-  const results = useMemo(() => filterMatches(data.matches, "COMPLETED", search, stage), [data.matches, search, stage]);
+  const results = useMemo(
+    () =>
+      [...filterMatches(data.matches, "COMPLETED", search, stage)].sort(
+        (left, right) => Date.parse(right.kickoff) - Date.parse(left.kickoff),
+      ),
+    [data.matches, search, stage],
+  );
   const grouped = groupMatchesByDate(results);
   return (
     <div className="page">

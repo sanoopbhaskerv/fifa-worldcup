@@ -69,6 +69,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .freshness > span { width: 6px; height: 6px; border-radius: 50%; background: var(--competition-accent); }
 .freshness__pulse { animation: freshness-pulse 1s ease-in-out infinite alternate; }
 @keyframes freshness-pulse { to { opacity: .3; } }
+.pull-refresh { position: fixed; top: -42px; left: 50%; z-index: 80; padding: 9px 14px; border: 1px solid var(--line); border-radius: 999px; color: var(--text); background: color-mix(in srgb, var(--surface) 88%, transparent); box-shadow: var(--shadow); font-size: 10px; font-weight: 800; pointer-events: none; transition: opacity .18s ease; opacity: .92; }
+.pull-refresh--ready { color: #07130f; border-color: var(--competition-accent); background: var(--competition-accent); }
 .data-notice { margin: 8px 14px 0; padding: 10px 12px; border: 1px solid rgba(255,202,88,.22); border-radius: 10px; color: #ffe3a0; background: rgba(255,202,88,.08); font-size: 10px; line-height: 1.45; }
 
 .page { width: min(100%, 1120px); margin: 0 auto; padding: 28px 14px 60px; }
@@ -152,6 +154,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .date-group { margin-bottom: 28px; }
 .date-group > h2 { display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 10px; font-size: 14px; }
 .date-group > h2 small { color: var(--muted); font: 500 10px/1 system-ui; }
+.date-group { scroll-margin-top: 116px; }
+.date-group__anchor { margin-right: 8px; padding: 3px 7px; border-radius: 99px; color: #07130f; background: var(--competition-accent); font-style: normal; font-size: 9px; text-transform: uppercase; letter-spacing: .06em; }
 .empty-state { display: grid; place-items: center; min-height: 280px; padding: 30px; border: 1px dashed rgba(255,255,255,.15); border-radius: var(--radius); color: var(--muted); text-align: center; }
 .empty-state > span { color: var(--competition-accent); font: 800 24px/1 "Arial Narrow"; }
 .empty-state h2 { margin: 12px 0 4px; color: var(--text); }

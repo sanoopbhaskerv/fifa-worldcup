@@ -9,7 +9,10 @@ export default function OverviewPage() {
   const { data, editionId } = useCompetition();
   const { competition, matches, standings, scorers } = data;
   const featured = matches.find((match) => match.status === "LIVE") ?? matches.find((match) => match.status === "UPCOMING") ?? matches[0];
-  const recent = matches.filter((match) => match.status === "COMPLETED").slice(0, 3);
+  const recent = [...matches]
+    .filter((match) => match.status === "COMPLETED")
+    .sort((left, right) => Date.parse(right.kickoff) - Date.parse(left.kickoff))
+    .slice(0, 3);
   const upcoming = matches.filter((match) => ["UPCOMING", "POSTPONED"].includes(match.status)).slice(0, 3);
   const leader = standings.find((standing) => standing.position === 1);
 

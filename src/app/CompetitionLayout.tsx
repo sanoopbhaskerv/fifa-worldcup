@@ -6,6 +6,7 @@ import { ArrowIcon, BracketIcon, CalendarIcon, ChevronIcon, HomeIcon, PlayerIcon
 import { CompetitionPicker } from "../features/competitions/CompetitionPicker";
 import { useFavorites } from "../hooks/use-favorites";
 import { useOnline } from "../hooks/use-online";
+import { usePullToRefresh } from "../hooks/use-pull-to-refresh";
 import { useCompetitionData, useCompetitions } from "../services/queries";
 import type { Competition } from "../types/domain";
 import { availableSections, formatUpdated, sectionPath, type Section } from "../utils/football";
@@ -30,6 +31,11 @@ export const CompetitionLayout = () => {
   const catalogQuery = useCompetitions();
   const competition = catalogQuery.data?.find((item) => item.slug === competitionSlug);
   const dataQuery = useCompetitionData(competition?.id ?? "", editionId);
+  const pullRefresh = usePullToRefresh({
+    disabled: !dataQuery.data,
+    isRefreshing: dataQuery.isFetching,
+    onRefresh: () => dataQuery.refetch(),
+  });
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
@@ -74,6 +80,13 @@ export const CompetitionLayout = () => {
   return (
     <div className="app" style={{ "--competition-accent": competition.accent } as React.CSSProperties}>
       <a className="skip-link" href="#main-content">Skip to content</a>
+      <div
+        className={`pull-refresh ${pullRefresh.ready ? "pull-refresh--ready" : ""} ${dataQuery.isFetching ? "pull-refresh--loading" : ""}`}
+        style={{ transform: `translate(-50%, ${pullRefresh.pullDistance}px)` }}
+        aria-hidden="true"
+      >
+        {dataQuery.isFetching ? "Refreshing…" : pullRefresh.ready ? "Release to refresh" : "Pull to refresh"}
+      </div>
       {!online && <div className="network-banner" role="status"><SignalIcon />You’re offline. Showing saved competition data.</div>}
       <header className="topbar">
         <div className="topbar__inner">
@@ -103,7 +116,7 @@ export const CompetitionLayout = () => {
           {dataQuery.data.notice && <div className="data-notice" role="status">{dataQuery.data.notice}</div>}
           <AnimatePresence mode="wait">
             <motion.div key={location.pathname} initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} transition={{ duration: 0.18 }}>
-              <Outlet context={{ data: dataQuery.data, editionId, updatedAt: dataQuery.dataUpdatedAt, isFetching: dataQuery.isFetching }} />
+              <Outlet context={{ data: dataQuery.data, editionId, updatedAt: dataQuery.dataUpdatedAt, isFetching: dataQuery.isFetching, refetch: dataQuery.refetch }} />
             </motion.div>
           </AnimatePresence>
         </main>

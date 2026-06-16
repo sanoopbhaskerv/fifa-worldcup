@@ -6,6 +6,7 @@ export interface CompetitionContextValue {
   editionId: string;
   updatedAt: number;
   isFetching: boolean;
+  refetch: () => Promise<unknown>;
 }
 
 export const useCompetition = () => useOutletContext<CompetitionContextValue>();
