@@ -72,22 +72,24 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .freshness > span { width: 6px; height: 6px; border-radius: 50%; background: var(--competition-accent); }
 .freshness__pulse { animation: freshness-pulse 1s ease-in-out infinite alternate; }
 @keyframes freshness-pulse { to { opacity: .3; } }
-.pull-refresh { position: fixed; top: 0; left: 50%; z-index: 80; display: flex; align-items: center; gap: 10px; min-height: 48px; padding: 8px 16px 8px 10px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: color-mix(in srgb, var(--surface) 92%, transparent); box-shadow: var(--shadow); font-size: 11px; font-weight: 800; pointer-events: none; transition: transform .35s cubic-bezier(.34, 1.56, .64, 1), opacity .18s ease, color .18s ease, border-color .18s ease; backdrop-filter: blur(16px); }
-.pull-refresh--pulling, .pull-refresh--ready { transition: opacity .18s ease, color .18s ease, border-color .18s ease; }
-.pull-refresh--ready, .pull-refresh--success { color: var(--competition-accent); border-color: color-mix(in srgb, var(--competition-accent) 55%, transparent); }
-.pull-refresh__icon { position: relative; display: grid; place-items: center; width: 32px; height: 32px; }
-.pull-refresh__icon svg { position: absolute; inset: 0; width: 32px; height: 32px; }
-.pull-refresh__ring { transform: rotate(-90deg); }
-.pull-refresh__ring circle { fill: none; stroke: rgba(255,255,255,.1); stroke-width: 2; }
-.pull-refresh__ring circle:last-child { stroke: currentColor; stroke-linecap: round; transition: stroke-dashoffset .05s linear; }
-.pull-refresh__arrow { color: currentColor; transition: transform .25s cubic-bezier(.34, 1.56, .64, 1); }
-.pull-refresh__arrow path, .pull-refresh__success path { fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
-.pull-refresh__spinner { animation: ptr-spin .9s linear infinite; }
-.pull-refresh__spinner circle { fill: none; stroke-width: 2; transform-origin: 16px 16px; }
-.pull-refresh__spinner circle:first-child { stroke: rgba(255,255,255,.1); }
-.pull-refresh__spinner circle:last-child { stroke: currentColor; stroke-linecap: round; stroke-dasharray: 22 66; }
-.pull-refresh__success circle { fill: color-mix(in srgb, var(--competition-accent) 16%, transparent); }
-@keyframes ptr-spin { to { transform: rotate(360deg); } }
+.pull-refresh { position: fixed; top: 0; left: 50%; z-index: 80; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 18px 8px 10px; border: 1px solid rgba(255,255,255,.1); border-radius: 999px; color: rgba(255,255,255,.55); background: rgba(15,21,32,.96); box-shadow: 0 18px 45px rgba(0,0,0,.26); font-size: 12px; font-weight: 800; letter-spacing: .01em; pointer-events: none; transform: translate(-50%, -80px); transition: transform .38s cubic-bezier(.34, 1.46, .64, 1), color .25s ease, border-color .25s ease; backdrop-filter: blur(16px); }
+.pull-refresh--visible { transform: translate(-50%, 14px); }
+.pull-refresh--locked { transform: translate(-50%, 14px) !important; transition: transform .2s ease, color .25s ease, border-color .25s ease; }
+.pull-refresh--ready, .pull-refresh--success { color: var(--competition-accent); border-color: color-mix(in srgb, var(--competition-accent) 28%, transparent); }
+.pull-refresh__icon { position: relative; display: grid; place-items: center; width: 34px; height: 34px; flex: none; }
+.pull-refresh__icon svg { width: 34px; height: 34px; overflow: visible; }
+.pull-refresh__track { fill: none; stroke: rgba(255,255,255,.07); stroke-width: 2; }
+.pull-refresh__progress { fill: none; stroke: rgba(255,255,255,.35); stroke-width: 2; stroke-linecap: round; transform: rotate(-90deg); transform-origin: 17px 17px; transition: stroke-dashoffset .05s linear, stroke .2s ease, opacity .2s ease; }
+.pull-refresh--ready .pull-refresh__progress { stroke: var(--competition-accent); }
+.pull-refresh__arrow { transform-origin: 17px 17px; transition: transform .25s cubic-bezier(.34, 1.56, .64, 1), opacity .2s ease; }
+.pull-refresh__arrow path { fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pull-refresh__spin-arc { fill: none; stroke: var(--competition-accent); stroke-width: 2; stroke-linecap: round; stroke-dasharray: 22 66; transform-origin: 17px 17px; animation: ptr-spin .9s linear infinite; transition: opacity .2s ease; }
+.pull-refresh__check { transition: opacity .2s ease; }
+.pull-refresh__check circle { fill: color-mix(in srgb, var(--competition-accent) 12%, transparent); }
+.pull-refresh__check path { fill: none; stroke: var(--competition-accent); stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.pull-refresh__label { color: currentColor; white-space: nowrap; transition: color .25s ease; }
+.pull-refresh__label--complete { color: var(--competition-accent); }
+@keyframes ptr-spin { from { transform: rotate(-90deg); } to { transform: rotate(270deg); } }
 .data-notice { margin: 8px 14px 0; padding: 10px 12px; border: 1px solid rgba(255,202,88,.22); border-radius: 10px; color: #ffe3a0; background: rgba(255,202,88,.08); font-size: 10px; line-height: 1.45; }
 
 .page { width: min(100%, 1120px); margin: 0 auto; padding: 28px 14px 60px; }

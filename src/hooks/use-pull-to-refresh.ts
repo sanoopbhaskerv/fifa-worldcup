@@ -46,12 +46,21 @@ export const usePullToRefresh = ({
   const [pullDistance, setPullDistance] = useState(0);
   const startYRef = useRef(0);
   const isPullingRef = useRef(false);
+  const onRefreshRef = useRef(onRefresh);
   const stateRef = useRef<PullToRefreshState>("idle");
   const resetTimerRef = useRef<number | null>(null);
 
   useEffect(() => {
+    onRefreshRef.current = onRefresh;
+  }, [onRefresh]);
+
+  useEffect(() => {
     stateRef.current = state;
   }, [state]);
+
+  useEffect(() => () => {
+    if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
+  }, []);
 
   /**
    * Triggers a light vibration on devices that support the Vibration API.
@@ -148,7 +157,7 @@ export const usePullToRefresh = ({
     setPullDistance(threshold);
 
     try {
-      await onRefresh();
+      await onRefreshRef.current();
       setState("success");
       vibrate(25);
       if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
@@ -156,7 +165,7 @@ export const usePullToRefresh = ({
     } catch {
       reset();
     }
-  }, [disabled, onRefresh, reset, successDuration, threshold]);
+  }, [disabled, reset, successDuration, threshold]);
 
   /**
    * Cancels a pull gesture without triggering refresh.
@@ -181,7 +190,6 @@ export const usePullToRefresh = ({
       element.removeEventListener("touchmove", onTouchMove);
       element.removeEventListener("touchend", onTouchEnd);
       element.removeEventListener("touchcancel", onTouchCancel);
-      if (resetTimerRef.current) window.clearTimeout(resetTimerRef.current);
     };
   }, [disabled, onTouchCancel, onTouchEnd, onTouchMove, onTouchStart]);
 

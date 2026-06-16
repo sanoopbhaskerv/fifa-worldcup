@@ -91,12 +91,12 @@ export const CompetitionLayout = () => {
   return (
     <div className="app" style={{ "--competition-accent": competition.accent } as React.CSSProperties}>
       <a className="skip-link" href="#main-content">Skip to content</a>
-      <PullToRefreshIndicator progress={pullRefreshProgress} pullDistance={pullDistance} state={pullRefreshState} />
+      <PullToRefreshIndicator progress={pullRefreshProgress} state={pullRefreshState} />
       <div
         className={`app-scroll app-scroll--${pullRefreshState}`}
         ref={pullRefreshContainerRef}
         style={{
-          transform: pullRefreshState === "idle" ? "translateY(0)" : `translateY(${Math.min(pullDistance * 0.45, 40)}px)`,
+          transform: pullRefreshState === "idle" ? "translateY(0)" : `translateY(${pullRefreshState === "refreshing" || pullRefreshState === "success" ? 36 : Math.min(pullDistance * 0.45, 36)}px)`,
         }}
       >
         {!online && <div className="network-banner" role="status"><SignalIcon />You’re offline. Showing saved competition data.</div>}
