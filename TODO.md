@@ -35,6 +35,7 @@ Use Yarn for every dependency and script command.
 - [x] Live/mock source indicators and transparent provider limitation notices
 - [x] AWS Amplify Hosting build spec with Yarn lint/typecheck/test/build
 - [x] Temporary Amplify build-time `VITE_*` key wiring for static live mode
+- [x] Amplify rewrite guidance for same-origin provider proxying to avoid browser CORS
 
 ## Verification
 

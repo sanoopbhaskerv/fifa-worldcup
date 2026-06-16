@@ -151,11 +151,44 @@ Hosting:
 
 - `VITE_FOOTBALL_DATA_API_KEY`
 - `VITE_API_FOOTBALL_API_KEY`
+- `VITE_FOOTBALL_DATA_BASE_URL=/football-data/v4`
+- `VITE_API_FOOTBALL_BASE_URL=/api-football`
 - `VITE_API_FOOTBALL_DAILY_BUDGET` optional, defaults to `90`
 
 These values are available during the Amplify build and are embedded into the
 generated Vite assets. They are encrypted in Amplify configuration, but they are
 not secret after the static app is built.
+
+To avoid browser CORS failures while still accepting temporary key exposure,
+configure Amplify Hosting rewrites:
+
+```json
+[
+  {
+    "source": "/football-data/<*>",
+    "target": "https://api.football-data.org/<*>",
+    "status": "200",
+    "condition": null
+  },
+  {
+    "source": "/api-football/<*>",
+    "target": "https://v3.football.api-sports.io/<*>",
+    "status": "200",
+    "condition": null
+  },
+  {
+    "source": "</^[^.]+$|\\.(?!(css|gif|ico|jpg|jpeg|js|png|txt|svg|woff|woff2|ttf|map|json|webmanifest)$)([^.]+$)/>",
+    "target": "/index.html",
+    "status": "200",
+    "condition": null
+  }
+]
+```
+
+With those settings, the browser calls your Amplify domain, for example
+`/football-data/v4/competitions/WC/matches?season=2026`, and Amplify proxies the
+request to football-data.org. The `X-Auth-Token` header is still visible in the
+browser request, but the CORS check is against your own Amplify origin.
 
 Current split:
 
@@ -168,7 +201,8 @@ Current split:
 - Future live production: add a real backend and keep provider keys server-side.
 
 Provider CORS policies may still block direct browser calls. If that happens,
-the app falls back to demo data until a backend is added.
+use the Amplify rewrite rules above or fall back to demo data until a backend is
+added.
 
 ### Docker
 

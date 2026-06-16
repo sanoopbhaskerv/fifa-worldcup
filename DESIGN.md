@@ -144,8 +144,9 @@ therefore separates the static PWA build from any future API backend. The
 current deployment path is AWS Amplify Hosting using `amplify.yml` to run Yarn
 checks and publish `dist/`. As a temporary tradeoff, Amplify environment
 variables can inject provider keys into `VITE_*` build variables, and the
-browser will call the providers directly. Those keys are exposed in built assets
-and this path must be replaced by a backend before public launch.
+browser can call same-origin Amplify rewrite paths that proxy to the providers.
+Those keys are exposed in browser requests and built assets, and this path must
+be replaced by a backend before public launch.
 
 ### State Ownership
 
