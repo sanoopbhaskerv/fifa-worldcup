@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
-import { useFantasySquads, useImportFantasySquads, useUpdateFantasySquadPlayer, useUpdateFantasyTeam } from "../services/fantasy-queries";
+import { useFantasySquads, useImportFantasySquads, useSeedFantasyWorldCupSquads, useUpdateFantasySquadPlayer, useUpdateFantasyTeam } from "../services/fantasy-queries";
 import type { FantasySquadPlayer, FantasyTeam } from "../types/fantasy";
 import { fantasyTeamName } from "../utils/fantasy";
 import { PageHeading } from "./FixturesPage";
@@ -91,10 +91,18 @@ export default function FantasyAdminSquadsPage() {
 const SquadImportPanel = () => {
   const { data } = useFantasy();
   const importSquads = useImportFantasySquads(data.activeParticipantId);
+  const seedSquads = useSeedFantasyWorldCupSquads(data.activeParticipantId);
   const [source, setSource] = useState("");
 
   return (
     <section className="fantasy-squad-import" aria-label="Squad import">
+      <strong>Bundled World Cup data</strong>
+      <p>Upload the checked-in 48-team, 1248-player World Cup squad reference set into backend storage.</p>
+      <button disabled={seedSquads.isPending} onClick={() => seedSquads.mutate()} type="button">
+        {seedSquads.isPending ? "Uploading..." : "Upload bundled squads"}
+      </button>
+      {seedSquads.isError && <p role="alert">{seedSquads.error.message}</p>}
+      {seedSquads.isSuccess && <p className="fantasy-success-note">Uploaded {seedSquads.data.teams.length} teams and {seedSquads.data.squadPlayers.length} players.</p>}
       <strong>Import data</strong>
       <p>Paste CSV rows or JSON with squadPlayers. Imported teams replace only their own players.</p>
       <form

@@ -3,7 +3,11 @@ import { fantasyGameData } from "../mocks/fantasy";
 import type { FantasyAdminParticipant, FantasyAiSettings, FantasyGameData, FantasyMatch, FantasyMatchResult, FantasyParticipant, FantasyParticipantInvite, FantasyPrediction, FantasyQuestion, FantasyQuestionTemplate, FantasySquadPlayer, FantasyTeam, FantasyTournament } from "../types/fantasy";
 
 const fantasyGameQueryKey = (participantId?: string) => ["fantasy-game", fantasyGameData.tournament.id, participantId ?? "guest"] as const;
-const fantasyApiBaseUrl = (import.meta.env.VITE_FANTASY_API_BASE_URL ?? "").replace(/\/$/, "");
+const fantasyApiBaseUrl = (
+  import.meta.env.VITE_BACKEND_API_BASE_URL ||
+  import.meta.env.VITE_FANTASY_API_BASE_URL ||
+  ""
+).replace(/\/$/, "");
 const fantasyApiUrl = (path: string) => `${fantasyApiBaseUrl}${path}`;
 
 interface JoinFantasyGameInput {
@@ -60,6 +64,13 @@ interface ImportFantasySquadsInput {
 interface ImportFantasySquadsResponse {
   teams: FantasyTeam[];
   squadPlayers: FantasySquadPlayer[];
+  game: FantasyGameData;
+}
+
+type SeedFantasyWorldCupSquadsResponse = ImportFantasySquadsResponse;
+
+interface SyncFantasyFixturesResponse {
+  fixtures: FantasyMatch[];
   game: FantasyGameData;
 }
 
@@ -153,6 +164,19 @@ interface SaveFantasyQuestionDraftsInput {
 }
 
 interface SaveFantasyQuestionDraftsResponse {
+  questions: FantasyQuestion[];
+  game: FantasyGameData;
+}
+
+interface GenerateFantasyPollsInput {
+  status: "DRAFT" | "OPEN";
+  limit?: number;
+  replaceExisting?: boolean;
+  matchIds?: string[];
+}
+
+interface GenerateFantasyPollsResponse {
+  fixtures: FantasyMatch[];
   questions: FantasyQuestion[];
   game: FantasyGameData;
 }
@@ -263,6 +287,19 @@ const importFantasySquads = async (input: ImportFantasySquadsInput): Promise<Imp
   return (await response.json()) as ImportFantasySquadsResponse;
 };
 
+const seedFantasyWorldCupSquads = async (): Promise<SeedFantasyWorldCupSquadsResponse> => {
+  const response = await fetch(fantasyApiUrl("/api/fantasy/admin/squads/seed-world-cup-2026"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({}),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error?.message ?? "Could not seed World Cup squads.");
+  }
+  return (await response.json()) as SeedFantasyWorldCupSquadsResponse;
+};
+
 const updateFantasyTournament = async (input: UpdateFantasyTournamentInput): Promise<UpdateFantasyTournamentResponse> => {
   const response = await fetch(fantasyApiUrl("/api/fantasy/admin/tournament"), {
     method: "POST",
@@ -287,6 +324,19 @@ const updateFantasyFixture = async ({ matchId, ...input }: UpdateFantasyFixtureI
     throw new Error(payload?.error?.message ?? "Could not update fixture.");
   }
   return (await response.json()) as UpdateFantasyFixtureResponse;
+};
+
+const syncFantasyFixtures = async (): Promise<SyncFantasyFixturesResponse> => {
+  const response = await fetch(fantasyApiUrl("/api/fantasy/admin/fixtures/sync-live"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ replaceExisting: true }),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error?.message ?? "Could not sync live fixtures.");
+  }
+  return (await response.json()) as SyncFantasyFixturesResponse;
 };
 
 const updateFantasyTeam = async ({ teamId, ...input }: UpdateFantasyTeamInput): Promise<UpdateFantasyTeamResponse> => {
@@ -352,6 +402,19 @@ const saveFantasyQuestionDrafts = async ({ matchId, questions, status }: SaveFan
     throw new Error(payload?.error?.message ?? "Could not save question drafts.");
   }
   return (await response.json()) as SaveFantasyQuestionDraftsResponse;
+};
+
+const generateFantasyPolls = async (input: GenerateFantasyPollsInput): Promise<GenerateFantasyPollsResponse> => {
+  const response = await fetch(fantasyApiUrl("/api/fantasy/admin/polls/generate"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error?.message ?? "Could not generate fantasy polls.");
+  }
+  return (await response.json()) as GenerateFantasyPollsResponse;
 };
 
 const submitFantasyPrediction = async ({
@@ -521,6 +584,23 @@ export const useImportFantasySquads = (participantId?: string) => {
 };
 
 /**
+ * Seeds the bundled full World Cup squad reference set into backend storage.
+ *
+ * @param participantId - Active participant cache key.
+ * @returns TanStack mutation for bundled squad seeding.
+ */
+export const useSeedFantasyWorldCupSquads = (participantId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: seedFantasyWorldCupSquads,
+    onSuccess: ({ game }) => {
+      queryClient.invalidateQueries({ queryKey: ["fantasy-squads", fantasyGameData.tournament.id] });
+      queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
+    },
+  });
+};
+
+/**
  * Updates tournament setup and refreshes the active game cache.
  *
  * @param participantId - Active participant cache key.
@@ -546,6 +626,23 @@ export const useUpdateFantasyFixture = (participantId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: updateFantasyFixture,
+    onSuccess: ({ game }) => {
+      queryClient.invalidateQueries({ queryKey: ["fantasy-fixtures", fantasyGameData.tournament.id] });
+      queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
+    },
+  });
+};
+
+/**
+ * Syncs fantasy fixtures from the live World Cup provider data.
+ *
+ * @param participantId - Active participant cache key.
+ * @returns TanStack mutation for live fixture sync.
+ */
+export const useSyncFantasyFixtures = (participantId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: syncFantasyFixtures,
     onSuccess: ({ game }) => {
       queryClient.invalidateQueries({ queryKey: ["fantasy-fixtures", fantasyGameData.tournament.id] });
       queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
@@ -632,6 +729,23 @@ export const useSaveFantasyQuestionDrafts = (participantId?: string) => {
   return useMutation({
     mutationFn: saveFantasyQuestionDrafts,
     onSuccess: ({ game }) => {
+      queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
+    },
+  });
+};
+
+/**
+ * Generates template-grounded polls for the next synced fixtures.
+ *
+ * @param participantId - Active participant cache key.
+ * @returns TanStack mutation for bulk poll generation.
+ */
+export const useGenerateFantasyPolls = (participantId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: generateFantasyPolls,
+    onSuccess: ({ game }) => {
+      queryClient.invalidateQueries({ queryKey: ["fantasy-fixtures", fantasyGameData.tournament.id] });
       queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
     },
   });

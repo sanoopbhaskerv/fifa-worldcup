@@ -2,6 +2,7 @@ import { ProviderError } from "./errors.mjs";
 import { createDynamoFantasyStorage } from "./fantasy/dynamodb-storage.mjs";
 import { createMemoryFantasyStorage } from "./fantasy/storage.mjs";
 import { worldCup2026SquadPlayers, worldCup2026Teams } from "./fantasy/world-cup-2026-squads.mjs";
+import { getLiveCompetitionData } from "./football-data.mjs";
 
 const now = "2026-06-17T12:00:00+05:30";
 
@@ -355,6 +356,133 @@ const validAiBanterLevel = new Set(["NONE", "LIGHT", "PLAYFUL"]);
 const playerFallbackOptions = new Set(["Other", "Own Goal", "No goal"]);
 
 const teamName = (game, teamId) => game.teams.find((team) => team.id === teamId)?.name ?? "Unknown";
+
+const pollCloseAtFor = (kickoff, closeMinutes) => {
+  const timestamp = Date.parse(kickoff);
+  if (!Number.isFinite(timestamp)) return kickoff;
+  return new Date(timestamp - closeMinutes * 60_000).toISOString();
+};
+
+const fantasyStatusForProviderMatch = (status) => {
+  if (status === "COMPLETED") return "COMPLETED";
+  if (status === "LIVE") return "LOCKED";
+  return "SCHEDULED";
+};
+
+const importanceForProviderMatch = (match, homeTeam, awayTeam) => {
+  const stage = normalize(match.stage);
+  if (stage.includes("final") && !stage.includes("semi") && !stage.includes("quarter")) return "FINAL";
+  if (["round of 16", "quarter", "semi", "third place", "knockout"].some((value) => stage.includes(value))) return "KNOCKOUT";
+  if ((homeTeam.rankingSeed ?? 99) <= 10 && (awayTeam.rankingSeed ?? 99) <= 10) return "BIG_MATCH";
+  return "NORMAL";
+};
+
+const teamLookupFor = (teamsSource) => {
+  const entries = teamsSource.flatMap((team) => [
+    [normalize(team.id), team],
+    [normalize(team.fifaCode), team],
+    [normalize(team.name), team],
+  ]);
+  return new Map(entries);
+};
+
+const providerTeamToFantasyTeam = (providerTeam, game) => {
+  const lookup = teamLookupFor(game.teams);
+  return lookup.get(normalize(providerTeam?.code ?? "")) ??
+    lookup.get(normalize(providerTeam?.shortName ?? "")) ??
+    lookup.get(normalize(providerTeam?.name ?? ""));
+};
+
+const providerMatchToFantasyMatch = (providerMatch, game, existingMatch) => {
+  const homeTeam = providerTeamToFantasyTeam(providerMatch.home, game);
+  const awayTeam = providerTeamToFantasyTeam(providerMatch.away, game);
+  if (!homeTeam || !awayTeam) return undefined;
+
+  return {
+    id: providerMatch.id,
+    tournamentId: game.tournament.id,
+    homeTeamId: homeTeam.id,
+    awayTeamId: awayTeam.id,
+    kickoff: providerMatch.kickoff,
+    stage: providerMatch.round ?? providerMatch.stage,
+    importance: existingMatch?.importance ?? importanceForProviderMatch(providerMatch, homeTeam, awayTeam),
+    status: fantasyStatusForProviderMatch(providerMatch.status),
+    pollCloseAt: existingMatch?.pollCloseAt ?? pollCloseAtFor(providerMatch.kickoff, game.tournament.pollCloseMinutesBeforeKickoff),
+  };
+};
+
+const playerNames = (players) => players.map((player) => player.name);
+
+const matchPlayers = (match, game) =>
+  game.squadPlayers.filter((player) => [match.homeTeamId, match.awayTeamId].includes(player.teamId));
+
+const scorerCandidates = (match, game) =>
+  matchPlayers(match, game).filter((player) => player.isScorerCandidate);
+
+const motmCandidates = (match, game) =>
+  matchPlayers(match, game).filter((player) => player.isMotmCandidate);
+
+const starCandidate = (match, game) =>
+  game.squadPlayers.find((player) => player.teamId === match.homeTeamId && player.isStarCandidate) ??
+  game.squadPlayers.find((player) => player.teamId === match.awayTeamId && player.isStarCandidate);
+
+const optionsForTemplate = (template, match, game) => {
+  const home = teamName(game, match.homeTeamId);
+  const away = teamName(game, match.awayTeamId);
+  switch (template.optionMode) {
+    case "MATCH_RESULT":
+      return match.importance === "KNOCKOUT" || match.importance === "FINAL" ? [home, away] : [home, away, "Draw"];
+    case "FIRST_SCORING_TEAM":
+      return [home, away, "No goal"];
+    case "TOTAL_GOALS":
+      return ["0-1", "2-3", "4+"];
+    case "YES_NO":
+    case "STAR_PLAYER_SCORE":
+      return ["Yes", "No"];
+    case "FIRST_GOAL_SCORER": {
+      const scorers = scorerCandidates(match, game).slice(0, template.maxOptions ?? 4);
+      return scorers.length > 0 ? [...playerNames(scorers), "Own Goal", "No goal", "Other"] : [];
+    }
+    case "MAN_OF_THE_MATCH": {
+      const motm = motmCandidates(match, game).slice(0, template.maxOptions ?? 4);
+      return motm.length > 0 ? [...playerNames(motm), "Other"] : [];
+    }
+    default:
+      return [];
+  }
+};
+
+const questionFromTemplate = (template, match, game) => {
+  if (!template.enabled || !template.importanceLevels.includes(match.importance)) return undefined;
+  const star = starCandidate(match, game);
+  if (template.optionMode === "STAR_PLAYER_SCORE" && !star) return undefined;
+  const options = optionsForTemplate(template, match, game);
+  if (options.length < 2) return undefined;
+  const isQualifier = template.optionMode === "MATCH_RESULT" && (match.importance === "KNOCKOUT" || match.importance === "FINAL");
+  return {
+    id: `draft-${match.id}-${template.id.replace(/^tpl-/, "")}`,
+    tournamentId: game.tournament.id,
+    matchId: match.id,
+    category: isQualifier ? "QUALIFIER" : template.category,
+    type: template.type,
+    text: isQualifier ? "Who qualifies?" : template.text.replace("{player}", star?.name ?? "the star player"),
+    options,
+    points: isQualifier ? template.points + 1 : template.points,
+    status: "DRAFT",
+    closeAt: match.pollCloseAt,
+  };
+};
+
+const generatedQuestionsForMatch = (game, match) => {
+  const templates = [...(game.questionTemplates ?? [])]
+    .filter((template) => !game.aiSettings?.enabledCategories || game.aiSettings.enabledCategories.includes(template.category))
+    .sort((left, right) => left.sortOrder - right.sortOrder);
+  const maxQuestions = game.aiSettings?.maxQuestions?.[match.importance] ?? 5;
+  return templates
+    .map((template) => questionFromTemplate(template, match, game))
+    .filter(Boolean)
+    .slice(0, maxQuestions);
+};
 
 const firstGoalWindow = (minute) => {
   if (minute === undefined || minute === null) return "No goal";
@@ -723,6 +851,88 @@ export const importFantasySquads = async (input) => {
 };
 
 /**
+ * Seeds the bundled World Cup 2026 team and squad-player reference dataset into storage.
+ *
+ * @param input - Optional actor metadata.
+ * @returns Seeded teams, squad players, and game payload.
+ */
+export const seedFantasyWorldCupSquads = async (input = {}) => {
+  const game = await gameState();
+  const seededTeams = worldCup2026Teams.map((team) => ({ ...team, tournamentId: game.tournament.id }));
+  const seededPlayers = worldCup2026SquadPlayers.map((player) => ({ ...player, tournamentId: game.tournament.id }));
+  const nextGame = {
+    ...game,
+    teams: seededTeams,
+    squadPlayers: seededPlayers,
+  };
+  const updatedGame = await saveGame(nextGame, await audit({
+    action: "WORLD_CUP_SQUADS_SEEDED",
+    actorId: input.actorId ?? "admin",
+    entityId: game.tournament.id,
+    entityType: "SQUAD",
+    metadata: { teamCount: seededTeams.length, playerCount: seededPlayers.length },
+  }));
+  return { teams: seededTeams, squadPlayers: seededPlayers, game: publicGame(updatedGame) };
+};
+
+/**
+ * Syncs fantasy fixtures from the live competition provider payload.
+ *
+ * @param env - Provider env with server-side football API keys.
+ * @param input - Sync options.
+ * @returns Synced fixture rows and game payload.
+ */
+export const syncFantasyFixturesFromProvider = async (env, input = {}) => {
+  const game = await gameState();
+  const competition = await getLiveCompetitionData(
+    game.tournament.competitionId,
+    game.tournament.editionId,
+    env,
+  );
+  const existingById = new Map(game.matches.map((match) => [match.id, match]));
+  const syncedFixtures = competition.matches
+    .map((match) => providerMatchToFantasyMatch(match, game, existingById.get(match.id)))
+    .filter(Boolean)
+    .sort((left, right) => left.kickoff.localeCompare(right.kickoff));
+
+  if (syncedFixtures.length === 0) {
+    throw new ProviderError("No provider fixtures matched the stored World Cup teams.", 404, "NO_FIXTURE_MATCHES");
+  }
+
+  const syncedIds = new Set(syncedFixtures.map((fixture) => fixture.id));
+  const replaceExisting = input.replaceExisting ?? true;
+  const nextMatches = replaceExisting
+    ? syncedFixtures
+    : [
+      ...game.matches.filter((match) => !syncedIds.has(match.id)),
+      ...syncedFixtures,
+    ].sort((left, right) => left.kickoff.localeCompare(right.kickoff));
+  const matchIds = new Set(nextMatches.map((match) => match.id));
+  const nextGame = {
+    ...game,
+    matches: nextMatches,
+    questions: game.questions.filter((question) => !question.matchId || matchIds.has(question.matchId)),
+    results: game.results.filter((result) => matchIds.has(result.matchId)),
+  };
+  const questionIds = new Set(nextGame.questions.map((question) => question.id));
+  nextGame.predictions = game.predictions.filter((prediction) => questionIds.has(prediction.questionId));
+
+  const updatedGame = await saveGame(nextGame, await audit({
+    action: "FIXTURES_SYNCED",
+    actorId: input.actorId ?? "admin",
+    entityId: game.tournament.id,
+    entityType: "MATCH",
+    metadata: {
+      fixtureCount: syncedFixtures.length,
+      source: competition.source,
+      provider: competition.provider,
+      replaceExisting,
+    },
+  }));
+  return { fixtures: syncedFixtures, game: publicGame(updatedGame) };
+};
+
+/**
  * Updates one World Cup team reference record.
  *
  * @param teamId - Team being updated.
@@ -1052,6 +1262,78 @@ export const saveFantasyQuestionDrafts = async (matchId, input) => {
     metadata: { questionCount: savedQuestions.length, status },
   }));
   return { questions: savedQuestions, game: publicGame(updatedGame) };
+};
+
+/**
+ * Generates and saves template-grounded polls for upcoming synced fixtures.
+ *
+ * @param input - Generation options.
+ * @returns Generated questions, affected fixtures, and game payload.
+ */
+export const generateFantasyPolls = async (input = {}) => {
+  const game = await gameState();
+  const status = input.status ?? "DRAFT";
+  if (!validQuestionStatus.has(status)) {
+    throw new ProviderError("Question status is invalid.", 400, "INVALID_QUESTION_DRAFT");
+  }
+  const requestedIds = Array.isArray(input.matchIds) ? new Set(input.matchIds) : undefined;
+  const limit = Number(input.limit ?? 8);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 32) {
+    throw new ProviderError("Poll generation limit must be between 1 and 32.", 400, "INVALID_QUESTION_DRAFT");
+  }
+
+  const matchesToGenerate = game.matches
+    .filter((match) => match.status !== "COMPLETED")
+    .filter((match) => !requestedIds || requestedIds.has(match.id))
+    .sort((left, right) => left.kickoff.localeCompare(right.kickoff))
+    .slice(0, requestedIds ? game.matches.length : limit);
+
+  if (matchesToGenerate.length === 0) {
+    throw new ProviderError("No eligible fixtures found for poll generation.", 404, "NO_FIXTURES_FOR_POLLS");
+  }
+
+  const savedQuestions = matchesToGenerate.flatMap((match) =>
+    generatedQuestionsForMatch(game, match).map((question) => ({
+      ...question,
+      status,
+      closeAt: question.closeAt || match.pollCloseAt,
+    })),
+  );
+  if (savedQuestions.length === 0) {
+    throw new ProviderError("No polls could be generated from the current templates and squad data.", 400, "NO_POLLS_GENERATED");
+  }
+
+  savedQuestions.forEach((question) => validateQuestionDraft(game, question.matchId, question, status));
+  const touchedMatchIds = new Set(matchesToGenerate.map((match) => match.id));
+  const savedIds = new Set(savedQuestions.map((question) => question.id));
+  const replaceExisting = input.replaceExisting ?? true;
+  const nextQuestions = replaceExisting
+    ? [
+      ...game.questions.filter((question) => !touchedMatchIds.has(question.matchId) && !savedIds.has(question.id)),
+      ...savedQuestions,
+    ]
+    : [
+      ...game.questions.filter((question) => !savedIds.has(question.id)),
+      ...savedQuestions,
+    ];
+
+  const nextGame = {
+    ...game,
+    questions: nextQuestions,
+  };
+  const updatedGame = await saveGame(nextGame, await audit({
+    action: status === "OPEN" ? "POLLS_GENERATED_AND_PUBLISHED" : "POLLS_GENERATED",
+    actorId: input.actorId ?? "admin",
+    entityId: game.tournament.id,
+    entityType: "MATCH",
+    metadata: {
+      matchCount: matchesToGenerate.length,
+      questionCount: savedQuestions.length,
+      status,
+      replaceExisting,
+    },
+  }));
+  return { fixtures: matchesToGenerate, questions: savedQuestions, game: publicGame(updatedGame) };
 };
 
 /**

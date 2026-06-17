@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
-import { useFantasyFixtures, useUpdateFantasyFixture } from "../services/fantasy-queries";
+import { useFantasyFixtures, useSyncFantasyFixtures, useUpdateFantasyFixture } from "../services/fantasy-queries";
 import type { FantasyMatch } from "../types/fantasy";
 import { fantasyDeadlineLabel, fantasyMatchTitle } from "../utils/fantasy";
 import { formatDate, formatKickoff } from "../utils/football";
@@ -20,12 +20,22 @@ export default function FantasyAdminFixturesPage() {
   const fixtures = fixturesQuery.data?.fixtures ?? data.matches;
   const [activeMatchId, setActiveMatchId] = useState(fixtures[0]?.id ?? "");
   const activeMatch = fixtures.find((match) => match.id === activeMatchId) ?? fixtures[0];
+  const syncFixtures = useSyncFantasyFixtures(data.activeParticipantId);
 
   return (
     <div className="page fantasy-page">
       <PageHeading eyebrow="Admin" title="Fixtures" description="Tune match importance and lock timing before AI drafts are generated." />
       <div className="fantasy-admin-fixtures">
         <aside className="content-section fantasy-match-list" aria-label="Fixtures">
+          <div className="fantasy-squad-import">
+            <strong>Live fixture data</strong>
+            <p>Replace fantasy fixtures with the latest World Cup matches from the backend provider.</p>
+            <button disabled={syncFixtures.isPending} onClick={() => syncFixtures.mutate()} type="button">
+              {syncFixtures.isPending ? "Syncing..." : "Sync live fixtures"}
+            </button>
+            {syncFixtures.isSuccess && <p className="fantasy-success-note">Synced {syncFixtures.data.fixtures.length} fixtures.</p>}
+            {syncFixtures.isError && <p role="alert">{syncFixtures.error.message}</p>}
+          </div>
           {fixtures.map((match) => (
             <button className={match.id === activeMatch?.id ? "fantasy-match-button fantasy-match-button--active" : "fantasy-match-button"} key={match.id} onClick={() => setActiveMatchId(match.id)} type="button">
               <strong>{fantasyMatchTitle(match, data.teams)}</strong>
