@@ -72,9 +72,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .freshness > span { width: 6px; height: 6px; border-radius: 50%; background: var(--competition-accent); }
 .freshness__pulse { animation: freshness-pulse 1s ease-in-out infinite alternate; }
 @keyframes freshness-pulse { to { opacity: .3; } }
-.pull-refresh { position: fixed; top: 0; left: 50%; z-index: 80; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 18px 8px 10px; border: 1px solid rgba(255,255,255,.1); border-radius: 999px; color: rgba(255,255,255,.55); background: rgba(15,21,32,.96); box-shadow: 0 18px 45px rgba(0,0,0,.26); font-size: 12px; font-weight: 800; letter-spacing: .01em; pointer-events: none; transform: translate(-50%, -80px); transition: transform .38s cubic-bezier(.34, 1.46, .64, 1), color .25s ease, border-color .25s ease; backdrop-filter: blur(16px); }
-.pull-refresh--visible { transform: translate(-50%, 14px); }
-.pull-refresh--locked { transform: translate(-50%, 14px) !important; transition: transform .2s ease, color .25s ease, border-color .25s ease; }
+.pull-refresh { position: fixed; top: calc(env(safe-area-inset-top) + 14px); left: 50%; z-index: 80; display: flex; align-items: center; gap: 10px; min-height: 52px; padding: 8px 18px 8px 10px; border: 1px solid rgba(255,255,255,.1); border-radius: 999px; color: rgba(255,255,255,.55); background: rgba(15,21,32,.96); box-shadow: 0 18px 45px rgba(0,0,0,.26); font-size: 12px; font-weight: 800; letter-spacing: .01em; pointer-events: none; transform: translate(-50%, calc(-100% - env(safe-area-inset-top) - 28px)); transition: transform .38s cubic-bezier(.34, 1.46, .64, 1), color .25s ease, border-color .25s ease; backdrop-filter: blur(16px); }
+.pull-refresh--visible { transform: translate(-50%, 0); }
+.pull-refresh--locked { transform: translate(-50%, 0) !important; transition: transform .2s ease, color .25s ease, border-color .25s ease; }
 .pull-refresh--ready, .pull-refresh--success { color: var(--competition-accent); border-color: color-mix(in srgb, var(--competition-accent) 28%, transparent); }
 .pull-refresh__icon { position: relative; display: grid; place-items: center; width: 34px; height: 34px; flex: none; }
 .pull-refresh__icon svg { width: 34px; height: 34px; overflow: visible; }
