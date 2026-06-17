@@ -111,7 +111,7 @@ Resources:
         S3Key: !Ref LambdaS3Key
       MemorySize: 256
       ReservedConcurrentExecutions: !Ref LambdaReservedConcurrency
-      Timeout: 10
+      Timeout: 30
       Environment:
         Variables:
           FANTASY_DYNAMODB_TABLE: !Ref PredictionGameTable

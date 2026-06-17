@@ -20,6 +20,13 @@ const bySortKey = (records) => [...records].sort((left, right) => left.SK.locale
 
 const dataForType = (records, type) => records.filter((record) => record.type === type).map((record) => record.data);
 
+const storageKey = (record) => `${record.PK}\u0000${record.SK}`;
+
+const recordChanged = (left, right) =>
+  !left ||
+  left.type !== right.type ||
+  JSON.stringify(left.data) !== JSON.stringify(right.data);
+
 const hydrateGame = (records, fallbackGame) => {
   const tournament = dataForType(records, "TOURNAMENT")[0] ?? fallbackGame.tournament;
   const aiSettings = dataForType(records, "AI_SETTINGS")[0] ?? fallbackGame.aiSettings;
@@ -75,7 +82,6 @@ export const createDynamoFantasyStorage = ({
 }) => {
   if (!tableName) throw new Error("DynamoDB fantasy storage requires FANTASY_DYNAMODB_TABLE.");
   const documentClient = createDocumentClient({ client, region });
-  let cachedGame;
 
   const queryByPk = async (PK) => {
     const result = await documentClient.send(new QueryCommand({
@@ -86,11 +92,10 @@ export const createDynamoFantasyStorage = ({
     return result.Items ?? [];
   };
 
-  const loadGame = async () => {
+  const loadRecords = async () => {
     const tournamentRecords = await queryByPk(fantasyRecordKeys.tournament(seedGame.tournament.id).PK);
     if (tournamentRecords.length === 0) {
-      cachedGame = clone(seedGame);
-      return cachedGame;
+      return [];
     }
 
     const teamIds = tournamentRecords
@@ -109,41 +114,62 @@ export const createDynamoFantasyStorage = ({
       ...matchIds.map((matchId) => queryByPk(`MATCH#${matchId}`)),
     ]);
 
-    cachedGame = hydrateGame([...tournamentRecords, ...relatedRecords.flat()], seedGame);
-    return cachedGame;
+    return [...tournamentRecords, ...relatedRecords.flat()];
   };
 
-  const writeRecords = async (records) => {
-    for (const recordsChunk of chunk(records, 25)) {
+  const loadGame = async () => {
+    const records = await loadRecords();
+    return records.length > 0 ? hydrateGame(records, seedGame) : clone(seedGame);
+  };
+
+  const writeBatch = async (requests) => {
+    for (const requestsChunk of chunk(requests, 25)) {
       await documentClient.send(new BatchWriteCommand({
         RequestItems: {
-          [tableName]: recordsChunk.map((item) => ({
-            PutRequest: {
-              Item: {
-                ...item,
-                updatedAt: new Date().toISOString(),
-              },
-            },
-          })),
+          [tableName]: requestsChunk,
         },
       }));
     }
   };
 
+  const replaceRecords = async (nextGame) => {
+    const currentRecords = await loadRecords();
+    const nextRecords = toFantasyStorageRecords(nextGame);
+    const currentByKey = new Map(currentRecords.map((record) => [storageKey(record), record]));
+    const nextKeys = new Set(nextRecords.map(storageKey));
+    const deleteRequests = currentRecords
+      .filter((record) => !nextKeys.has(storageKey(record)))
+      .map((record) => ({
+        DeleteRequest: {
+          Key: { PK: record.PK, SK: record.SK },
+        },
+      }));
+    await writeBatch([
+      ...deleteRequests,
+      ...nextRecords.filter((item) => recordChanged(currentByKey.get(storageKey(item)), item)).map((item) => ({
+        PutRequest: {
+          Item: {
+            ...item,
+            updatedAt: new Date().toISOString(),
+          },
+        },
+      })),
+    ]);
+  };
+
   return {
     async getGame() {
-      if (cachedGame) return cachedGame;
       return loadGame();
     },
     async reset() {
-      cachedGame = clone(seedGame);
-      await writeRecords(toFantasyStorageRecords(cachedGame));
-      return cachedGame;
+      const nextGame = clone(seedGame);
+      await replaceRecords(nextGame);
+      return nextGame;
     },
     async setGame(nextGame) {
-      cachedGame = clone(nextGame);
-      await writeRecords(toFantasyStorageRecords(cachedGame));
-      return cachedGame;
+      const savedGame = clone(nextGame);
+      await replaceRecords(savedGame);
+      return savedGame;
     },
     async toRecords() {
       const game = await this.getGame();

@@ -1,14 +1,18 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import { getFantasyGame, resetFantasyGame } from "../fantasy-game.mjs";
 import { createDynamoFantasyStorage } from "./dynamodb-storage.mjs";
+import { toFantasyStorageRecords } from "./storage.mjs";
 
-const createFakeClient = ({ queryItems = [] } = {}) => {
+const createFakeClient = ({ queryItems = [], records } = {}) => {
   const calls = [];
   return {
     calls,
     async send(command) {
       calls.push({ command: command.constructor.name, input: command.input });
-      if (command.constructor.name === "QueryCommand") return { Items: queryItems };
+      if (command.constructor.name === "QueryCommand") {
+        const pk = command.input.ExpressionAttributeValues[":pk"];
+        return { Items: records ? records.filter((record) => record.PK === pk) : queryItems };
+      }
       if (command.constructor.name === "BatchWriteCommand") return {};
       throw new Error(`Unexpected command ${command.constructor.name}`);
     },
@@ -86,6 +90,38 @@ describe("DynamoDB fantasy storage", () => {
           }),
         },
       }),
+    ]));
+  });
+
+  it("deletes stale aggregate records when replacing the game", async () => {
+    const seedGame = await getFantasyGame();
+    const client = createFakeClient({ records: toFantasyStorageRecords(seedGame) });
+    const storage = createDynamoFantasyStorage({
+      tableName: "PredictionGame",
+      seedGame,
+      client,
+    });
+    const removedQuestionIds = new Set(seedGame.questions
+      .filter((question) => question.matchId === "bra-arg")
+      .map((question) => question.id));
+
+    await storage.setGame({
+      ...seedGame,
+      matches: seedGame.matches.filter((match) => match.id !== "bra-arg"),
+      questions: seedGame.questions.filter((question) => question.matchId !== "bra-arg"),
+      predictions: seedGame.predictions.filter((prediction) => !removedQuestionIds.has(prediction.questionId)),
+    });
+
+    const deleteKeys = client.calls
+      .filter((call) => call.command === "BatchWriteCommand")
+      .flatMap((call) => call.input.RequestItems.PredictionGame)
+      .flatMap((request) => request.DeleteRequest ? [request.DeleteRequest.Key] : []);
+
+    expect(deleteKeys).toEqual(expect.arrayContaining([
+      { PK: "TOURNAMENT#world-cup-friends-2026", SK: "MATCH#bra-arg" },
+      { PK: "TOURNAMENT#world-cup-friends-2026", SK: "QUESTION#q-bra-arg-winner" },
+      { PK: "TOURNAMENT#world-cup-friends-2026", SK: "QUESTION#q-bra-arg-first-goal" },
+      { PK: "QUESTION#q-bra-arg-winner", SK: "PREDICTION#p-sanoop" },
     ]));
   });
 });
