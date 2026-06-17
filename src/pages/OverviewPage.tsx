@@ -3,7 +3,7 @@ import { ArrowIcon, CalendarIcon, TableIcon, TrophyIcon } from "../components/Ic
 import { TeamBadge } from "../components/TeamBadge";
 import { MatchCard } from "../features/matches/MatchCard";
 import { useCompetition } from "../app/competition-context";
-import { formatDate, formatKickoff, resolveLiveMinute, sectionPath } from "../utils/football";
+import { formatDate, formatKickoff, formatLiveClock, isActiveLivePhase, sectionPath } from "../utils/football";
 
 /**
  * Displays the competition landing page with hero match, key stats, and quick links.
@@ -19,14 +19,10 @@ export default function OverviewPage() {
       .filter(Boolean)
       .join(" · ")
     : "";
-  const featuredLiveMinute = featured
-    ? resolveLiveMinute(featured.minute, featured.kickoff)
-    : undefined;
+  const featuredLiveClock = featured?.status === "LIVE" ? formatLiveClock(featured) : undefined;
   const featuredTimeLabel = featured
     ? featured.status === "LIVE"
-      ? featuredLiveMinute === undefined
-        ? "LIVE"
-        : `${featuredLiveMinute}'`
+      ? featuredLiveClock ?? "LIVE"
       : formatKickoff(featured.kickoff)
     : "";
   const recent = [...matches]
@@ -44,7 +40,7 @@ export default function OverviewPage() {
       </section>
       {featured && (
         <Link className="hero-match" to={`matches/${featured.id}`}>
-          <div className="hero-match__top"><span className={`status status--${featured.status.toLowerCase()}`}>{featured.status === "LIVE" ? `LIVE${featured.minute ? ` · ${featured.minute}'` : ""}` : "NEXT MATCH"}</span><span className="hero-match__meta">{featured.matchNumber && <strong aria-label={`Match ${featured.matchNumber}`}>{featured.matchNumber}</strong>}{featuredMeta}</span></div>
+          <div className="hero-match__top"><span className={`status status--${featured.status.toLowerCase()}`}>{featured.status === "LIVE" ? <>{isActiveLivePhase(featured.livePhase) && <span className="status__dot" />}LIVE{featuredLiveClock ? ` · ${featuredLiveClock}` : ""}</> : "NEXT MATCH"}</span><span className="hero-match__meta">{featured.matchNumber && <strong aria-label={`Match ${featured.matchNumber}`}>{featured.matchNumber}</strong>}{featuredMeta}</span></div>
           <div className="hero-match__teams">
             <div><TeamBadge team={featured.home} size="lg" /><strong>{featured.home.name}</strong></div>
             <div className="hero-match__score">

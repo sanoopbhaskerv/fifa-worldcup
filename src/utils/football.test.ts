@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { competitionCatalog } from "../mocks/catalog";
 import { buildCompetitionData } from "../mocks/data";
-import { availableSections, filterMatches, matchWinnerId, resolveLiveMinute, sectionPath } from "./football";
+import { availableSections, filterMatches, formatLiveClock, matchWinnerId, resolveLiveMinute, sectionPath } from "./football";
 
 describe("football utilities", () => {
   const worldCup = competitionCatalog.find((item) => item.id === "world-cup")!;
@@ -34,5 +34,10 @@ describe("football utilities", () => {
 
   it("derives live minute from kickoff when provider minute is missing", () => {
     expect(resolveLiveMinute(undefined, "2026-06-15T19:00:00Z", Date.parse("2026-06-15T19:45:00Z"))).toBe(45);
+  });
+
+  it("formats static live phases and stoppage time", () => {
+    expect(formatLiveClock({ ...data.matches[0], status: "LIVE", livePhase: "HT", minute: 45 })).toBe("HT");
+    expect(formatLiveClock({ ...data.matches[0], status: "LIVE", livePhase: "2H", minute: 90, extraMinute: 3 })).toBe("90'+3");
   });
 });

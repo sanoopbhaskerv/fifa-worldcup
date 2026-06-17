@@ -71,6 +71,59 @@ export const resolveLiveMinute = (
   return Math.min(120, elapsed);
 };
 
+const phaseCeilings: Record<string, number> = {
+  "1H": 45,
+  HT: 45,
+  "2H": 90,
+  ET: 120,
+  BT: 120,
+};
+
+const staticPhaseLabels: Record<string, string> = {
+  HT: "HT",
+  FT: "FT",
+  AET: "AET",
+  PEN: "PEN",
+  P: "PEN",
+  PST: "PST",
+  SUSP: "SUSP",
+};
+
+/**
+ * Formats a live provider phase and minute into a football clock label.
+ *
+ * @param match - Match containing normalized live phase, elapsed minute, and stoppage time.
+ * @param nowMs - Epoch time used only for kickoff-derived fallback minutes.
+ * @returns Display label such as `67'`, `90'+3`, `HT`, or `undefined`.
+ */
+export const formatLiveClock = (match: Match, nowMs = Date.now()) => {
+  const phase = match.livePhase;
+  if (phase && staticPhaseLabels[phase]) return staticPhaseLabels[phase];
+  if (phase === "NS" || phase === "TBD") return undefined;
+
+  const minute = resolveLiveMinute(match.minute, match.kickoff, nowMs);
+  if (minute === undefined) return undefined;
+
+  const ceiling = phase ? phaseCeilings[phase] : undefined;
+  const displayMinute = ceiling ? Math.min(minute, ceiling + (match.extraMinute ?? 0)) : minute;
+  if (ceiling && displayMinute > ceiling) {
+    return `${ceiling}'+${displayMinute - ceiling}`;
+  }
+  if (ceiling && match.extraMinute && minute >= ceiling) {
+    return `${ceiling}'+${match.extraMinute}`;
+  }
+  return `${displayMinute}'`;
+};
+
+/**
+ * Determines whether a live clock phase should show an active pulsing indicator.
+ *
+ * @param phase - API-Football live phase code.
+ * @returns True for active play phases.
+ */
+export const isActiveLivePhase = (phase?: string) =>
+  ["1H", "2H", "ET"].includes(phase ?? "");
+
 /**
  * Formats an ISO date or timestamp for date-group headings.
  *

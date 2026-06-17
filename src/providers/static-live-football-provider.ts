@@ -8,7 +8,10 @@ import type { FootballDataProvider } from "./football-provider";
 
 const env = {
   footballDataKey: import.meta.env.VITE_FOOTBALL_DATA_API_KEY ?? "",
-  apiFootballKey: import.meta.env.VITE_API_FOOTBALL_API_KEY ?? "",
+  apiFootballKey:
+    import.meta.env.VITE_API_FOOTBALL_API_KEY ??
+    import.meta.env.VITE_API_FOOTBALL_KEY ??
+    "",
   footballDataBaseUrl:
     import.meta.env.VITE_FOOTBALL_DATA_BASE_URL ?? "/football-data/v4",
   apiFootballBaseUrl:

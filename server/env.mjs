@@ -48,8 +48,13 @@ export const loadLocalEnv = async (cwd = process.cwd()) => {
  * @returns Provider configuration consumed by football-data.org and API-Football adapters.
  */
 export const providerEnv = (source = process.env) => ({
-  footballDataKey: source.FOOTBALL_DATA_API_KEY ?? "",
-  apiFootballKey: source.API_FOOTBALL_API_KEY ?? "",
+  footballDataKey:
+    source.FOOTBALL_DATA_API_KEY ?? source.VITE_FOOTBALL_DATA_API_KEY ?? "",
+  apiFootballKey:
+    source.API_FOOTBALL_API_KEY ??
+    source.VITE_API_FOOTBALL_API_KEY ??
+    source.VITE_API_FOOTBALL_KEY ??
+    "",
   footballDataBaseUrl:
     source.FOOTBALL_DATA_BASE_URL ?? "https://api.football-data.org/v4",
   apiFootballBaseUrl:

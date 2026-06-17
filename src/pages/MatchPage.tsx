@@ -3,7 +3,7 @@ import { useCompetition } from "../app/competition-context";
 import { ArrowIcon, CalendarIcon, SignalIcon } from "../components/Icons";
 import { TeamBadge } from "../components/TeamBadge";
 import { useMatchDetails } from "../services/queries";
-import { formatDate, formatKickoff } from "../utils/football";
+import { formatDate, formatKickoff, formatLiveClock, isActiveLivePhase } from "../utils/football";
 
 /** Human-readable labels for provider event types. */
 const eventLabels = { goal: "Goal", "yellow-card": "Yellow card", "red-card": "Red card", substitution: "Substitution" };
@@ -23,11 +23,12 @@ export default function MatchPage() {
   const events = details?.events.length ? details.events : data.events[match.id] ?? [];
   const officials = details?.officials.length ? details.officials : match.officials ?? [];
   const hasScore = match.homeScore !== undefined;
+  const liveClock = match.status === "LIVE" ? formatLiveClock(match) : undefined;
   return (
     <div className="page match-page">
       <Link className="back-link" to="../fixtures">← Back to fixtures</Link>
       <section className="match-scoreboard">
-        <div className="match-scoreboard__meta"><span className={`status status--${match.status.toLowerCase()}`}>{match.status === "LIVE" ? `Live${match.minute ? ` · ${match.minute}'` : ""}` : match.status.replace("_", " ")}</span><span>{match.stage} · {match.round}</span></div>
+        <div className="match-scoreboard__meta"><span className={`status status--${match.status.toLowerCase()}`}>{match.status === "LIVE" ? <>{isActiveLivePhase(match.livePhase) && <span className="status__dot" />}Live{liveClock ? ` · ${liveClock}` : ""}</> : match.status.replace("_", " ")}</span><span>{match.stage} · {match.round}</span></div>
         <div className="match-scoreboard__teams">
           <div><TeamBadge team={match.home} size="lg" /><h2>{match.home.name}</h2><span>{match.home.code}</span></div>
           <div className="match-scoreboard__score">{hasScore ? <strong>{match.homeScore}<i>:</i>{match.awayScore}</strong> : <><strong>{formatKickoff(match.kickoff)}</strong><span>{formatDate(match.kickoff)}</span></>}{match.homePenalties !== undefined && <small>{match.homePenalties}–{match.awayPenalties} on penalties</small>}</div>

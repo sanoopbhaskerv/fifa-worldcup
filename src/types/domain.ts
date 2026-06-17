@@ -73,6 +73,8 @@ export interface Match {
   kickoff: string;
   status: MatchStatus;
   minute?: number;
+  extraMinute?: number;
+  livePhase?: string;
   home: Team;
   away: Team;
   homeScore?: number;

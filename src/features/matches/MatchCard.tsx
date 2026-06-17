@@ -1,6 +1,6 @@
 import { Link, useParams } from "react-router-dom";
 import type { Match } from "../../types/domain";
-import { formatKickoff } from "../../utils/football";
+import { formatKickoff, formatLiveClock, isActiveLivePhase } from "../../utils/football";
 import { TeamBadge } from "../../components/TeamBadge";
 import { ChevronIcon } from "../../components/Icons";
 
@@ -25,11 +25,17 @@ export const MatchCard = ({ match, compact = false }: { match: Match; compact?: 
   const hasScore = match.homeScore !== undefined && match.awayScore !== undefined;
   const primaryMeta = match.group ?? match.round;
   const matchNumber = match.matchNumber;
+  const liveClock = match.status === "LIVE" ? formatLiveClock(match) : undefined;
   return (
     <Link className={`match-card ${compact ? "match-card--compact" : ""}`} to={`/competitions/${competitionSlug}/${editionId}/matches/${match.id}`} aria-label={`${match.home.name} versus ${match.away.name}`}>
       <div className="match-card__meta">
         <span className={`status status--${match.status.toLowerCase()}`}>
-          {match.status === "LIVE" ? (match.minute ? `${match.minute}'` : "Live") : statusLabel[match.status]}
+          {match.status === "LIVE" ? (
+            <>
+              {isActiveLivePhase(match.livePhase) && <span className="status__dot" />}
+              {liveClock ?? "Live"}
+            </>
+          ) : statusLabel[match.status]}
         </span>
         <span>{primaryMeta}</span>
         {matchNumber && <span className="match-card__number" aria-label={`Match ${matchNumber}`}>{matchNumber}</span>}

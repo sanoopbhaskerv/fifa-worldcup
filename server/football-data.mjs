@@ -1,5 +1,6 @@
 import { cached } from "./cache.mjs";
 import { ProviderError } from "./errors.mjs";
+import { getLiveFixtureStates, similarity } from "./api-football.mjs";
 import { providerCompetitions, seasonYear } from "./provider-config.mjs";
 
 const STAGE_LABELS = {
@@ -41,6 +42,8 @@ const statusMap = {
 };
 
 const LIVE_PROVIDER_STATUSES = new Set(["IN_PLAY", "PAUSED", "LIVE"]);
+const LIVE_API_FOOTBALL_PHASES = new Set(["1H", "HT", "2H", "ET", "BT", "P"]);
+const COMPLETED_API_FOOTBALL_PHASES = new Set(["FT", "AET", "PEN"]);
 
 /**
  * Converts provider enum values into human-readable title case labels.
@@ -156,6 +159,11 @@ const normalizeMatch = (raw, competitionId, editionId) => {
       raw.minute === null || raw.minute === undefined
         ? undefined
         : Number(raw.minute),
+    extraMinute:
+      raw.extraMinute === null || raw.extraMinute === undefined
+        ? undefined
+        : Number(raw.extraMinute),
+    livePhase: raw.livePhase ?? undefined,
     home: normalizeTeam(raw.homeTeam),
     away: normalizeTeam(raw.awayTeam),
     homeScore: scorePart(raw.score, "home"),
@@ -166,8 +174,131 @@ const normalizeMatch = (raw, competitionId, editionId) => {
     city: raw.area?.name ?? raw.competition?.area?.name ?? "",
     attendance: raw.attendance ?? undefined,
     officials: (raw.referees ?? []).map((referee) => referee.name).filter(Boolean),
-    externalIds: { footballData: String(raw.id) },
+    externalIds: {
+      footballData: String(raw.id),
+      apiFootball:
+        raw.apiFootballFixtureId === null || raw.apiFootballFixtureId === undefined
+          ? undefined
+          : String(raw.apiFootballFixtureId),
+    },
     lastUpdated: raw.lastUpdated,
+  };
+};
+
+/**
+ * Resolves the app match status from an API-Football live status code.
+ *
+ * @param phase - API-Football `fixture.status.short` value.
+ * @returns Normalized app status, or `undefined` when the phase is not mapped.
+ */
+const statusFromLivePhase = (phase) => {
+  if (LIVE_API_FOOTBALL_PHASES.has(phase)) return "LIVE";
+  if (COMPLETED_API_FOOTBALL_PHASES.has(phase)) return "COMPLETED";
+  if (["PST", "SUSP"].includes(phase)) return "POSTPONED";
+  return undefined;
+};
+
+/**
+ * Converts normalized live phase status back into the provider enum shape used downstream.
+ *
+ * @param status - Normalized app status derived from API-Football.
+ * @param fallback - Existing football-data.org raw status.
+ * @returns Raw status value accepted by `statusMap`.
+ */
+const providerStatusFromLiveStatus = (status, fallback) => {
+  if (status === "LIVE") return "LIVE";
+  if (status === "COMPLETED") return "FINISHED";
+  if (status === "POSTPONED") return "POSTPONED";
+  return fallback;
+};
+
+/**
+ * Scores a football-data.org match against an API-Football live fixture.
+ *
+ * @param match - Raw football-data.org match payload.
+ * @param fixture - API-Football live fixture candidate.
+ * @returns Match confidence score, where higher values are stronger.
+ */
+const liveFixtureMatchScore = (match, fixture) => {
+  const kickoffDelta = Math.abs(
+    Date.parse(match.utcDate) - Date.parse(fixture.fixture?.date ?? ""),
+  );
+  const dateBonus = Number.isFinite(kickoffDelta) && kickoffDelta <= 4 * 60 * 60_000 ? 4 : 0;
+  return (
+    similarity(match.homeTeam?.name, fixture.teams?.home?.name) +
+    similarity(match.awayTeam?.name, fixture.teams?.away?.name) +
+    dateBonus
+  );
+};
+
+/**
+ * Finds the best API-Football live fixture for a football-data.org match.
+ *
+ * @param match - Raw football-data.org match payload.
+ * @param liveFixtures - API-Football live fixture candidates for the competition.
+ * @returns Matching API-Football fixture, or `undefined` when confidence is too low.
+ */
+const findLiveFixtureState = (match, liveFixtures) => {
+  const candidates = liveFixtures
+    .map((fixture) => ({ fixture, score: liveFixtureMatchScore(match, fixture) }))
+    .sort((left, right) => right.score - left.score);
+  return candidates[0]?.score >= 10 ? candidates[0].fixture : undefined;
+};
+
+/**
+ * Merges API-Football live minute and score data into football-data.org matches.
+ *
+ * @param matchesPayload - Raw football-data.org matches payload.
+ * @param competitionId - Internal competition id used for API-Football league mapping.
+ * @param editionId - Edition id whose season should be matched.
+ * @param env - Provider configuration passed to API-Football.
+ * @returns Matches payload enriched with live phase, minute, extra time, score, and API fixture id.
+ */
+const withApiFootballLiveStates = async (matchesPayload, competitionId, editionId, env) => {
+  if (!env.apiFootballKey) return matchesPayload;
+
+  let liveFixtures;
+  try {
+    liveFixtures = await getLiveFixtureStates(competitionId, seasonYear(editionId), env);
+  } catch (error) {
+    if (
+      error instanceof ProviderError &&
+      ["DETAIL_NOT_AVAILABLE", "DETAIL_BUDGET_REACHED", "RATE_LIMITED"].includes(error.code)
+    ) {
+      return matchesPayload;
+    }
+    throw error;
+  }
+  if (!liveFixtures.length) return matchesPayload;
+
+  return {
+    ...matchesPayload,
+    matches: (matchesPayload.matches ?? []).map((match) => {
+      const fixture = findLiveFixtureState(match, liveFixtures);
+      if (!fixture) return match;
+
+      const phase = fixture.fixture?.status?.short;
+      const nextStatus = statusFromLivePhase(phase) ?? match.status;
+      const elapsed = fixture.fixture?.status?.elapsed;
+      const extra = fixture.fixture?.status?.extra;
+      return {
+        ...match,
+        status: providerStatusFromLiveStatus(nextStatus, match.status),
+        minute:
+          elapsed === null || elapsed === undefined ? match.minute : Number(elapsed),
+        extraMinute:
+          extra === null || extra === undefined ? undefined : Number(extra),
+        livePhase: phase ?? undefined,
+        score: {
+          ...match.score,
+          fullTime: {
+            home: fixture.goals?.home ?? match.score?.fullTime?.home,
+            away: fixture.goals?.away ?? match.score?.fullTime?.away,
+          },
+        },
+        apiFootballFixtureId: fixture.fixture?.id,
+      };
+    }),
   };
 };
 
@@ -396,7 +527,6 @@ const withCanonicalMatchNumbers = (matches) =>
  * @returns Minute value when discoverable, otherwise `undefined`.
  */
 const minuteFromMatchDetail = (payload) => {
-  console.debug("Attempting to extract live minute from match detail payload", payload);  
   const match = payload?.match ?? payload;
   const candidates = [
     match?.minute,
@@ -554,7 +684,12 @@ export const getLiveCompetitionData = async (
   const scorersUrl = `${base}/scorers?season=${season}&limit=30`;
 
   const matchesPayload = await withDetailedLiveMinutes(
-    await getResource(matchesUrl, env, 55_000),
+    await withApiFootballLiveStates(
+      await getResource(matchesUrl, env, 55_000),
+      competitionId,
+      editionId,
+      env,
+    ),
     env,
   );
   if (!matchesPayload.matches?.length) {

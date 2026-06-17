@@ -123,6 +123,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .status--postponed { color: #241800; background: var(--warning); }
 .status--cancelled { color: #ffc0bb; background: rgba(255,107,98,.16); }
 .status--upcoming { color: #07130f; background: var(--competition-accent); }
+.status__dot { width: 6px; height: 6px; margin-right: 5px; border-radius: 50%; background: currentColor; animation: livePulse 1.2s ease-in-out infinite; }
+@keyframes livePulse { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: .35; transform: scale(.72); } }
 
 .stat-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin: 12px 0 34px; }
 .stat-grid article { display: flex; min-height: 112px; flex-direction: column; padding: 16px; border: 1px solid var(--line); border-radius: 16px; background: var(--surface); }

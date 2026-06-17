@@ -26,7 +26,7 @@ const normalizedName = (value = "") =>
  * @param right - Candidate team name from API-Football.
  * @returns Similarity score, where higher values represent stronger matches.
  */
-const similarity = (left, right) => {
+export const similarity = (left, right) => {
   const a = normalizedName(left);
   const b = normalizedName(right);
   if (!a || !b) return 0;
@@ -113,6 +113,30 @@ const apiFetch = async (path, env) => {
     throw new ProviderError(message, 422, "DETAIL_NOT_AVAILABLE");
   }
   return body;
+};
+
+/**
+ * Loads currently live fixtures from API-Football for one mapped competition.
+ *
+ * @param competitionId - Internal competition id used to resolve the API-Football league id.
+ * @param season - Provider season year to keep from the live fixture feed.
+ * @param env - Provider configuration passed to API-Football.
+ * @returns Live API-Football fixtures for the requested league and season.
+ */
+export const getLiveFixtureStates = async (competitionId, season, env) => {
+  const leagueId = providerCompetitions[competitionId]?.apiFootballLeagueId;
+  if (!leagueId) return [];
+
+  const payload = await cached(
+    `api-football:live-fixtures:${competitionId}:${season}`,
+    55_000,
+    () => apiFetch("/fixtures?live=all", env),
+  );
+  return (payload.response ?? []).filter(
+    (fixture) =>
+      fixture.league?.id === leagueId &&
+      Number(fixture.league?.season) === Number(season),
+  );
 };
 
 /**
