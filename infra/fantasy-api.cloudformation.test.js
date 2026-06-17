@@ -13,14 +13,15 @@ describe("fantasy AWS staging template", () => {
     expect(template).toContain("ReservedConcurrentExecutions: !Ref LambdaReservedConcurrency");
     expect(template).toContain("Type: AWS::Lambda::Url");
     expect(template).toContain("FANTASY_DYNAMODB_TABLE: !Ref PredictionGameTable");
+    expect(template).toContain("FOOTBALL_DATA_API_KEY: !Ref FootballDataApiKey");
+    expect(template).toContain("API_FOOTBALL_API_KEY: !Ref ApiFootballApiKey");
   });
 
-  it("does not put provider or AI secrets into Lambda environment variables", async () => {
+  it("does not put browser-exposed or AI secrets into Lambda environment variables", async () => {
     const template = await readFile(templatePath, "utf8");
 
     expect(template).not.toContain("VITE_");
     expect(template).not.toContain("OPENAI_API_KEY");
-    expect(template).not.toContain("FOOTBALL_DATA_API_KEY");
-    expect(template).not.toContain("API_FOOTBALL_API_KEY");
+    expect(template).toContain("NoEcho: true");
   });
 });

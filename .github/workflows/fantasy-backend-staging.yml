@@ -40,6 +40,9 @@ jobs:
       MONTHLY_BUDGET_USD: ${{ inputs.monthly_budget_usd }}
       LAMBDA_RESERVED_CONCURRENCY: ${{ inputs.lambda_reserved_concurrency }}
       BUDGET_ALERT_EMAIL: ${{ secrets.FANTASY_BUDGET_ALERT_EMAIL }}
+      FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
+      API_FOOTBALL_API_KEY: ${{ secrets.API_FOOTBALL_API_KEY }}
+      API_FOOTBALL_DAILY_BUDGET: "90"
       STACK_NAME: fantasy-prediction-game-staging
       APP_NAME: fantasy-prediction-game-staging
 

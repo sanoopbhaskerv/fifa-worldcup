@@ -233,6 +233,8 @@ For staging, create or reuse a private deployment-artifact S3 bucket, then run:
 ```bash
 ARTIFACT_BUCKET=YOUR_ARTIFACT_BUCKET \
 CORS_ALLOW_ORIGIN=https://develop.d32ngvag2hklf1.amplifyapp.com \
+FOOTBALL_DATA_API_KEY=YOUR_FOOTBALL_DATA_KEY \
+API_FOOTBALL_API_KEY=YOUR_API_FOOTBALL_KEY \
 BUDGET_ALERT_EMAIL=you@example.com \
 yarn deploy:fantasy:staging
 ```
@@ -245,6 +247,9 @@ Optional staging overrides:
 - `ARTIFACT_PREFIX`, default `fantasy-api`
 - `MONTHLY_BUDGET_USD`, default `5`
 - `LAMBDA_RESERVED_CONCURRENCY`, default `2`
+- `FOOTBALL_DATA_API_KEY`, optional server-side football-data.org key
+- `API_FOOTBALL_API_KEY`, optional server-side API-Football key
+- `API_FOOTBALL_DAILY_BUDGET`, default `90`
 
 The script packages `server/`, `package.json`, `yarn.lock`, and production
 `node_modules`, uploads the zip to S3, deploys the CloudFormation stack, and
@@ -260,6 +265,8 @@ Required GitHub repository secrets:
 
 - `AWS_ROLE_TO_ASSUME`: IAM role ARN trusted by GitHub OIDC for this repository.
 - `FANTASY_ARTIFACT_BUCKET`: private S3 bucket used for Lambda zip artifacts.
+- `FOOTBALL_DATA_API_KEY`: server-side football-data.org key.
+- `API_FOOTBALL_API_KEY`: server-side API-Football key.
 
 Optional GitHub repository secret:
 
@@ -296,20 +303,32 @@ Runtime variables set by the template:
 
 - `FANTASY_DYNAMODB_TABLE`
 - `CORS_ALLOW_ORIGIN`
+- `FOOTBALL_DATA_API_KEY`
+- `API_FOOTBALL_API_KEY`
+- `API_FOOTBALL_DAILY_BUDGET`
 
 The Lambda entrypoint is `server/aws/lambda.handler`. The server uses local
 memory storage by default and switches to DynamoDB when
 `FANTASY_DYNAMODB_TABLE` is present.
 
-To connect the static frontend directly to this staging API, set this build-time
-environment variable in Amplify Hosting:
+To connect the static frontend directly to this staging API for both fantasy and
+competition data, set one of these build-time environment variables in Amplify
+Hosting:
 
 ```dotenv
+VITE_BACKEND_API_BASE_URL=https://YOUR_FUNCTION_URL_WITHOUT_TRAILING_SLASH
 VITE_FANTASY_API_BASE_URL=https://YOUR_FUNCTION_URL_WITHOUT_TRAILING_SLASH
 ```
 
-This exposes only the API URL, not provider keys. Keep `FOOTBALL_DATA_API_KEY`,
-`API_FOOTBALL_API_KEY`, and future AI provider keys server-side.
+`VITE_BACKEND_API_BASE_URL` is preferred for new setups. `VITE_FANTASY_API_BASE_URL`
+is still supported as an alias because the same Lambda handles all `/api/*`
+routes.
+
+This exposes only the API URL, not provider keys. Remove
+`VITE_FOOTBALL_DATA_API_KEY`, `VITE_API_FOOTBALL_API_KEY`, and
+`VITE_API_FOOTBALL_KEY` from Amplify once the Lambda backend is enabled. Keep
+`FOOTBALL_DATA_API_KEY`, `API_FOOTBALL_API_KEY`, and future AI provider keys
+server-side.
 
 Staging smoke checks after deploy:
 

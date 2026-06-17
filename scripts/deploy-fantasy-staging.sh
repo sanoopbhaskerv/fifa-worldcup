@@ -12,6 +12,9 @@ CORS_ALLOW_ORIGIN="${CORS_ALLOW_ORIGIN:-*}"
 MONTHLY_BUDGET_USD="${MONTHLY_BUDGET_USD:-5}"
 LAMBDA_RESERVED_CONCURRENCY="${LAMBDA_RESERVED_CONCURRENCY:-2}"
 BUDGET_ALERT_EMAIL="${BUDGET_ALERT_EMAIL:-}"
+FOOTBALL_DATA_API_KEY="${FOOTBALL_DATA_API_KEY:-}"
+API_FOOTBALL_API_KEY="${API_FOOTBALL_API_KEY:-}"
+API_FOOTBALL_DAILY_BUDGET="${API_FOOTBALL_DAILY_BUDGET:-90}"
 WORK_DIR="${ROOT_DIR}/tmp/fantasy-lambda-package"
 ZIP_PATH="${ROOT_DIR}/tmp/${APP_NAME}.zip"
 
@@ -57,6 +60,9 @@ aws cloudformation deploy \
     CorsAllowOrigin="${CORS_ALLOW_ORIGIN}" \
     MonthlyBudgetUsd="${MONTHLY_BUDGET_USD}" \
     LambdaReservedConcurrency="${LAMBDA_RESERVED_CONCURRENCY}" \
+    FootballDataApiKey="${FOOTBALL_DATA_API_KEY}" \
+    ApiFootballApiKey="${API_FOOTBALL_API_KEY}" \
+    ApiFootballDailyBudget="${API_FOOTBALL_DAILY_BUDGET}" \
     BudgetAlertEmail="${BUDGET_ALERT_EMAIL}"
 
 aws cloudformation describe-stacks \

@@ -2,6 +2,12 @@ import { competitionCatalog } from "../mocks/catalog";
 import type { CompetitionData, Match, MatchDetails } from "../types/domain";
 import type { FootballDataProvider } from "./football-provider";
 
+export const backendApiBaseUrl = (
+  import.meta.env.VITE_BACKEND_API_BASE_URL ??
+  import.meta.env.VITE_FANTASY_API_BASE_URL ??
+  ""
+).replace(/\/$/, "");
+
 /** Error type used when same-origin API responses return structured failures. */
 class ApiResponseError extends Error {
   /**
@@ -29,7 +35,7 @@ class ApiResponseError extends Error {
  * @throws ApiResponseError when the API returns a non-2xx response.
  */
 const request = async <T>(url: string): Promise<T> => {
-  const response = await fetch(url, {
+  const response = await fetch(`${backendApiBaseUrl}${url}`, {
     headers: { accept: "application/json" },
   });
   const body = (await response.json().catch(() => ({}))) as {

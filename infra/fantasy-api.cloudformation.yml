@@ -23,6 +23,22 @@ Parameters:
     MinValue: 1
     MaxValue: 10
     Description: Hard cap for concurrent Lambda executions in staging.
+  FootballDataApiKey:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: Optional server-side football-data.org API key for competition data.
+  ApiFootballApiKey:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: Optional server-side API-Football key for match details.
+  ApiFootballDailyBudget:
+    Type: Number
+    Default: 90
+    MinValue: 0
+    MaxValue: 100
+    Description: Process-local daily request safety budget for API-Football.
   BudgetAlertEmail:
     Type: String
     Default: ""
@@ -100,6 +116,9 @@ Resources:
         Variables:
           FANTASY_DYNAMODB_TABLE: !Ref PredictionGameTable
           CORS_ALLOW_ORIGIN: !Ref CorsAllowOrigin
+          FOOTBALL_DATA_API_KEY: !Ref FootballDataApiKey
+          API_FOOTBALL_API_KEY: !Ref ApiFootballApiKey
+          API_FOOTBALL_DAILY_BUDGET: !Ref ApiFootballDailyBudget
           NODE_ENV: production
 
   FantasyApiLogGroup:
