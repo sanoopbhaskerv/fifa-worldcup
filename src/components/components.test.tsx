@@ -16,6 +16,7 @@ describe("football components", () => {
     render(<MemoryRouter initialEntries={["/competitions/world-cup/2026"]}><Routes><Route path="/competitions/:competitionSlug/:editionId" element={<MatchCard match={data.matches[0]} />} /></Routes></MemoryRouter>);
     expect(screen.getByLabelText(/versus/i)).toHaveAttribute("href", expect.stringContaining("/matches/"));
     expect(screen.getByText("Full time")).toBeInTheDocument();
+    expect(screen.getByText("Match 1")).toBeInTheDocument();
   });
 
   it("renders accessible standings with zone text", () => {

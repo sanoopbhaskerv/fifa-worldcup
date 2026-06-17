@@ -1,0 +1,36 @@
+import { render, screen } from "@testing-library/react";
+import { MemoryRouter, Route, Routes } from "react-router-dom";
+import { describe, expect, it, vi } from "vitest";
+import * as competitionContext from "../app/competition-context";
+import { competitionCatalog } from "../mocks/catalog";
+import { buildCompetitionData } from "../mocks/data";
+import OverviewPage from "./OverviewPage";
+
+const competition = competitionCatalog.find((item) => item.id === "world-cup")!;
+const data = buildCompetitionData(competition, "2026");
+
+describe("OverviewPage", () => {
+  it("shows match number in the hero match tile meta", () => {
+    vi.spyOn(competitionContext, "useCompetition").mockReturnValue({
+      data,
+      editionId: "2026",
+      updatedAt: Date.now(),
+      isFetching: false,
+      refetch: async () => undefined,
+    });
+
+    render(
+      <MemoryRouter initialEntries={["/competitions/world-cup/2026"]}>
+        <Routes>
+          <Route
+            path="/competitions/:competitionSlug/:editionId"
+            element={<OverviewPage />}
+          />
+        </Routes>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/Match 3/i)).toBeInTheDocument();
+    expect(screen.getByText("67'")).toBeInTheDocument();
+  });
+});

@@ -40,6 +40,8 @@ const statusMap = {
   CANCELLED: "CANCELLED",
 };
 
+const LIVE_PROVIDER_STATUSES = new Set(["IN_PLAY", "PAUSED", "LIVE"]);
+
 /**
  * Converts provider enum values into human-readable title case labels.
  *
@@ -135,7 +137,7 @@ const normalizeMatch = (raw, competitionId, editionId) => {
   const stage = normalizeStage(raw.stage);
   const group = normalizeGroup(raw.group);
   const matchday = raw.matchday ? `Matchday ${raw.matchday}` : undefined;
-  const rawMatchNumber = raw.matchNumber ?? raw.number ?? raw.id;
+  const rawMatchNumber = raw.matchNumber ?? raw.number;
   return {
     id: `fd-${raw.id}`,
     competitionId,
@@ -367,6 +369,90 @@ const normalizeTies = (matches) =>
     });
 
 /**
+ * Assigns canonical match numbers to provider matches that do not expose them.
+ *
+ * @param matches - Normalized matches paired with their raw stage metadata.
+ * @returns Matches sorted by kickoff with one-based canonical match numbers filled in.
+ */
+const withCanonicalMatchNumbers = (matches) =>
+  [...matches]
+    .sort((left, right) => {
+      const kickoff = Date.parse(left.match.kickoff) - Date.parse(right.match.kickoff);
+      if (kickoff !== 0) return kickoff;
+      return String(left.rawId).localeCompare(String(right.rawId), undefined, { numeric: true });
+    })
+    .map((entry, index) => ({
+      ...entry,
+      match: {
+        ...entry.match,
+        matchNumber: entry.match.matchNumber ?? String(index + 1),
+      },
+    }));
+
+/**
+ * Extracts a numeric live minute from football-data.org match detail payload shapes.
+ *
+ * @param payload - Match detail payload returned by football-data.org.
+ * @returns Minute value when discoverable, otherwise `undefined`.
+ */
+const minuteFromMatchDetail = (payload) => {
+  console.debug("Attempting to extract live minute from match detail payload", payload);  
+  const match = payload?.match ?? payload;
+  const candidates = [
+    match?.minute,
+    match?.time?.minute,
+    match?.status?.minute,
+    match?.score?.minute,
+  ];
+  for (const value of candidates) {
+    if (value === null || value === undefined) continue;
+    const parsed = Number(value);
+    if (Number.isFinite(parsed) && parsed >= 0) return parsed;
+  }
+  return undefined;
+};
+
+/**
+ * Fetches per-match detail for live matches missing minute values.
+ *
+ * @param matchesPayload - Raw matches endpoint payload.
+ * @param env - Provider configuration passed to football-data.org fetches.
+ * @returns Matches payload with live-minute gaps patched when detail data exists.
+ */
+const withDetailedLiveMinutes = async (matchesPayload, env) => {
+  const matches = matchesPayload.matches ?? [];
+  const liveMissingMinute = matches.filter(
+    (match) =>
+      LIVE_PROVIDER_STATUSES.has(match.status) &&
+      (match.minute === null || match.minute === undefined),
+  );
+  if (!liveMissingMinute.length) return matchesPayload;
+
+  const resolvedMinutes = await Promise.all(
+    liveMissingMinute.map(async (match) => {
+      const detailUrl = `${env.footballDataBaseUrl}/matches/${match.id}`;
+      const detailPayload = await optionalResource(
+        getResource(detailUrl, env, 15_000),
+        null,
+      );
+      return [String(match.id), minuteFromMatchDetail(detailPayload)];
+    }),
+  );
+  const minuteById = new Map(
+    resolvedMinutes.filter((entry) => entry[1] !== undefined),
+  );
+  if (!minuteById.size) return matchesPayload;
+
+  return {
+    ...matchesPayload,
+    matches: matches.map((match) => {
+      const minute = minuteById.get(String(match.id));
+      return minute === undefined ? match : { ...match, minute };
+    }),
+  };
+};
+
+/**
  * Calls football-data.org and maps HTTP/provider errors into `ProviderError`.
  *
  * @param url - Fully qualified football-data.org API URL.
@@ -467,7 +553,10 @@ export const getLiveCompetitionData = async (
   const standingsUrl = `${base}/standings?season=${season}`;
   const scorersUrl = `${base}/scorers?season=${season}&limit=30`;
 
-  const matchesPayload = await getResource(matchesUrl, env, 55_000);
+  const matchesPayload = await withDetailedLiveMinutes(
+    await getResource(matchesUrl, env, 55_000),
+    env,
+  );
   if (!matchesPayload.matches?.length) {
     throw new ProviderError(
       "No live provider data is available for this edition yet.",
@@ -485,11 +574,11 @@ export const getLiveCompetitionData = async (
     }),
   ]);
 
-  const matchesWithStage = matchesPayload.matches.map((raw) => ({
+  const matchesWithStage = withCanonicalMatchNumbers(matchesPayload.matches.map((raw) => ({
     rawId: raw.id,
     rawStage: raw.stage,
     match: normalizeMatch(raw, competitionId, editionId),
-  }));
+  })));
   const matches = matchesWithStage.map((entry) => entry.match);
   const latestUpdate = matches
     .map((match) => match.lastUpdated)

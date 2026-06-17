@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { competitionCatalog } from "../mocks/catalog";
 import { buildCompetitionData } from "../mocks/data";
-import { availableSections, filterMatches, matchWinnerId, sectionPath } from "./football";
+import { availableSections, filterMatches, matchWinnerId, resolveLiveMinute, sectionPath } from "./football";
 
 describe("football utilities", () => {
   const worldCup = competitionCatalog.find((item) => item.id === "world-cup")!;
@@ -26,5 +26,13 @@ describe("football utilities", () => {
 
   it("uses penalties to resolve a drawn tie", () => {
     expect(matchWinnerId(1, 1, "home", "away", 4, 3)).toBe("home");
+  });
+
+  it("prefers provider minute for live labels", () => {
+    expect(resolveLiveMinute(67, "2026-06-15T19:00:00Z", Date.parse("2026-06-15T20:30:00Z"))).toBe(67);
+  });
+
+  it("derives live minute from kickoff when provider minute is missing", () => {
+    expect(resolveLiveMinute(undefined, "2026-06-15T19:00:00Z", Date.parse("2026-06-15T19:45:00Z"))).toBe(45);
   });
 });

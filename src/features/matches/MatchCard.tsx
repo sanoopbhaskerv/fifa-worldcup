@@ -32,7 +32,7 @@ export const MatchCard = ({ match, compact = false }: { match: Match; compact?: 
           {match.status === "LIVE" ? (match.minute ? `${match.minute}'` : "Live") : statusLabel[match.status]}
         </span>
         <span>{primaryMeta}</span>
-        {matchNumber && !compact && <span>{matchNumber}</span>}
+        {matchNumber && <span className="match-card__number">{matchNumber}</span>}
         <span className="match-card__time">{formatKickoff(match.kickoff)}</span>
       </div>
       <div className="match-card__teams">

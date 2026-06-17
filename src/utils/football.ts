@@ -51,6 +51,27 @@ export const formatKickoff = (value: string) =>
   }).format(new Date(value));
 
 /**
+ * Resolves a live minute value using provider minute first, then kickoff elapsed time.
+ *
+ * @param minute - Explicit live minute from the data provider.
+ * @param kickoff - Match kickoff timestamp used as a fallback source.
+ * @param nowMs - Epoch time used for deterministic tests.
+ * @returns Minute number for live labels, or `undefined` when kickoff is invalid.
+ */
+export const resolveLiveMinute = (
+  minute: number | undefined,
+  kickoff: string,
+  nowMs = Date.now(),
+) => {
+  if (minute !== undefined) return minute;
+  const kickoffMs = Date.parse(kickoff);
+  if (Number.isNaN(kickoffMs)) return undefined;
+  const elapsed = Math.floor((nowMs - kickoffMs) / 60_000);
+  if (elapsed < 0) return 0;
+  return Math.min(120, elapsed);
+};
+
+/**
  * Formats an ISO date or timestamp for date-group headings.
  *
  * @param value - ISO date or timestamp accepted by `Date`.

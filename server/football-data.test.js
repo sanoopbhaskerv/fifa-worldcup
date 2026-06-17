@@ -86,11 +86,58 @@ describe("football-data.org normalization", () => {
       group: "Group A",
       homeScore: 1,
       matchday: 1,
-      matchNumber: "42",
+      matchNumber: "1",
     });
     expect(data.matches[0].home.crest).toBe("https://example.com/a.svg");
     expect(data.standings[0]).toMatchObject({ points: 3, zone: "qualified" });
     expect(data.scorers[0]).toMatchObject({ name: "A. Striker", goals: 1 });
+  });
+
+  it("fills live minute from match detail endpoint when list payload omits it", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url) => {
+        if (String(url).includes("/matches/42")) {
+          return jsonResponse({
+            match: {
+              id: 42,
+              minute: 63,
+            },
+          });
+        }
+        if (String(url).includes("/matches")) {
+          return jsonResponse({
+            matches: [
+              {
+                id: 42,
+                utcDate: "2026-06-15T19:00:00Z",
+                status: "IN_PLAY",
+                matchday: 1,
+                stage: "GROUP_STAGE",
+                group: "GROUP_A",
+                lastUpdated: "2026-06-15T19:30:00Z",
+                area: { name: "World" },
+                homeTeam: { id: 1, name: "Alpha", shortName: "Alpha", tla: "ALP" },
+                awayTeam: { id: 2, name: "Beta", shortName: "Beta", tla: "BET" },
+                score: { fullTime: { home: 1, away: 0 }, penalties: { home: null, away: null } },
+                referees: [{ name: "Alex Referee" }],
+              },
+            ],
+          });
+        }
+        if (String(url).includes("/standings")) {
+          return jsonResponse({ standings: [] });
+        }
+        return jsonResponse({ scorers: [] });
+      }),
+    );
+
+    const data = await getLiveCompetitionData("world-cup", "2026", {
+      footballDataKey: "test",
+      footballDataBaseUrl: "https://example.com/v4",
+    });
+
+    expect(data.matches[0].minute).toBe(63);
   });
 
   it("derives group standings from match team ids when standings are flattened", async () => {

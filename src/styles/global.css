@@ -139,6 +139,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .match-card { display: block; padding: 13px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); transition: border-color .18s ease, transform .18s ease; }
 .match-card:hover { border-color: color-mix(in srgb, var(--competition-accent) 45%, transparent); transform: translateY(-1px); }
 .match-card__meta { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--muted); font-size: 10px; }
+.match-card__number { color: color-mix(in srgb, var(--competition-accent) 78%, var(--muted)); font-weight: 800; white-space: nowrap; }
 .match-card__time { margin-left: auto; color: var(--text); font-weight: 700; }
 .match-card__teams { display: grid; gap: 8px; }
 .match-team { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 9px; font-size: 13px; }
