@@ -1,10 +1,13 @@
 import { handleApiRequest } from "../handler.mjs";
 
-const responseHeaders = {
+const corsHeaders = () => ({
   "access-control-allow-headers": "content-type",
   "access-control-allow-methods": "GET,PUT,POST,OPTIONS",
   "access-control-allow-origin": process.env.CORS_ALLOW_ORIGIN ?? "*",
-};
+});
+
+const shouldEmitCorsHeaders = () =>
+  process.env.EMIT_LAMBDA_CORS_HEADERS === "true";
 
 const methodFromEvent = (event) =>
   event.requestContext?.http?.method ?? event.httpMethod ?? "GET";
@@ -42,7 +45,7 @@ export const handler = async (event) => {
   if (method === "OPTIONS") {
     return {
       statusCode: 204,
-      headers: responseHeaders,
+      headers: corsHeaders(),
       body: "",
     };
   }
@@ -57,7 +60,7 @@ export const handler = async (event) => {
   return {
     statusCode: result.status,
     headers: {
-      ...responseHeaders,
+      ...(shouldEmitCorsHeaders() ? corsHeaders() : {}),
       ...result.headers,
     },
     body: JSON.stringify(result.body),

@@ -311,6 +311,12 @@ The Lambda entrypoint is `server/aws/lambda.handler`. The server uses local
 memory storage by default and switches to DynamoDB when
 `FANTASY_DYNAMODB_TABLE` is present.
 
+The CloudFormation template lets the Lambda Function URL handle browser CORS.
+The handler only emits CORS headers for normal responses when
+`EMIT_LAMBDA_CORS_HEADERS=true` is set, which is intended for non-Function-URL
+deployments. Do not set that flag for this staging stack, otherwise browsers can
+reject duplicate `Access-Control-Allow-Origin` headers.
+
 To connect the static frontend directly to this staging API for both fantasy and
 competition data, set one of these build-time environment variables in Amplify
 Hosting:
