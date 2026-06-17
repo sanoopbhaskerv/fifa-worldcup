@@ -104,6 +104,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .hero-match { position: relative; display: block; overflow: hidden; padding: 18px; border: 1px solid rgba(255,255,255,.12); border-radius: 24px; background: linear-gradient(135deg, color-mix(in srgb, var(--competition-accent) 18%, var(--surface)) 0%, var(--surface) 58%); box-shadow: var(--shadow); }
 .hero-match::after { content: ""; position: absolute; width: 260px; height: 260px; right: -120px; top: -130px; border: 1px solid color-mix(in srgb, var(--competition-accent) 30%, transparent); border-radius: 50%; box-shadow: 0 0 0 42px color-mix(in srgb, var(--competition-accent) 5%, transparent), 0 0 0 84px color-mix(in srgb, var(--competition-accent) 3%, transparent); }
 .hero-match__top, .hero-match__bottom { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 11px; }
+.hero-match__meta { display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px; text-align: right; }
+.hero-match__meta strong, .match-card__number { display: inline-grid; place-items: center; min-width: 24px; height: 24px; padding: 0 7px; border: 1px solid color-mix(in srgb, var(--competition-accent) 35%, transparent); border-radius: 999px; color: #07130f; background: var(--competition-accent); font-size: 11px; font-weight: 900; line-height: 1; }
 .hero-match__teams { position: relative; z-index: 1; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: 8px; padding: 28px 0; text-align: center; }
 .hero-match__teams > div:not(.hero-match__score) { display: flex; min-width: 0; flex-direction: column; align-items: center; gap: 10px; }
 .hero-match__teams > div > strong { max-width: 110px; font-size: 13px; }
@@ -139,7 +141,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .match-card { display: block; padding: 13px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); transition: border-color .18s ease, transform .18s ease; }
 .match-card:hover { border-color: color-mix(in srgb, var(--competition-accent) 45%, transparent); transform: translateY(-1px); }
 .match-card__meta { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; color: var(--muted); font-size: 10px; }
-.match-card__number { color: color-mix(in srgb, var(--competition-accent) 78%, var(--muted)); font-weight: 800; white-space: nowrap; }
+.match-card__number { flex: none; }
 .match-card__time { margin-left: auto; color: var(--text); font-weight: 700; }
 .match-card__teams { display: grid; gap: 8px; }
 .match-team { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 9px; font-size: 13px; }

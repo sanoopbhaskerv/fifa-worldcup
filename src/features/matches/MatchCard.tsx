@@ -24,7 +24,7 @@ export const MatchCard = ({ match, compact = false }: { match: Match; compact?: 
   const { competitionSlug, editionId } = useParams();
   const hasScore = match.homeScore !== undefined && match.awayScore !== undefined;
   const primaryMeta = match.group ?? match.round;
-  const matchNumber = match.matchNumber ? `Match ${match.matchNumber}` : undefined;
+  const matchNumber = match.matchNumber;
   return (
     <Link className={`match-card ${compact ? "match-card--compact" : ""}`} to={`/competitions/${competitionSlug}/${editionId}/matches/${match.id}`} aria-label={`${match.home.name} versus ${match.away.name}`}>
       <div className="match-card__meta">
@@ -32,7 +32,7 @@ export const MatchCard = ({ match, compact = false }: { match: Match; compact?: 
           {match.status === "LIVE" ? (match.minute ? `${match.minute}'` : "Live") : statusLabel[match.status]}
         </span>
         <span>{primaryMeta}</span>
-        {matchNumber && <span className="match-card__number">{matchNumber}</span>}
+        {matchNumber && <span className="match-card__number" aria-label={`Match ${matchNumber}`}>{matchNumber}</span>}
         <span className="match-card__time">{formatKickoff(match.kickoff)}</span>
       </div>
       <div className="match-card__teams">

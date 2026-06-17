@@ -15,7 +15,7 @@ export default function OverviewPage() {
   const { competition, matches, standings, scorers } = data;
   const featured = matches.find((match) => match.status === "LIVE") ?? matches.find((match) => match.status === "UPCOMING") ?? matches[0];
   const featuredMeta = featured
-    ? [featured.stage, featured.round, featured.matchNumber ? `Match ${featured.matchNumber}` : undefined]
+    ? [featured.stage, featured.round]
       .filter(Boolean)
       .join(" · ")
     : "";
@@ -44,7 +44,7 @@ export default function OverviewPage() {
       </section>
       {featured && (
         <Link className="hero-match" to={`matches/${featured.id}`}>
-          <div className="hero-match__top"><span className={`status status--${featured.status.toLowerCase()}`}>{featured.status === "LIVE" ? `LIVE${featured.minute ? ` · ${featured.minute}'` : ""}` : "NEXT MATCH"}</span><span>{featuredMeta}</span></div>
+          <div className="hero-match__top"><span className={`status status--${featured.status.toLowerCase()}`}>{featured.status === "LIVE" ? `LIVE${featured.minute ? ` · ${featured.minute}'` : ""}` : "NEXT MATCH"}</span><span className="hero-match__meta">{featured.matchNumber && <strong aria-label={`Match ${featured.matchNumber}`}>{featured.matchNumber}</strong>}{featuredMeta}</span></div>
           <div className="hero-match__teams">
             <div><TeamBadge team={featured.home} size="lg" /><strong>{featured.home.name}</strong></div>
             <div className="hero-match__score">

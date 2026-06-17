@@ -30,7 +30,7 @@ describe("OverviewPage", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByText(/Match 3/i)).toBeInTheDocument();
+    expect(screen.getByLabelText("Match 3")).toHaveTextContent("3");
     expect(screen.getByText("67'")).toBeInTheDocument();
   });
 });

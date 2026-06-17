@@ -11,6 +11,7 @@ import { usePullToRefresh } from "../hooks/use-pull-to-refresh";
 import { useCompetitionData, useCompetitions } from "../services/queries";
 import type { Competition } from "../types/domain";
 import { availableSections, formatUpdated, sectionPath, type Section } from "../utils/football";
+import { clearLegacyPwaCaches } from "../utils/pwa-cache";
 import { storage } from "../utils/storage";
 
 const navMeta = {
@@ -40,7 +41,7 @@ export const CompetitionLayout = () => {
   const {
     needRefresh: [needRefresh, setNeedRefresh],
     updateServiceWorker,
-  } = useRegisterSW();
+  } = useRegisterSW({ immediate: true });
   const {
     containerRef: pullRefreshContainerRef,
     progress: pullRefreshProgress,
@@ -51,6 +52,10 @@ export const CompetitionLayout = () => {
     isRefreshing: dataQuery.isFetching,
     onRefresh: () => dataQuery.refetch(),
   });
+
+  useEffect(() => {
+    void clearLegacyPwaCaches();
+  }, []);
 
   useEffect(() => {
     if (competition && competition.editions.some((edition) => edition.id === editionId)) {
