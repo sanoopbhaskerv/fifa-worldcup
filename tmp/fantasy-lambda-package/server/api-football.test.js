@@ -1,6 +1,6 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { clearCache } from "./cache.mjs";
-import { getLiveMatchDetails } from "./api-football.mjs";
+import { getLiveMatchDetails, similarity } from "./api-football.mjs";
 
 const jsonResponse = (response) =>
   new Response(
@@ -10,6 +10,11 @@ const jsonResponse = (response) =>
 
 describe("API-Football detail normalization", () => {
   beforeEach(() => clearCache());
+
+  it("treats null provider team names as no fuzzy match", () => {
+    expect(similarity(null, "Brazil")).toBe(0);
+    expect(similarity("Brazil", null)).toBe(0);
+  });
 
   it("resolves a fixture and normalizes events, lineups, and statistics", async () => {
     vi.stubGlobal(

@@ -11,8 +11,8 @@ let requestsToday = 0;
  * @param value - Raw team or club name.
  * @returns Lowercase normalized name suitable for fuzzy comparisons.
  */
-const normalizedName = (value = "") =>
-  value
+const normalizedName = (value) =>
+  String(value ?? "")
     .normalize("NFKD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
