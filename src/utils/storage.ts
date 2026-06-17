@@ -1,5 +1,6 @@
 const KEYS = {
   favorites: "full-time:favorites:v1",
+  fantasyIdentity: "full-time:fantasy-identity:v1",
   recents: "full-time:recents:v1",
   selection: "full-time:last-selection:v1",
 } as const;
@@ -7,6 +8,11 @@ const KEYS = {
 export interface StoredSelection {
   competitionSlug: string;
   editionId: string;
+}
+
+export interface StoredFantasyIdentity {
+  participantId: string;
+  nickname: string;
 }
 
 /**
@@ -49,6 +55,15 @@ const write = (key: string, value: unknown) => {
 export const storage = {
   getFavorites: () => read<string[]>(KEYS.favorites, []),
   setFavorites: (value: string[]) => write(KEYS.favorites, value),
+  clearFantasyIdentity: () => {
+    try {
+      localStorage.removeItem(KEYS.fantasyIdentity);
+    } catch {
+      // Storage can be unavailable in privacy modes.
+    }
+  },
+  getFantasyIdentity: () => read<StoredFantasyIdentity | null>(KEYS.fantasyIdentity, null),
+  setFantasyIdentity: (value: StoredFantasyIdentity) => write(KEYS.fantasyIdentity, value),
   getRecents: () => read<string[]>(KEYS.recents, []),
   addRecent: (id: string) => {
     const value = [id, ...read<string[]>(KEYS.recents, []).filter((item) => item !== id)].slice(0, 5);

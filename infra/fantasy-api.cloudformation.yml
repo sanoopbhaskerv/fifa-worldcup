@@ -1,0 +1,160 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Cost-minimal Fantasy Football Prediction API for a private friends league.
+
+Parameters:
+  AppName:
+    Type: String
+    Default: fantasy-prediction-game
+  LambdaS3Bucket:
+    Type: String
+    Description: S3 bucket containing the zipped server artifact.
+  LambdaS3Key:
+    Type: String
+    Description: S3 key for the zipped server artifact.
+  CorsAllowOrigin:
+    Type: String
+    Default: "*"
+  MonthlyBudgetUsd:
+    Type: Number
+    Default: 5
+  LambdaReservedConcurrency:
+    Type: Number
+    Default: 2
+    MinValue: 1
+    MaxValue: 10
+    Description: Hard cap for concurrent Lambda executions in staging.
+  BudgetAlertEmail:
+    Type: String
+    Default: ""
+    Description: Optional email for AWS Budget alerts. Leave empty to skip budget creation.
+
+Conditions:
+  HasBudgetAlertEmail: !Not [!Equals [!Ref BudgetAlertEmail, ""]]
+
+Resources:
+  PredictionGameTable:
+    Type: AWS::DynamoDB::Table
+    Properties:
+      TableName: !Sub "${AppName}-table"
+      BillingMode: PAY_PER_REQUEST
+      AttributeDefinitions:
+        - AttributeName: PK
+          AttributeType: S
+        - AttributeName: SK
+          AttributeType: S
+      KeySchema:
+        - AttributeName: PK
+          KeyType: HASH
+        - AttributeName: SK
+          KeyType: RANGE
+      PointInTimeRecoverySpecification:
+        PointInTimeRecoveryEnabled: true
+
+  FantasyApiRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: FantasyApiDynamoDbAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:BatchWriteItem
+                  - dynamodb:GetItem
+                  - dynamodb:PutItem
+                  - dynamodb:Query
+                  - dynamodb:UpdateItem
+                Resource: !GetAtt PredictionGameTable.Arn
+        - PolicyName: FantasyApiLogging
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AppName}:*"
+
+  FantasyApiFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: !Ref AppName
+      Runtime: nodejs20.x
+      Handler: server/aws/lambda.handler
+      Role: !GetAtt FantasyApiRole.Arn
+      Code:
+        S3Bucket: !Ref LambdaS3Bucket
+        S3Key: !Ref LambdaS3Key
+      MemorySize: 256
+      ReservedConcurrentExecutions: !Ref LambdaReservedConcurrency
+      Timeout: 10
+      Environment:
+        Variables:
+          FANTASY_DYNAMODB_TABLE: !Ref PredictionGameTable
+          CORS_ALLOW_ORIGIN: !Ref CorsAllowOrigin
+          NODE_ENV: production
+
+  FantasyApiLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/aws/lambda/${AppName}"
+      RetentionInDays: 7
+
+  FantasyApiFunctionUrl:
+    Type: AWS::Lambda::Url
+    Properties:
+      AuthType: NONE
+      TargetFunctionArn: !Ref FantasyApiFunction
+      Cors:
+        AllowOrigins:
+          - !Ref CorsAllowOrigin
+        AllowHeaders:
+          - content-type
+        AllowMethods:
+          - GET
+          - POST
+          - PUT
+        MaxAge: 300
+
+  FantasyApiFunctionUrlPermission:
+    Type: AWS::Lambda::Permission
+    Properties:
+      Action: lambda:InvokeFunctionUrl
+      FunctionName: !Ref FantasyApiFunction
+      Principal: "*"
+      FunctionUrlAuthType: NONE
+
+  MonthlyCostBudget:
+    Type: AWS::Budgets::Budget
+    Condition: HasBudgetAlertEmail
+    Properties:
+      Budget:
+        BudgetName: !Sub "${AppName}-monthly-budget"
+        BudgetLimit:
+          Amount: !Ref MonthlyBudgetUsd
+          Unit: USD
+        BudgetType: COST
+        TimeUnit: MONTHLY
+      NotificationsWithSubscribers:
+        - Notification:
+            NotificationType: ACTUAL
+            ComparisonOperator: GREATER_THAN
+            Threshold: 80
+            ThresholdType: PERCENTAGE
+          Subscribers:
+            - SubscriptionType: EMAIL
+              Address: !Ref BudgetAlertEmail
+
+Outputs:
+  FantasyApiUrl:
+    Value: !GetAtt FantasyApiFunctionUrl.FunctionUrl
+  PredictionGameTableName:
+    Value: !Ref PredictionGameTable

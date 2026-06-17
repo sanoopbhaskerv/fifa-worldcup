@@ -1,6 +1,20 @@
 import { handleApiRequest, sendNodeResponse } from "./handler.mjs";
 
 /**
+ * Reads a Node request stream body for non-GET API requests.
+ *
+ * @param request - Incoming HTTP request.
+ * @returns Raw UTF-8 request body.
+ */
+const readRequestBody = (request) =>
+  new Promise((resolve, reject) => {
+    const chunks = [];
+    request.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    request.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    request.on("error", reject);
+  });
+
+/**
  * Creates a Vite middleware adapter for local `/api/*` requests.
  *
  * @param env - Environment-like object passed to the API handler.
@@ -8,9 +22,11 @@ import { handleApiRequest, sendNodeResponse } from "./handler.mjs";
  */
 const middleware = (env) => async (request, response, next) => {
   if (!request.url?.startsWith("/api/")) return next();
+  const body = request.method === "GET" ? undefined : await readRequestBody(request);
   const result = await handleApiRequest({
     method: request.method,
     url: request.url,
+    body,
     env,
   });
   sendNodeResponse(response, result);

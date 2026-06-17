@@ -1,0 +1,68 @@
+import { useState } from "react";
+import type { FantasyPrediction, FantasyQuestion } from "../../types/fantasy";
+
+interface FantasyQuestionCardProps {
+  question: FantasyQuestion;
+  prediction?: FantasyPrediction;
+  isSubmitting?: boolean;
+  onSubmit?: (answer: string) => void;
+}
+
+/**
+ * Renders one fantasy prediction question with local answer selection.
+ *
+ * @param props - Component props.
+ * @param props.question - Question to render.
+ * @param props.prediction - Existing prediction for the active participant.
+ * @param props.isSubmitting - Whether the selected answer is being saved.
+ * @param props.onSubmit - Save handler for an answer selection.
+ * @returns Interactive mock poll card.
+ */
+export const FantasyQuestionCard = ({
+  question,
+  prediction,
+  isSubmitting = false,
+  onSubmit,
+}: FantasyQuestionCardProps) => {
+  const initial = Array.isArray(prediction?.answer) ? prediction.answer[0] : prediction?.answer;
+  const [selected, setSelected] = useState(initial ?? "");
+  const locked = question.status !== "OPEN";
+  const unchanged = Boolean(selected && selected === initial);
+
+  return (
+    <article className={`fantasy-poll-card fantasy-poll-card--${question.status.toLowerCase()}`}>
+      <header>
+        <span className="eyebrow">{question.category.replaceAll("_", " ")}</span>
+        <strong>{question.points} pts</strong>
+      </header>
+      <h3>{question.text}</h3>
+      <div className="fantasy-options" role="group" aria-label={question.text}>
+        {question.options.map((option) => (
+          <button
+            className={`fantasy-option ${selected === option ? "fantasy-option--selected" : ""}`}
+            disabled={locked}
+            key={option}
+            onClick={() => setSelected(option)}
+            type="button"
+          >
+            {option}
+          </button>
+        ))}
+      </div>
+      <footer>
+        <span>{locked ? "Locked" : unchanged ? "Saved pick" : selected ? "Draft selected" : "Open for picks"}</span>
+        {onSubmit && !locked && (
+          <button
+            className="fantasy-save-pick"
+            disabled={!selected || isSubmitting || unchanged}
+            onClick={() => onSubmit(selected)}
+            type="button"
+          >
+            {isSubmitting ? "Saving..." : unchanged ? "Saved" : "Save pick"}
+          </button>
+        )}
+        {prediction?.pointsAwarded !== undefined && <strong>{prediction.pointsAwarded}/{question.points} pts</strong>}
+      </footer>
+    </article>
+  );
+};

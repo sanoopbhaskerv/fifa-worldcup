@@ -7,4 +7,5 @@ interface ImportMetaEnv {
   readonly VITE_FOOTBALL_DATA_BASE_URL?: string;
   readonly VITE_API_FOOTBALL_BASE_URL?: string;
   readonly VITE_API_FOOTBALL_DAILY_BUDGET?: string;
+  readonly VITE_FANTASY_API_BASE_URL?: string;
 }

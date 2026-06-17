@@ -1,0 +1,480 @@
+import { beforeEach, describe, expect, it } from "vitest";
+import { handleApiRequest } from "./handler.mjs";
+import { getFantasyStorageRecords, resetFantasyGame } from "./fantasy-game.mjs";
+
+describe("fantasy game API", () => {
+  beforeEach(async () => {
+    await resetFantasyGame();
+  });
+
+  it("serves the local fantasy prediction game state", async () => {
+    const response = await handleApiRequest({
+      method: "GET",
+      url: "/api/fantasy/game",
+      env: {},
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.tournament).toMatchObject({
+      id: "world-cup-friends-2026",
+      name: "World Cup Friends League",
+    });
+    expect(response.body.teams).toHaveLength(48);
+    expect(response.body.squadPlayers).toHaveLength(1248);
+    expect(response.body.questions.some((question) => question.type === "PLAYER")).toBe(true);
+  });
+
+  it("joins a participant by invite code", async () => {
+    const response = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/join",
+      body: JSON.stringify({ inviteCode: "anoop2026" }),
+      env: {},
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.participant).toMatchObject({
+      id: "p-anoop",
+      nickname: "Messi Monk",
+    });
+    expect(response.body.game.activeParticipantId).toBe("p-anoop");
+    expect(response.body.game.auditRecords.at(-1)).toMatchObject({
+      action: "PARTICIPANT_JOINED",
+      entityId: "p-anoop",
+    });
+  });
+
+  it("rejects invalid invite codes", async () => {
+    const response = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/join",
+      body: JSON.stringify({ inviteCode: "nope" }),
+      env: {},
+    });
+
+    expect(response.status).toBe(401);
+    expect(response.body.error.code).toBe("INVALID_INVITE");
+  });
+
+  it("lists participants with admin invite metadata", async () => {
+    const response = await handleApiRequest({
+      method: "GET",
+      url: "/api/fantasy/admin/participants",
+      env: {},
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.participants).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: "p-sanoop",
+        invite: expect.objectContaining({ inviteCode: "SANOOP2026" }),
+      }),
+    ]));
+  });
+
+  it("creates an admin participant and invite", async () => {
+    const response = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/participants",
+      body: JSON.stringify({ name: "Maya Nair", nickname: "Golden Brain", favoriteTeamId: "eng" }),
+      env: {},
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.participant).toMatchObject({
+      id: "p-golden-brain",
+      nickname: "Golden Brain",
+      favoriteTeamId: "eng",
+    });
+    expect(response.body.invite).toMatchObject({
+      participantId: "p-golden-brain",
+      status: "ACTIVE",
+    });
+    expect(response.body.invite.inviteCode).toMatch(/^GOLDENBR/);
+    expect(response.body.game.participants.some((participant) => participant.id === "p-golden-brain")).toBe(true);
+    expect(response.body.game.participantInvites).toBeUndefined();
+  });
+
+  it("lists and updates admin fixtures", async () => {
+    const listResponse = await handleApiRequest({
+      method: "GET",
+      url: "/api/fantasy/admin/fixtures",
+      env: {},
+    });
+    const updateResponse = await handleApiRequest({
+      method: "PUT",
+      url: "/api/fantasy/admin/fixtures/bra-arg",
+      body: JSON.stringify({
+        importance: "KNOCKOUT",
+        kickoff: "2026-06-18T21:00:00+05:30",
+        pollCloseAt: "2026-06-18T20:45:00+05:30",
+        stage: "Round of 16",
+        status: "LOCKED",
+      }),
+      env: {},
+    });
+
+    expect(listResponse.status).toBe(200);
+    expect(listResponse.body.fixtures.some((fixture) => fixture.id === "bra-arg")).toBe(true);
+    expect(updateResponse.status).toBe(200);
+    expect(updateResponse.body.fixture).toMatchObject({
+      id: "bra-arg",
+      importance: "KNOCKOUT",
+      pollCloseAt: "2026-06-18T20:45:00+05:30",
+      stage: "Round of 16",
+      status: "LOCKED",
+    });
+    expect(updateResponse.body.game.auditRecords.at(-1)).toMatchObject({
+      action: "FIXTURE_UPDATED",
+      entityId: "bra-arg",
+    });
+  });
+
+  it("updates tournament setup", async () => {
+    const response = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/tournament",
+      body: JSON.stringify({
+        name: "World Cup Friends League 2026",
+        status: "UPCOMING",
+        startDate: "2026-06-11",
+        endDate: "2026-07-19",
+        pollCloseMinutesBeforeKickoff: 20,
+        scoringRulesVersion: "prediction-v1",
+      }),
+      env: {},
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.tournament).toMatchObject({
+      name: "World Cup Friends League 2026",
+      status: "UPCOMING",
+      pollCloseMinutesBeforeKickoff: 20,
+    });
+    expect(response.body.game.auditRecords.at(-1)).toMatchObject({
+      action: "TOURNAMENT_UPDATED",
+      entityId: "world-cup-friends-2026",
+      entityType: "TOURNAMENT",
+    });
+  });
+
+  it("imports and edits World Cup squad reference data", async () => {
+    const importResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/squads/import",
+      body: JSON.stringify({
+        source: [
+          "teamName,fifaCode,group,playerName,position,shirtNumber,scorer,star,motm,boot,glove",
+          "Brazil,BRA,Group D,Neymar,FWD,10,true,true,true,true,false",
+          "Brazil,BRA,Group D,Ederson,GK,23,false,false,false,false,true",
+        ].join("\n"),
+      }),
+      env: {},
+    });
+    const teamResponse = await handleApiRequest({
+      method: "PUT",
+      url: "/api/fantasy/admin/teams/bra",
+      body: JSON.stringify({ name: "Brazil", fifaCode: "BRA", group: "Group E", rankingSeed: 3 }),
+      env: {},
+    });
+    const playerResponse = await handleApiRequest({
+      method: "PUT",
+      url: "/api/fantasy/admin/squad-players/bra-neymar",
+      body: JSON.stringify({
+        name: "Neymar Jr",
+        position: "FWD",
+        shirtNumber: 10,
+        teamId: "bra",
+        isScorerCandidate: true,
+        isStarCandidate: true,
+        isMotmCandidate: true,
+        isGoldenBootCandidate: true,
+        isGoldenGloveCandidate: false,
+      }),
+      env: {},
+    });
+
+    expect(importResponse.status).toBe(200);
+    expect(importResponse.body.squadPlayers).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "bra-neymar", name: "Neymar" }),
+      expect.objectContaining({ id: "bra-ederson", isGoldenGloveCandidate: true }),
+    ]));
+    expect(importResponse.body.game.auditRecords.at(-1)).toMatchObject({
+      action: "SQUADS_IMPORTED",
+      entityType: "SQUAD",
+    });
+    expect(teamResponse.status).toBe(200);
+    expect(teamResponse.body.team).toMatchObject({ id: "bra", group: "Group E", rankingSeed: 3 });
+    expect(playerResponse.status).toBe(200);
+    expect(playerResponse.body.squadPlayer).toMatchObject({ id: "bra-neymar", name: "Neymar Jr" });
+    expect(playerResponse.body.game.auditRecords.at(-1)).toMatchObject({
+      action: "SQUAD_PLAYER_UPDATED",
+      entityId: "bra-neymar",
+    });
+  });
+
+  it("lists and updates question templates", async () => {
+    const listResponse = await handleApiRequest({
+      method: "GET",
+      url: "/api/fantasy/admin/question-templates",
+      env: {},
+    });
+    const updateResponse = await handleApiRequest({
+      method: "PUT",
+      url: "/api/fantasy/admin/question-templates/tpl-total-goals",
+      body: JSON.stringify({
+        enabled: true,
+        importanceLevels: ["NORMAL", "BIG_MATCH"],
+        maxOptions: "",
+        name: "Total goals",
+        optionMode: "TOTAL_GOALS",
+        points: 4,
+        sortOrder: 31,
+        text: "How many total goals?",
+      }),
+      env: {},
+    });
+
+    expect(listResponse.status).toBe(200);
+    expect(listResponse.body.questionTemplates).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "tpl-match-result", optionMode: "MATCH_RESULT" }),
+    ]));
+    expect(updateResponse.status).toBe(200);
+    expect(updateResponse.body.questionTemplate).toMatchObject({
+      id: "tpl-total-goals",
+      importanceLevels: ["NORMAL", "BIG_MATCH"],
+      points: 4,
+      text: "How many total goals?",
+    });
+    expect(updateResponse.body.game.auditRecords.at(-1)).toMatchObject({
+      action: "QUESTION_TEMPLATE_UPDATED",
+      entityId: "tpl-total-goals",
+      entityType: "QUESTION_TEMPLATE",
+    });
+  });
+
+  it("lists and updates AI settings", async () => {
+    const listResponse = await handleApiRequest({
+      method: "GET",
+      url: "/api/fantasy/admin/ai-settings",
+      env: {},
+    });
+    const updateResponse = await handleApiRequest({
+      method: "PUT",
+      url: "/api/fantasy/admin/ai-settings",
+      body: JSON.stringify({
+        mode: "TEMPLATE_ONLY",
+        externalProviderEnabled: false,
+        fallbackToTemplates: true,
+        banterLevel: "NONE",
+        dailyBudgetCents: 25,
+        maxQuestions: { NORMAL: 4, BIG_MATCH: 6, KNOCKOUT: 7, FINAL: 9 },
+        enabledCategories: ["MATCH_WINNER", "TOTAL_GOALS"],
+      }),
+      env: {},
+    });
+
+    expect(listResponse.status).toBe(200);
+    expect(listResponse.body.aiSettings).toMatchObject({
+      mode: "TEMPLATE_ONLY",
+      externalProviderEnabled: false,
+    });
+    expect(updateResponse.status).toBe(200);
+    expect(updateResponse.body.aiSettings).toMatchObject({
+      banterLevel: "NONE",
+      dailyBudgetCents: 25,
+      enabledCategories: ["MATCH_WINNER", "TOTAL_GOALS"],
+    });
+    expect(updateResponse.body.game.auditRecords.at(-1)).toMatchObject({
+      action: "AI_SETTINGS_UPDATED",
+      entityType: "AI_SETTINGS",
+    });
+  });
+
+  it("saves generated question drafts as open polls", async () => {
+    const response = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/questions/bra-arg/drafts",
+      body: JSON.stringify({
+        status: "OPEN",
+        questions: [
+          {
+            id: "draft-bra-arg-total-goals",
+            tournamentId: "world-cup-friends-2026",
+            matchId: "bra-arg",
+            category: "TOTAL_GOALS",
+            type: "SCORE_RANGE",
+            text: "Total goals in the match?",
+            options: ["0-1", "2-3", "4+"],
+            points: 3,
+            status: "DRAFT",
+            closeAt: "2026-06-18T20:15:00+05:30",
+          },
+        ],
+      }),
+      env: {},
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.questions).toEqual([
+      expect.objectContaining({ id: "draft-bra-arg-total-goals", status: "OPEN" }),
+    ]);
+    expect(response.body.game.questions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "draft-bra-arg-total-goals", status: "OPEN" }),
+    ]));
+    expect(response.body.game.auditRecords.at(-1)).toMatchObject({
+      action: "QUESTIONS_PUBLISHED",
+      entityId: "bra-arg",
+    });
+  });
+
+  it("rejects generated player options outside squad data", async () => {
+    const response = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/questions/bra-arg/drafts",
+      body: JSON.stringify({
+        status: "DRAFT",
+        questions: [
+          {
+            id: "draft-bra-arg-fake-scorer",
+            tournamentId: "world-cup-friends-2026",
+            matchId: "bra-arg",
+            category: "FIRST_GOAL_SCORER",
+            type: "PLAYER",
+            text: "Who scores first?",
+            options: ["Fake Striker", "Other"],
+            points: 8,
+            status: "DRAFT",
+            closeAt: "2026-06-18T20:15:00+05:30",
+          },
+        ],
+      }),
+      env: {},
+    });
+
+    expect(response.status).toBe(400);
+    expect(response.body.error.code).toBe("INVALID_QUESTION_DRAFT");
+  });
+
+  it("serves the fantasy game for the selected participant", async () => {
+    const response = await handleApiRequest({
+      method: "GET",
+      url: "/api/fantasy/game?participantId=p-anoop",
+      env: {},
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.activeParticipantId).toBe("p-anoop");
+  });
+
+  it("saves one open prediction for the active participant", async () => {
+    const response = await handleApiRequest({
+      method: "PUT",
+      url: "/api/fantasy/predictions/q-bra-arg-winner",
+      body: JSON.stringify({ answer: "Argentina" }),
+      env: {},
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.prediction).toMatchObject({
+      questionId: "q-bra-arg-winner",
+      participantId: "p-sanoop",
+      answer: "Argentina",
+    });
+    expect(response.body.game.predictions.filter((prediction) => (
+      prediction.questionId === "q-bra-arg-winner" && prediction.participantId === "p-sanoop"
+    ))).toHaveLength(1);
+    expect(response.body.game.auditRecords.at(-1)).toMatchObject({
+      action: "PREDICTION_SUBMITTED",
+      actorId: "p-sanoop",
+      entityId: "q-bra-arg-winner",
+    });
+  });
+
+  it("rejects writes against scored polls", async () => {
+    const response = await handleApiRequest({
+      method: "PUT",
+      url: "/api/fantasy/predictions/q-eng-esp-winner",
+      body: JSON.stringify({ answer: "Spain" }),
+      env: {},
+    });
+
+    expect(response.status).toBe(409);
+    expect(response.body.error.code).toBe("POLL_LOCKED");
+  });
+
+  it("saves a result draft and publishes match scores", async () => {
+    await handleApiRequest({
+      method: "PUT",
+      url: "/api/fantasy/predictions/q-bra-arg-winner",
+      body: JSON.stringify({ answer: "Argentina" }),
+      env: {},
+    });
+    await handleApiRequest({
+      method: "PUT",
+      url: "/api/fantasy/predictions/q-bra-arg-first-goal",
+      body: JSON.stringify({ answer: "Lionel Messi" }),
+      env: {},
+    });
+
+    const resultResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/results/bra-arg",
+      body: JSON.stringify({
+        homeScore: 1,
+        awayScore: 2,
+        winnerTeamId: "arg",
+        firstGoalScorer: "Lionel Messi",
+      }),
+      env: {},
+    });
+    const scoreResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/results/bra-arg/publish-scores",
+      env: {},
+    });
+    const republishResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/results/bra-arg/publish-scores",
+      env: {},
+    });
+
+    expect(resultResponse.status).toBe(200);
+    expect(resultResponse.body.result.totalGoalsRange).toBe("2-3");
+    expect(scoreResponse.status).toBe(200);
+    expect(scoreResponse.body.predictions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ questionId: "q-bra-arg-winner", pointsAwarded: 5 }),
+      expect.objectContaining({ questionId: "q-bra-arg-first-goal", pointsAwarded: 8 }),
+    ]));
+    expect(scoreResponse.body.game.leaderboard[0]).toMatchObject({
+      participantId: "p-sanoop",
+      rank: 1,
+      totalPoints: 16,
+      todayPoints: 16,
+      correctWinners: 1,
+      streak: 1,
+    });
+    expect(republishResponse.body.game.leaderboard[0]).toMatchObject({
+      participantId: "p-sanoop",
+      totalPoints: 16,
+    });
+    expect(scoreResponse.body.game.auditRecords.at(-1)).toMatchObject({
+      action: "SCORES_PUBLISHED",
+      entityId: "bra-arg",
+    });
+  });
+
+  it("maps the local game into DynamoDB-style storage records", async () => {
+    const records = await getFantasyStorageRecords();
+
+    expect(records).toEqual(expect.arrayContaining([
+      expect.objectContaining({ PK: "TOURNAMENT#world-cup-friends-2026", SK: "PROFILE", type: "TOURNAMENT" }),
+      expect.objectContaining({ PK: "TOURNAMENT#world-cup-friends-2026", SK: "AI_SETTINGS", type: "AI_SETTINGS" }),
+      expect.objectContaining({ PK: "TOURNAMENT#world-cup-friends-2026", SK: "QUESTION#q-bra-arg-winner", type: "QUESTION" }),
+      expect.objectContaining({ PK: "TOURNAMENT#world-cup-friends-2026", SK: "QUESTION_TEMPLATE#tpl-match-result", type: "QUESTION_TEMPLATE" }),
+      expect.objectContaining({ PK: "TOURNAMENT#world-cup-friends-2026", SK: "INVITE#p-sanoop", type: "PARTICIPANT_INVITE" }),
+      expect.objectContaining({ PK: "QUESTION#q-bra-arg-winner", SK: "PREDICTION#p-sanoop", type: "PREDICTION" }),
+      expect.objectContaining({ PK: "MATCH#eng-esp", SK: "RESULT#latest", type: "RESULT" }),
+    ]));
+  });
+});

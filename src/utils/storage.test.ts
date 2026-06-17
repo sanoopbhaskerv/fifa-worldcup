@@ -13,4 +13,13 @@ describe("storage", () => {
     ["a", "b", "c", "d", "e", "f", "c"].forEach(storage.addRecent);
     expect(storage.getRecents()).toEqual(["c", "f", "e", "d", "b"]);
   });
+
+  it("persists and clears fantasy identity", () => {
+    storage.setFantasyIdentity({ participantId: "p-anoop", nickname: "Messi Monk" });
+    expect(storage.getFantasyIdentity()).toEqual({ participantId: "p-anoop", nickname: "Messi Monk" });
+
+    storage.clearFantasyIdentity();
+
+    expect(storage.getFantasyIdentity()).toBeNull();
+  });
 });

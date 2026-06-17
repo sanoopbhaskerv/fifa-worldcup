@@ -4,6 +4,22 @@ A mobile-first React PWA for exploring major football competitions with live
 fixtures, scores, standings, scorers, knockout brackets, and enriched match
 details.
 
+## Fantasy Football Prediction Game Planning
+
+Kiro-style planning docs for the friends-circle Fantasy Football prediction
+game live under `.kiro`:
+
+- `.kiro/steering/product.md`
+- `.kiro/steering/tech.md`
+- `.kiro/steering/structure.md`
+- `.kiro/specs/fantasy-football/requirements.md`
+- `.kiro/specs/fantasy-football/design.md`
+- `.kiro/specs/fantasy-football/tasks.md`
+
+Use those docs as the product, architecture, cost, design, and task source of
+truth before implementing prediction polls, scoring, leaderboards, admin result
+entry, and AI-hosted recaps.
+
 ## Prerequisites
 
 - Node.js 20 or newer
@@ -45,6 +61,7 @@ yarn test       # Unit and component tests
 yarn build      # Production PWA build
 yarn preview    # Preview build with local /api middleware
 yarn start      # Production Node static/API server
+yarn deploy:fantasy:staging  # Package and deploy the fantasy Lambda staging stack
 ```
 
 ## Provider Architecture
@@ -198,11 +215,125 @@ Current split:
   is unavailable.
 - Amplify Hosting: set provider keys as branch environment variables if using
   temporary static live mode.
-- Future live production: add a real backend and keep provider keys server-side.
+- Fantasy backend: use the Lambda Function URL + DynamoDB template in
+  `infra/fantasy-api.cloudformation.yml` for the friends-circle prediction game.
 
 Provider CORS policies may still block direct browser calls. If that happens,
 use the Amplify rewrite rules above or fall back to demo data until a backend is
 added.
+
+### Fantasy API On AWS
+
+The first fantasy backend target is intentionally small: one Lambda Function URL,
+one DynamoDB on-demand table, 7-day CloudWatch log retention, least-privilege
+table access, and an optional USD budget alert.
+
+For staging, create or reuse a private deployment-artifact S3 bucket, then run:
+
+```bash
+ARTIFACT_BUCKET=YOUR_ARTIFACT_BUCKET \
+CORS_ALLOW_ORIGIN=https://develop.d32ngvag2hklf1.amplifyapp.com \
+BUDGET_ALERT_EMAIL=you@example.com \
+yarn deploy:fantasy:staging
+```
+
+Optional staging overrides:
+
+- `AWS_REGION`, default `us-east-1`
+- `STACK_NAME`, default `fantasy-prediction-game-staging`
+- `APP_NAME`, default `fantasy-prediction-game-staging`
+- `ARTIFACT_PREFIX`, default `fantasy-api`
+- `MONTHLY_BUDGET_USD`, default `5`
+- `LAMBDA_RESERVED_CONCURRENCY`, default `2`
+
+The script packages `server/`, `package.json`, `yarn.lock`, and production
+`node_modules`, uploads the zip to S3, deploys the CloudFormation stack, and
+prints the stack outputs including `FantasyApiUrl`.
+
+#### GitHub Actions Staging Deploy
+
+After the local staging deploy succeeds, use the manual GitHub Actions workflow
+`.github/workflows/fantasy-backend-staging.yml` for repeatable backend deploys.
+It is intentionally `workflow_dispatch` only until staging is proven.
+
+Required GitHub repository secrets:
+
+- `AWS_ROLE_TO_ASSUME`: IAM role ARN trusted by GitHub OIDC for this repository.
+- `FANTASY_ARTIFACT_BUCKET`: private S3 bucket used for Lambda zip artifacts.
+
+Optional GitHub repository secret:
+
+- `FANTASY_BUDGET_ALERT_EMAIL`: email recipient for the optional AWS Budget.
+
+The workflow runs `yarn lint`, `yarn typecheck`, and `yarn test`, then calls the
+same `yarn deploy:fantasy:staging` script used locally. Default CORS origin is
+`https://develop.d32ngvag2hklf1.amplifyapp.com`.
+
+Keep CI/CD manual until:
+
+- Local script deploy has succeeded once.
+- `curl "$FANTASY_API_URL/api/fantasy/game"` returns the DynamoDB-backed game.
+- Amplify has been rebuilt with `VITE_FANTASY_API_BASE_URL`.
+- Join, prediction submit, result publish, and leaderboard smoke checks pass.
+
+Manual deployment is still possible if you already have a zip artifact:
+
+```bash
+aws cloudformation deploy \
+  --template-file infra/fantasy-api.cloudformation.yml \
+  --stack-name fantasy-prediction-game-staging \
+  --capabilities CAPABILITY_IAM \
+  --parameter-overrides \
+    AppName=fantasy-prediction-game-staging \
+    LambdaS3Bucket=YOUR_ARTIFACT_BUCKET \
+    LambdaS3Key=YOUR_ARTIFACT_KEY.zip \
+    CorsAllowOrigin=https://YOUR_FRONTEND_DOMAIN \
+    BudgetAlertEmail=you@example.com \
+    LambdaReservedConcurrency=2
+```
+
+Runtime variables set by the template:
+
+- `FANTASY_DYNAMODB_TABLE`
+- `CORS_ALLOW_ORIGIN`
+
+The Lambda entrypoint is `server/aws/lambda.handler`. The server uses local
+memory storage by default and switches to DynamoDB when
+`FANTASY_DYNAMODB_TABLE` is present.
+
+To connect the static frontend directly to this staging API, set this build-time
+environment variable in Amplify Hosting:
+
+```dotenv
+VITE_FANTASY_API_BASE_URL=https://YOUR_FUNCTION_URL_WITHOUT_TRAILING_SLASH
+```
+
+This exposes only the API URL, not provider keys. Keep `FOOTBALL_DATA_API_KEY`,
+`API_FOOTBALL_API_KEY`, and future AI provider keys server-side.
+
+Staging smoke checks after deploy:
+
+```bash
+curl "$FANTASY_API_URL/api/health"
+curl "$FANTASY_API_URL/api/fantasy/game"
+curl -X POST "$FANTASY_API_URL/api/fantasy/join" \
+  -H "content-type: application/json" \
+  -d '{"inviteCode":"SANOOP2026"}'
+```
+
+Rollback path for staging is simple: unset `VITE_FANTASY_API_BASE_URL` in the
+frontend build to return fantasy reads to local/demo fallback behavior, or set
+the Lambda reserved concurrency to `1` while preserving public browsing:
+
+```bash
+aws lambda put-function-concurrency \
+  --function-name fantasy-prediction-game-staging \
+  --reserved-concurrent-executions 1
+```
+
+First-release identity uses admin-created participant invite codes, not Cognito.
+Local seed codes are `SANOOP2026` and `ANOOP2026`; the browser stores the joined
+participant id in local storage and sends that id with prediction writes.
 
 ### Docker
 
@@ -220,6 +351,8 @@ inject provider keys into frontend builds once the app is public.
 - TanStack Query for caching, retries, and 60-second live polling
 - Normalized provider boundary in `src/providers`
 - Server normalizers and quota-aware caches in `server`
+- Fantasy prediction API boundary in `server/fantasy` with local and DynamoDB
+  storage adapters
 - Local storage for favorites, recents, and last selection
 - Framer Motion for restrained transitions
 - Workbox-generated PWA service worker

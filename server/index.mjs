@@ -47,6 +47,20 @@ const serveFile = async (response, filePath) => {
 };
 
 /**
+ * Reads a Node request stream body for non-GET API requests.
+ *
+ * @param request - Incoming HTTP request.
+ * @returns Raw UTF-8 request body.
+ */
+const readRequestBody = (request) =>
+  new Promise((resolve, reject) => {
+    const chunks = [];
+    request.on("data", (chunk) => chunks.push(Buffer.from(chunk)));
+    request.on("end", () => resolve(Buffer.concat(chunks).toString("utf8")));
+    request.on("error", reject);
+  });
+
+/**
  * HTTP server that handles API routes first, then falls back to the SPA shell.
  *
  * @remarks This server is used for production preview/local hosting. AWS Amplify
@@ -55,9 +69,11 @@ const serveFile = async (response, filePath) => {
 const server = createServer(async (request, response) => {
   try {
     if (request.url?.startsWith("/api/")) {
+      const body = request.method === "GET" ? undefined : await readRequestBody(request);
       const result = await handleApiRequest({
         method: request.method,
         url: request.url,
+        body,
         env: process.env,
       });
       sendNodeResponse(response, result);
