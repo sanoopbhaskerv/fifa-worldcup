@@ -9,7 +9,9 @@ import { fantasyGameData } from "../../mocks/fantasy";
 import { FantasyLeaderboard } from "./FantasyLeaderboard";
 import { FantasyQuestionCard } from "./FantasyQuestionCard";
 import FantasyHomePage from "../../pages/FantasyHomePage";
+import FantasyCreatePollPage from "../../pages/FantasyCreatePollPage";
 import FantasyPollsPage from "../../pages/FantasyPollsPage";
+import FantasyProfilePage from "../../pages/FantasyProfilePage";
 import FantasyAdminScoreReviewPage from "../../pages/FantasyAdminScoreReviewPage";
 import FantasyAdminSquadsPage from "../../pages/FantasyAdminSquadsPage";
 import FantasyAdminPollsPage from "../../pages/FantasyAdminPollsPage";
@@ -86,7 +88,11 @@ describe("fantasy prediction game", () => {
       },
     });
 
-    renderWithQueryClient(<FantasyPollsPage />);
+    renderWithQueryClient(
+      <MemoryRouter>
+        <FantasyPollsPage />
+      </MemoryRouter>,
+    );
 
     expect(screen.getByRole("heading", { name: "No published polls yet" })).toBeInTheDocument();
     expect(screen.queryByRole("heading", { name: "Brazil vs Argentina" })).not.toBeInTheDocument();
@@ -141,6 +147,35 @@ describe("fantasy prediction game", () => {
     expect(screen.getByRole("heading", { name: "Participants" })).toBeInTheDocument();
     expect(screen.getByText("Brazil Boss")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create invite" })).toBeInTheDocument();
+  });
+
+  it("renders the active player profile editor", () => {
+    vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({ data: fantasyGameData });
+
+    renderWithQueryClient(<FantasyProfilePage />);
+
+    expect(screen.getByRole("heading", { name: "Display name" })).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Brazil Boss")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save profile" })).toBeInTheDocument();
+  });
+
+  it("renders user poll creation with squad-backed player options", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({ data: fantasyGameData });
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <FantasyCreatePollPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("heading", { name: "Add a match poll" })).toBeInTheDocument();
+    await user.selectOptions(screen.getByLabelText("Poll"), "FIRST_GOAL_SCORER");
+
+    expect(screen.getByText("Who scores the first goal?")).toBeInTheDocument();
+    expect(screen.getAllByText("Vinicius Jr").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Lionel Messi").length).toBeGreaterThan(0);
+    expect(screen.getByRole("button", { name: "Publish poll" })).toBeInTheDocument();
   });
 
   it("renders fixture administration", () => {

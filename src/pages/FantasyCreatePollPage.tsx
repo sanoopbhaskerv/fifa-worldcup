@@ -1,0 +1,117 @@
+import { useState } from "react";
+import { Link } from "react-router-dom";
+import { ArrowIcon } from "../components/Icons";
+import { useFantasy } from "../app/fantasy-context";
+import { useCreateFantasyUserPoll } from "../services/fantasy-queries";
+import type { FantasyUserPollKind } from "../types/fantasy";
+import { fantasyDeadlineLabel, fantasyMatchTitle, fantasyTeamName } from "../utils/fantasy";
+import { fantasyUserPollDefinitions, fantasyUserPollOptions } from "../utils/fantasy-user-polls";
+import { formatDate, formatKickoff } from "../utils/football";
+import { PageHeading } from "./FixturesPage";
+
+/**
+ * Displays the player-facing poll creation workflow.
+ *
+ * @returns Create poll page.
+ */
+export default function FantasyCreatePollPage() {
+  const { data } = useFantasy();
+  const createPoll = useCreateFantasyUserPoll(data.activeParticipantId);
+  const upcomingMatches = data.matches
+    .filter((match) => match.status === "SCHEDULED")
+    .sort((left, right) => left.kickoff.localeCompare(right.kickoff));
+  const [matchId, setMatchId] = useState(upcomingMatches[0]?.id ?? "");
+  const [kind, setKind] = useState<FantasyUserPollKind>("MATCH_WINNER");
+  const activeMatch = upcomingMatches.find((match) => match.id === matchId) ?? upcomingMatches[0];
+  const definition = fantasyUserPollDefinitions.find((item) => item.kind === kind) ?? fantasyUserPollDefinitions[0];
+  const options = activeMatch ? fantasyUserPollOptions(activeMatch, kind, data) : [];
+  const matchSquad = activeMatch
+    ? data.squadPlayers.filter((player) => [activeMatch.homeTeamId, activeMatch.awayTeamId].includes(player.teamId))
+    : [];
+  const isPlayerPoll = definition.type === "PLAYER";
+
+  return (
+    <div className="page fantasy-page">
+      <PageHeading eyebrow="Create poll" title="Add a match poll" description="Pick an upcoming fixture and a poll type. Player options come from the stored World Cup squads." />
+      <div className="fantasy-create-poll">
+        <section className="content-section fantasy-user-poll-form">
+          <div className="section-heading"><div><span className="eyebrow">Step 1</span><h2>Select match</h2></div></div>
+          {upcomingMatches.length === 0 ? (
+            <p>No upcoming synced fixtures are available for new polls.</p>
+          ) : (
+            <form
+              onSubmit={(event) => {
+                event.preventDefault();
+                if (!activeMatch) return;
+                createPoll.mutate({
+                  kind,
+                  matchId: activeMatch.id,
+                  participantId: data.activeParticipantId,
+                });
+              }}
+            >
+              <label>
+                Match
+                <select onChange={(event) => setMatchId(event.target.value)} value={activeMatch?.id ?? ""}>
+                  {upcomingMatches.map((match) => (
+                    <option key={match.id} value={match.id}>
+                      {fantasyMatchTitle(match, data.teams)} · {formatKickoff(match.kickoff)}
+                    </option>
+                  ))}
+                </select>
+              </label>
+              <label>
+                Poll
+                <select onChange={(event) => setKind(event.target.value as FantasyUserPollKind)} value={kind}>
+                  {fantasyUserPollDefinitions.map((item) => (
+                    <option key={item.kind} value={item.kind}>{item.label}</option>
+                  ))}
+                </select>
+              </label>
+              {activeMatch && (
+                <div className="fantasy-create-match-summary">
+                  <strong>{fantasyMatchTitle(activeMatch, data.teams)}</strong>
+                  <span>{formatDate(activeMatch.kickoff, true)} · locks {fantasyDeadlineLabel(activeMatch.pollCloseAt)}</span>
+                </div>
+              )}
+              <button className="button button--primary" disabled={createPoll.isPending || !activeMatch || options.length < 2} type="submit">
+                {createPoll.isPending ? "Publishing..." : "Publish poll"}
+              </button>
+            </form>
+          )}
+          {createPoll.isSuccess && (
+            <p className="fantasy-success-note">
+              Poll published. <Link to="/fantasy/polls">View polls <ArrowIcon /></Link>
+            </p>
+          )}
+          {createPoll.isError && <p role="alert">{createPoll.error.message}</p>}
+        </section>
+
+        <section className="content-section fantasy-user-poll-preview">
+          <div className="section-heading">
+            <div><span className="eyebrow">Step 2</span><h2>Preview options</h2></div>
+            <strong>{definition.points} pts</strong>
+          </div>
+          <article className="fantasy-draft-card">
+            <header>
+              <span className="eyebrow">{kind.replaceAll("_", " ")}</span>
+              <strong>{definition.type.replaceAll("_", " ")}</strong>
+            </header>
+            <h3>{definition.text}</h3>
+            <div className="fantasy-draft-options">
+              {options.map((option) => <span key={option}>{option}</span>)}
+              {options.length === 0 && <span>No valid options for this poll type</span>}
+            </div>
+          </article>
+          {isPlayerPoll && activeMatch && (
+            <div className="fantasy-squad-context fantasy-squad-context--wrap">
+              {matchSquad.slice(0, 16).map((player) => (
+                <span key={player.id}>{player.name}<small>{fantasyTeamName(player.teamId, data.teams)} · {player.position}</small></span>
+              ))}
+            </div>
+          )}
+        </section>
+      </div>
+    </div>
+  );
+}

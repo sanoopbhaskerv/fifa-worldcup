@@ -1,6 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { fantasyGameData } from "../mocks/fantasy";
-import type { FantasyAdminParticipant, FantasyAiSettings, FantasyGameData, FantasyMatch, FantasyMatchResult, FantasyParticipant, FantasyParticipantInvite, FantasyPrediction, FantasyQuestion, FantasyQuestionTemplate, FantasySquadPlayer, FantasyTeam, FantasyTournament } from "../types/fantasy";
+import type { FantasyAdminParticipant, FantasyAiSettings, FantasyGameData, FantasyMatch, FantasyMatchResult, FantasyParticipant, FantasyParticipantInvite, FantasyPrediction, FantasyQuestion, FantasyQuestionTemplate, FantasySquadPlayer, FantasyTeam, FantasyTournament, FantasyUserPollKind } from "../types/fantasy";
 
 const fantasyGameQueryKey = (participantId?: string) => ["fantasy-game", fantasyGameData.tournament.id, participantId ?? "guest"] as const;
 const fantasyApiBaseUrl = (
@@ -25,6 +25,10 @@ interface CreateFantasyParticipantInput {
   favoriteTeamId: string;
 }
 
+type UpdateFantasyParticipantInput = CreateFantasyParticipantInput & {
+  participantId: string;
+};
+
 interface FantasyParticipantsResponse {
   participants: FantasyAdminParticipant[];
   game: FantasyGameData;
@@ -33,6 +37,11 @@ interface FantasyParticipantsResponse {
 interface CreateFantasyParticipantResponse {
   participant: FantasyParticipant;
   invite: FantasyParticipantInvite;
+  game: FantasyGameData;
+}
+
+interface UpdateFantasyParticipantResponse {
+  participant: FantasyParticipant;
   game: FantasyGameData;
 }
 
@@ -181,6 +190,18 @@ interface GenerateFantasyPollsResponse {
   game: FantasyGameData;
 }
 
+interface CreateFantasyUserPollInput {
+  participantId: string;
+  matchId: string;
+  kind: FantasyUserPollKind;
+  text?: string;
+}
+
+interface CreateFantasyUserPollResponse {
+  question: FantasyQuestion;
+  game: FantasyGameData;
+}
+
 interface SubmitFantasyPredictionInput {
   questionId: string;
   answer: string | string[];
@@ -238,6 +259,32 @@ const fetchFantasyParticipants = async (): Promise<FantasyParticipantsResponse> 
 };
 
 const createFantasyParticipant = async (input: CreateFantasyParticipantInput): Promise<CreateFantasyParticipantResponse> => {
+  const response = await fetch(fantasyApiUrl("/api/fantasy/participants"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error?.message ?? "Could not create participant.");
+  }
+  return (await response.json()) as CreateFantasyParticipantResponse;
+};
+
+const updateFantasyParticipant = async ({ participantId, ...input }: UpdateFantasyParticipantInput): Promise<UpdateFantasyParticipantResponse> => {
+  const response = await fetch(fantasyApiUrl(`/api/fantasy/participants/${encodeURIComponent(participantId)}`), {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error?.message ?? "Could not update player profile.");
+  }
+  return (await response.json()) as UpdateFantasyParticipantResponse;
+};
+
+const createFantasyAdminParticipant = async (input: CreateFantasyParticipantInput): Promise<CreateFantasyParticipantResponse> => {
   const response = await fetch(fantasyApiUrl("/api/fantasy/admin/participants"), {
     method: "POST",
     headers: { "content-type": "application/json" },
@@ -417,6 +464,19 @@ const generateFantasyPolls = async (input: GenerateFantasyPollsInput): Promise<G
   return (await response.json()) as GenerateFantasyPollsResponse;
 };
 
+const createFantasyUserPoll = async (input: CreateFantasyUserPollInput): Promise<CreateFantasyUserPollResponse> => {
+  const response = await fetch(fantasyApiUrl("/api/fantasy/polls"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error?.message ?? "Could not create fantasy poll.");
+  }
+  return (await response.json()) as CreateFantasyUserPollResponse;
+};
+
 const submitFantasyPrediction = async ({
   questionId,
   participantId = fantasyGameData.activeParticipantId,
@@ -491,6 +551,39 @@ export const useJoinFantasyGame = () => {
 };
 
 /**
+ * Creates a participant from the public signup/guest flow.
+ *
+ * @returns TanStack mutation for player signup.
+ */
+export const useCreateFantasySignup = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createFantasyParticipant,
+    onSuccess: ({ game, participant }) => {
+      queryClient.setQueryData(fantasyGameQueryKey(participant.id), game);
+      queryClient.invalidateQueries({ queryKey: ["fantasy-participants", fantasyGameData.tournament.id] });
+    },
+  });
+};
+
+/**
+ * Updates the current participant profile and refreshes the active game cache.
+ *
+ * @param participantId - Active participant cache key.
+ * @returns TanStack mutation for profile updates.
+ */
+export const useUpdateFantasyParticipant = (participantId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateFantasyParticipant,
+    onSuccess: ({ game, participant }) => {
+      queryClient.setQueryData(fantasyGameQueryKey(participantId ?? participant.id), game);
+      queryClient.invalidateQueries({ queryKey: ["fantasy-participants", fantasyGameData.tournament.id] });
+    },
+  });
+};
+
+/**
  * Loads admin participant rows with invite metadata.
  *
  * @returns TanStack query result for participant administration.
@@ -510,7 +603,7 @@ export const useFantasyParticipants = () =>
 export const useCreateFantasyParticipant = (participantId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: createFantasyParticipant,
+    mutationFn: createFantasyAdminParticipant,
     onSuccess: ({ game }) => {
       queryClient.invalidateQueries({ queryKey: ["fantasy-participants", fantasyGameData.tournament.id] });
       queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
@@ -746,6 +839,22 @@ export const useGenerateFantasyPolls = (participantId?: string) => {
     mutationFn: generateFantasyPolls,
     onSuccess: ({ game }) => {
       queryClient.invalidateQueries({ queryKey: ["fantasy-fixtures", fantasyGameData.tournament.id] });
+      queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
+    },
+  });
+};
+
+/**
+ * Creates one open user poll for a selected upcoming match.
+ *
+ * @param participantId - Active participant cache key.
+ * @returns TanStack mutation for user-created polls.
+ */
+export const useCreateFantasyUserPoll = (participantId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: createFantasyUserPoll,
+    onSuccess: ({ game }) => {
       queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
     },
   });

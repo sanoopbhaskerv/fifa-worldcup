@@ -99,6 +99,53 @@ describe("fantasy game API", () => {
     expect(response.body.game.participantInvites).toBeUndefined();
   });
 
+  it("creates a public signup participant and returns it as active", async () => {
+    const response = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/participants",
+      body: JSON.stringify({ name: "Guest Player", nickname: "Guest 2046", favoriteTeamId: "bra" }),
+      env: {},
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.participant).toMatchObject({
+      id: "p-guest-2046",
+      nickname: "Guest 2046",
+    });
+    expect(response.body.game.activeParticipantId).toBe("p-guest-2046");
+    expect(response.body.game.participantInvites).toBeUndefined();
+    expect(response.body.game.auditRecords.at(-1)).toMatchObject({
+      action: "PARTICIPANT_CREATED",
+      actorId: "self-signup",
+    });
+  });
+
+  it("updates a participant display profile", async () => {
+    const response = await handleApiRequest({
+      method: "PUT",
+      url: "/api/fantasy/participants/p-sanoop",
+      body: JSON.stringify({ name: "Sanoop B", nickname: "Penalty Boss", favoriteTeamId: "arg" }),
+      env: {},
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.participant).toMatchObject({
+      id: "p-sanoop",
+      name: "Sanoop B",
+      nickname: "Penalty Boss",
+      favoriteTeamId: "arg",
+      avatar: "PB",
+    });
+    expect(response.body.game.leaderboard.find((row) => row.participantId === "p-sanoop")).toMatchObject({
+      nickname: "Penalty Boss",
+      favoriteTeam: "Argentina",
+    });
+    expect(response.body.game.auditRecords.at(-1)).toMatchObject({
+      action: "PARTICIPANT_UPDATED",
+      actorId: "p-sanoop",
+    });
+  });
+
   it("lists and updates admin fixtures", async () => {
     const listResponse = await handleApiRequest({
       method: "GET",
@@ -437,6 +484,52 @@ describe("fantasy game API", () => {
       action: "QUESTIONS_PUBLISHED",
       entityId: "bra-arg",
     });
+  });
+
+  it("creates a user poll with player options from the selected match squads", async () => {
+    const response = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/polls",
+      body: JSON.stringify({
+        participantId: "p-sanoop",
+        matchId: "bra-arg",
+        kind: "FIRST_GOAL_SCORER",
+      }),
+      env: {},
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.question).toMatchObject({
+      matchId: "bra-arg",
+      category: "FIRST_GOAL_SCORER",
+      status: "OPEN",
+      text: "Who scores the first goal?",
+    });
+    expect(response.body.question.options).toEqual(expect.arrayContaining(["Vinicius Jr", "Lionel Messi", "Own Goal", "No goal", "Other"]));
+    expect(response.body.game.questions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: response.body.question.id }),
+    ]));
+    expect(response.body.game.auditRecords.at(-1)).toMatchObject({
+      action: "USER_POLL_CREATED",
+      actorId: "p-sanoop",
+      metadata: { matchId: "bra-arg", kind: "FIRST_GOAL_SCORER" },
+    });
+  });
+
+  it("rejects user polls for completed matches", async () => {
+    const response = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/polls",
+      body: JSON.stringify({
+        participantId: "p-sanoop",
+        matchId: "eng-esp",
+        kind: "MATCH_WINNER",
+      }),
+      env: {},
+    });
+
+    expect(response.status).toBe(409);
+    expect(response.body.error.code).toBe("MATCH_NOT_UPCOMING");
   });
 
   it("rejects generated player options outside squad data", async () => {

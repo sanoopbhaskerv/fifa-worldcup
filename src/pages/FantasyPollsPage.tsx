@@ -1,4 +1,6 @@
+import { Link } from "react-router-dom";
 import { FantasyQuestionCard } from "../features/fantasy/FantasyQuestionCard";
+import { ArrowIcon } from "../components/Icons";
 import { useFantasy } from "../app/fantasy-context";
 import { useSubmitFantasyPrediction } from "../services/fantasy-queries";
 import { fantasyDeadlineLabel, fantasyMatchTitle, fantasyPredictionForQuestion, fantasyPublishedQuestions, fantasyQuestionsForMatch } from "../utils/fantasy";
@@ -21,6 +23,9 @@ export default function FantasyPollsPage() {
   return (
     <div className="page fantasy-page">
       <PageHeading eyebrow="Prediction polls" title="Published polls" description="Answer open match polls before lock time. Drafts stay hidden until an admin publishes them." />
+      <div className="fantasy-page-actions">
+        <Link to="/fantasy/create-poll">Create poll <ArrowIcon /></Link>
+      </div>
       <div className="fantasy-poll-groups">
         {pollMatches.length === 0 && (
           <section className="content-section fantasy-poll-group">

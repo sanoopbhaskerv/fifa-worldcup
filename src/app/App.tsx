@@ -12,7 +12,9 @@ const BracketPage = lazy(() => import("../pages/BracketPage"));
 const ScorersPage = lazy(() => import("../pages/ScorersPage"));
 const MatchPage = lazy(() => import("../pages/MatchPage"));
 const FantasyHomePage = lazy(() => import("../pages/FantasyHomePage"));
+const FantasyCreatePollPage = lazy(() => import("../pages/FantasyCreatePollPage"));
 const FantasyPollsPage = lazy(() => import("../pages/FantasyPollsPage"));
+const FantasyProfilePage = lazy(() => import("../pages/FantasyProfilePage"));
 const FantasyPredictionsPage = lazy(() => import("../pages/FantasyPredictionsPage"));
 const FantasyLeaderboardPage = lazy(() => import("../pages/FantasyLeaderboardPage"));
 const FantasyResultsPage = lazy(() => import("../pages/FantasyResultsPage"));
@@ -47,7 +49,9 @@ export const App = () => (
       </Route>
       <Route path="/fantasy" element={<FantasyLayout />}>
         <Route index element={<FantasyHomePage />} />
+        <Route path="create-poll" element={<FantasyCreatePollPage />} />
         <Route path="polls" element={<FantasyPollsPage />} />
+        <Route path="profile" element={<FantasyProfilePage />} />
         <Route path="predictions" element={<FantasyPredictionsPage />} />
         <Route path="leaderboard" element={<FantasyLeaderboardPage />} />
         <Route path="results" element={<FantasyResultsPage />} />

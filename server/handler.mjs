@@ -2,6 +2,8 @@ import { getLiveMatchDetails } from "./api-football.mjs";
 import { jsonError, ProviderError } from "./errors.mjs";
 import {
   createFantasyParticipant,
+  createFantasySignup,
+  createFantasyUserPoll,
   getFantasyGame,
   importFantasySquads,
   joinFantasyGame,
@@ -19,6 +21,7 @@ import {
   submitFantasyPrediction,
   updateFantasyAiSettings,
   updateFantasyFixture,
+  updateFantasyParticipant,
   updateFantasyQuestionTemplate,
   updateFantasySquadPlayer,
   updateFantasyTeam,
@@ -101,6 +104,19 @@ export const handleApiRequest = async ({
 
     if (requestMethod === "POST" && path === "/api/fantasy/join") {
       return response(200, await joinFantasyGame(parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
+    if (requestMethod === "POST" && path === "/api/fantasy/participants") {
+      return response(200, await createFantasySignup(parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
+    const participantMatch = path.match(/^\/api\/fantasy\/participants\/([^/]+)$/);
+    if (requestMethod === "PUT" && participantMatch) {
+      return response(200, await updateFantasyParticipant(decodeURIComponent(participantMatch[1]), parseJsonBody(body)), {
         "cache-control": "no-store",
       });
     }
@@ -208,6 +224,12 @@ export const handleApiRequest = async ({
 
     if (requestMethod === "POST" && path === "/api/fantasy/admin/polls/generate") {
       return response(200, await generateFantasyPolls(parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
+    if (requestMethod === "POST" && path === "/api/fantasy/polls") {
+      return response(200, await createFantasyUserPoll(parseJsonBody(body)), {
         "cache-control": "no-store",
       });
     }

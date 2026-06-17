@@ -354,6 +354,14 @@ const validQuestionCategory = new Set(["MATCH_WINNER", "QUALIFIER", "RESULT_90",
 const validAiMode = new Set(["DISABLED", "TEMPLATE_ONLY", "ASSISTED"]);
 const validAiBanterLevel = new Set(["NONE", "LIGHT", "PLAYFUL"]);
 const playerFallbackOptions = new Set(["Other", "Own Goal", "No goal"]);
+const userPollTemplates = {
+  MATCH_WINNER: { category: "MATCH_WINNER", type: "SINGLE_CHOICE", text: "Who will win the match?", optionMode: "MATCH_RESULT", points: 5 },
+  FIRST_SCORING_TEAM: { category: "FIRST_SCORING_TEAM", type: "SINGLE_CHOICE", text: "Which team scores first?", optionMode: "FIRST_SCORING_TEAM", points: 4 },
+  TOTAL_GOALS: { category: "TOTAL_GOALS", type: "SCORE_RANGE", text: "Total goals in the match?", optionMode: "TOTAL_GOALS", points: 3 },
+  BOTH_TEAMS_SCORE: { category: "BOTH_TEAMS_SCORE", type: "SINGLE_CHOICE", text: "Will both teams score?", optionMode: "YES_NO", points: 3 },
+  FIRST_GOAL_SCORER: { category: "FIRST_GOAL_SCORER", type: "PLAYER", text: "Who scores the first goal?", optionMode: "FIRST_GOAL_SCORER", points: 8, maxOptions: 8 },
+  MAN_OF_THE_MATCH: { category: "MAN_OF_THE_MATCH", type: "PLAYER", text: "Who will be Man of the Match?", optionMode: "MAN_OF_THE_MATCH", points: 7, maxOptions: 8 },
+};
 
 const teamName = (game, teamId) => game.teams.find((team) => team.id === teamId)?.name ?? "Unknown";
 
@@ -641,6 +649,21 @@ const validateQuestionDraft = (game, matchId, question, status) => {
   }
 };
 
+const participantInput = (game, input) => {
+  if (!input?.name?.trim() || !input?.nickname?.trim()) {
+    throw new ProviderError("Name and display name are required.", 400, "INVALID_PARTICIPANT");
+  }
+  const favoriteTeamId = input.favoriteTeamId || game.teams[0]?.id;
+  if (!game.teams.some((team) => team.id === favoriteTeamId)) {
+    throw new ProviderError("Favorite team is invalid.", 400, "INVALID_PARTICIPANT");
+  }
+  return {
+    name: input.name.trim(),
+    nickname: input.nickname.trim(),
+    favoriteTeamId,
+  };
+};
+
 /**
  * Returns the in-memory fantasy prediction game state.
  *
@@ -697,14 +720,9 @@ export const listFantasyParticipants = async () => {
  * @param input.favoriteTeamId - Favorite team id.
  * @returns Created participant, invite, and game payload.
  */
-export const createFantasyParticipant = async ({ name, nickname, favoriteTeamId }) => {
+export const createFantasyParticipant = async (input) => {
   const game = await gameState();
-  if (!name?.trim() || !nickname?.trim()) {
-    throw new ProviderError("Name and nickname are required.", 400, "INVALID_PARTICIPANT");
-  }
-  if (!game.teams.some((team) => team.id === favoriteTeamId)) {
-    throw new ProviderError("Favorite team is invalid.", 400, "INVALID_PARTICIPANT");
-  }
+  const { name, nickname, favoriteTeamId } = participantInput(game, input);
   const createdAt = new Date().toISOString();
   const baseId = `p-${slug(nickname) || slug(name) || "participant"}`;
   const duplicateCount = game.participants.filter((participant) => participant.id === baseId || participant.id.startsWith(`${baseId}-`)).length;
@@ -745,12 +763,69 @@ export const createFantasyParticipant = async ({ name, nickname, favoriteTeamId 
   };
   const updatedGame = await saveGame(nextGame, await audit({
     action: "PARTICIPANT_CREATED",
-    actorId: "admin",
+    actorId: input.actorId ?? "admin",
     entityId: participant.id,
     entityType: "PARTICIPANT",
     metadata: { favoriteTeamId },
   }));
   return { participant, invite, game: publicGame(updatedGame) };
+};
+
+/**
+ * Creates a participant from the public signup/guest flow and returns it as active.
+ *
+ * @param input - Participant creation fields.
+ * @returns Created participant, invite, and active game payload.
+ */
+export const createFantasySignup = async (input) => {
+  const created = await createFantasyParticipant({ ...input, actorId: "self-signup" });
+  return {
+    ...created,
+    game: withActiveParticipant(await gameState(), created.participant.id),
+  };
+};
+
+/**
+ * Updates the active user's display profile.
+ *
+ * @param participantId - Participant being updated.
+ * @param input - Editable profile fields.
+ * @returns Updated participant and active game payload.
+ */
+export const updateFantasyParticipant = async (participantId, input) => {
+  const game = await gameState();
+  const participant = game.participants.find((item) => item.id === participantId);
+  if (!participant) throw new ProviderError("Participant not found.", 404, "NOT_FOUND");
+  const { name, nickname, favoriteTeamId } = participantInput(game, {
+    name: input.name ?? participant.name,
+    nickname: input.nickname ?? participant.nickname,
+    favoriteTeamId: input.favoriteTeamId ?? participant.favoriteTeamId,
+  });
+  const updatedParticipant = {
+    ...participant,
+    name,
+    nickname,
+    favoriteTeamId,
+    avatar: avatar(nickname),
+  };
+  const favoriteTeam = game.teams.find((team) => team.id === favoriteTeamId)?.name ?? "Unknown";
+  const nextGame = {
+    ...game,
+    participants: game.participants.map((item) => item.id === participantId ? updatedParticipant : item),
+    leaderboard: game.leaderboard.map((row) => row.participantId === participantId ? {
+      ...row,
+      nickname,
+      favoriteTeam,
+    } : row),
+  };
+  const updatedGame = await saveGame(nextGame, await audit({
+    action: "PARTICIPANT_UPDATED",
+    actorId: participantId,
+    entityId: participantId,
+    entityType: "PARTICIPANT",
+    metadata: { favoriteTeamId },
+  }));
+  return { participant: updatedParticipant, game: withActiveParticipant(updatedGame, participantId) };
 };
 
 /**
@@ -1334,6 +1409,62 @@ export const generateFantasyPolls = async (input = {}) => {
     },
   }));
   return { fixtures: matchesToGenerate, questions: savedQuestions, game: publicGame(updatedGame) };
+};
+
+/**
+ * Creates one published user poll for an upcoming fixture from constrained templates.
+ *
+ * @param input - User poll creation fields.
+ * @returns Saved question and active game payload.
+ */
+export const createFantasyUserPoll = async (input = {}) => {
+  const game = await gameState();
+  const participantId = input.participantId;
+  if (!game.participants.some((participant) => participant.id === participantId)) {
+    throw new ProviderError("Participant not found.", 404, "NOT_FOUND");
+  }
+  const match = game.matches.find((item) => item.id === input.matchId);
+  if (!match) throw new ProviderError("Match not found.", 404, "NOT_FOUND");
+  if (match.status !== "SCHEDULED") {
+    throw new ProviderError("Polls can only be created for upcoming matches.", 409, "MATCH_NOT_UPCOMING");
+  }
+  const template = userPollTemplates[input.kind];
+  if (!template) {
+    throw new ProviderError("Poll type is invalid.", 400, "INVALID_QUESTION_DRAFT");
+  }
+  const options = optionsForTemplate(template, match, game);
+  if (options.length < 2) {
+    throw new ProviderError("This poll type has no valid options for the selected match.", 400, "NO_POLLS_GENERATED");
+  }
+  const nowId = new Date().toISOString().replaceAll(/[^0-9]/g, "");
+  const question = {
+    id: `user-${match.id}-${slug(input.kind)}-${slug(participantId)}-${nowId}`,
+    tournamentId: game.tournament.id,
+    matchId: match.id,
+    category: template.category,
+    type: template.type,
+    text: input.text?.trim() || template.text,
+    options,
+    points: template.points,
+    status: "OPEN",
+    closeAt: match.pollCloseAt,
+  };
+  validateQuestionDraft(game, match.id, question, "OPEN");
+  const nextGame = {
+    ...game,
+    questions: [
+      ...game.questions.filter((item) => item.id !== question.id),
+      question,
+    ],
+  };
+  const updatedGame = await saveGame(nextGame, await audit({
+    action: "USER_POLL_CREATED",
+    actorId: participantId,
+    entityId: question.id,
+    entityType: "MATCH",
+    metadata: { matchId: match.id, kind: input.kind },
+  }));
+  return { question, game: withActiveParticipant(updatedGame, participantId) };
 };
 
 /**

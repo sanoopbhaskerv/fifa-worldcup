@@ -1,12 +1,13 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ArrowIcon, CalendarIcon, HomeIcon, PlayerIcon, TableIcon, TrophyIcon } from "../components/Icons";
-import { useFantasyGame, useJoinFantasyGame } from "../services/fantasy-queries";
+import { useCreateFantasySignup, useFantasyGame, useJoinFantasyGame } from "../services/fantasy-queries";
 import { storage } from "../utils/storage";
 
 const fantasyNav = [
   { label: "Home", path: "/fantasy", icon: HomeIcon, end: true },
   { label: "Polls", path: "/fantasy/polls", icon: CalendarIcon },
+  { label: "Create", path: "/fantasy/create-poll", icon: CalendarIcon },
   { label: "Mine", path: "/fantasy/predictions", icon: PlayerIcon },
   { label: "Table", path: "/fantasy/leaderboard", icon: TableIcon },
   { label: "Results", path: "/fantasy/results", icon: TrophyIcon },
@@ -56,7 +57,7 @@ export const FantasyLayout = () => {
               <small>Prediction game</small>
               <strong>{tournament.name}</strong>
             </div>
-            <div className="fantasy-player-chip"><span>{activeParticipant?.avatar ?? "P"}</span><strong>{activeParticipant?.nickname ?? identity.nickname}</strong></div>
+            <NavLink className="fantasy-player-chip" to="/fantasy/profile"><span>{activeParticipant?.avatar ?? "P"}</span><strong>{activeParticipant?.nickname ?? identity.nickname}</strong></NavLink>
             <NavLink className="fantasy-home-link" to="/competitions/world-cup/2026">Scores <ArrowIcon /></NavLink>
           </div>
         </header>
@@ -85,6 +86,7 @@ export const FantasyLayout = () => {
               >
                 Change player
               </button>
+              <NavLink className="fantasy-link-button" to="/fantasy/profile">Edit display name</NavLink>
             </div>
           </aside>
           <main id="main-content" className="main-content">
@@ -102,7 +104,32 @@ export const FantasyLayout = () => {
 
 const FantasyJoinScreen = ({ onJoined }: { onJoined: (identity: { participantId: string; nickname: string }) => void }) => {
   const [inviteCode, setInviteCode] = useState("");
+  const [name, setName] = useState("");
+  const [nickname, setNickname] = useState("");
+  const [favoriteTeamId, setFavoriteTeamId] = useState("");
   const joinFantasy = useJoinFantasyGame();
+  const createSignup = useCreateFantasySignup();
+  const previewGame = useFantasyGame(undefined);
+  const teams = previewGame.data?.teams ?? [];
+  const selectedFavoriteTeamId = favoriteTeamId || teams[0]?.id || "";
+
+  const saveIdentity = (participant: { id: string; nickname: string }) => {
+    const nextIdentity = { participantId: participant.id, nickname: participant.nickname };
+    storage.setFantasyIdentity(nextIdentity);
+    onJoined(nextIdentity);
+  };
+
+  const createGuest = () => {
+    const guestNumber = Math.floor(1000 + Math.random() * 9000);
+    const guestNickname = `Guest ${guestNumber}`;
+    createSignup.mutate({
+      favoriteTeamId: selectedFavoriteTeamId,
+      name: guestNickname,
+      nickname: guestNickname,
+    }, {
+      onSuccess: ({ participant }) => saveIdentity(participant),
+    });
+  };
 
   return (
     <div className="app fantasy-app">
@@ -115,17 +142,14 @@ const FantasyJoinScreen = ({ onJoined }: { onJoined: (identity: { participantId:
             onSubmit={(event) => {
               event.preventDefault();
               joinFantasy.mutate({ inviteCode }, {
-                onSuccess: ({ participant }) => {
-                  const nextIdentity = { participantId: participant.id, nickname: participant.nickname };
-                  storage.setFantasyIdentity(nextIdentity);
-                  onJoined(nextIdentity);
-                },
+                onSuccess: ({ participant }) => saveIdentity(participant),
               });
             }}
           >
             <label htmlFor="fantasy-invite-code">Invite code</label>
             <input
               autoComplete="one-time-code"
+              className="fantasy-invite-input"
               id="fantasy-invite-code"
               onChange={(event) => setInviteCode(event.target.value)}
               placeholder="SANOOP2026"
@@ -136,6 +160,49 @@ const FantasyJoinScreen = ({ onJoined }: { onJoined: (identity: { participantId:
             </button>
           </form>
           {joinFantasy.isError && <p role="alert">{joinFantasy.error.message}</p>}
+          <div className="fantasy-join-divider"><span>or</span></div>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              createSignup.mutate({ favoriteTeamId: selectedFavoriteTeamId, name, nickname }, {
+                onSuccess: ({ participant }) => saveIdentity(participant),
+              });
+            }}
+          >
+            <label htmlFor="fantasy-signup-name">Name</label>
+            <input
+              autoComplete="name"
+              id="fantasy-signup-name"
+              onChange={(event) => setName(event.target.value)}
+              placeholder="Your name"
+              value={name}
+            />
+            <label htmlFor="fantasy-signup-nickname">Display name</label>
+            <input
+              autoComplete="nickname"
+              id="fantasy-signup-nickname"
+              onChange={(event) => setNickname(event.target.value)}
+              placeholder="Leaderboard name"
+              value={nickname}
+            />
+            <label htmlFor="fantasy-signup-team">Favorite team</label>
+            <select
+              id="fantasy-signup-team"
+              onChange={(event) => setFavoriteTeamId(event.target.value)}
+              value={selectedFavoriteTeamId}
+            >
+              {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
+            </select>
+            <div className="fantasy-join-actions">
+              <button className="button button--primary" disabled={createSignup.isPending || !name.trim() || !nickname.trim() || !selectedFavoriteTeamId} type="submit">
+                {createSignup.isPending ? "Creating..." : "Create player"}
+              </button>
+              <button disabled={createSignup.isPending || !selectedFavoriteTeamId} onClick={createGuest} type="button">
+                Play as guest
+              </button>
+            </div>
+          </form>
+          {createSignup.isError && <p role="alert">{createSignup.error.message}</p>}
         </section>
       </main>
     </div>
