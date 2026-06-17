@@ -7,6 +7,7 @@ describe("API football provider backend base URL", () => {
   });
 
   it("uses the Lambda backend URL when configured", async () => {
+    vi.stubEnv("VITE_BACKEND_API_BASE_URL", "");
     vi.stubEnv("VITE_FANTASY_API_BASE_URL", "https://lambda.example/");
     vi.resetModules();
 

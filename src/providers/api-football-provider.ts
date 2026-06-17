@@ -3,8 +3,8 @@ import type { CompetitionData, Match, MatchDetails } from "../types/domain";
 import type { FootballDataProvider } from "./football-provider";
 
 export const backendApiBaseUrl = (
-  import.meta.env.VITE_BACKEND_API_BASE_URL ??
-  import.meta.env.VITE_FANTASY_API_BASE_URL ??
+  import.meta.env.VITE_BACKEND_API_BASE_URL ||
+  import.meta.env.VITE_FANTASY_API_BASE_URL ||
   ""
 ).replace(/\/$/, "");
 
