@@ -13,6 +13,9 @@ import {
   publishFantasyScores,
   saveFantasyQuestionDrafts,
   saveFantasyResult,
+  seedFantasyWorldCupSquads,
+  syncFantasyFixturesFromProvider,
+  generateFantasyPolls,
   submitFantasyPrediction,
   updateFantasyAiSettings,
   updateFantasyFixture,
@@ -157,6 +160,12 @@ export const handleApiRequest = async ({
       });
     }
 
+    if (requestMethod === "POST" && path === "/api/fantasy/admin/squads/seed-world-cup-2026") {
+      return response(200, await seedFantasyWorldCupSquads(parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
     const teamMatch = path.match(/^\/api\/fantasy\/admin\/teams\/([^/]+)$/);
     if (requestMethod === "PUT" && teamMatch) {
       return response(200, await updateFantasyTeam(decodeURIComponent(teamMatch[1]), parseJsonBody(body)), {
@@ -177,6 +186,12 @@ export const handleApiRequest = async ({
       });
     }
 
+    if (requestMethod === "POST" && path === "/api/fantasy/admin/fixtures/sync-live") {
+      return response(200, await syncFantasyFixturesFromProvider(env, parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
     const fixtureMatch = path.match(/^\/api\/fantasy\/admin\/fixtures\/([^/]+)$/);
     if (requestMethod === "PUT" && fixtureMatch) {
       return response(200, await updateFantasyFixture(decodeURIComponent(fixtureMatch[1]), parseJsonBody(body)), {
@@ -187,6 +202,12 @@ export const handleApiRequest = async ({
     const questionDraftMatch = path.match(/^\/api\/fantasy\/admin\/questions\/([^/]+)\/drafts$/);
     if (requestMethod === "POST" && questionDraftMatch) {
       return response(200, await saveFantasyQuestionDrafts(decodeURIComponent(questionDraftMatch[1]), parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
+    if (requestMethod === "POST" && path === "/api/fantasy/admin/polls/generate") {
+      return response(200, await generateFantasyPolls(parseJsonBody(body)), {
         "cache-control": "no-store",
       });
     }

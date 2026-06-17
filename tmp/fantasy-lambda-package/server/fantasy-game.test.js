@@ -1,10 +1,14 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { handleApiRequest } from "./handler.mjs";
 import { getFantasyStorageRecords, resetFantasyGame } from "./fantasy-game.mjs";
 
 describe("fantasy game API", () => {
   beforeEach(async () => {
     await resetFantasyGame();
+  });
+
+  afterEach(() => {
+    vi.unstubAllGlobals();
   });
 
   it("serves the local fantasy prediction game state", async () => {
@@ -210,6 +214,113 @@ describe("fantasy game API", () => {
     expect(playerResponse.body.game.auditRecords.at(-1)).toMatchObject({
       action: "SQUAD_PLAYER_UPDATED",
       entityId: "bra-neymar",
+    });
+  });
+
+  it("seeds bundled World Cup squads into fantasy storage", async () => {
+    const response = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/squads/seed-world-cup-2026",
+      body: JSON.stringify({}),
+      env: {},
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.teams).toHaveLength(48);
+    expect(response.body.squadPlayers).toHaveLength(1248);
+    expect(response.body.game.auditRecords.at(-1)).toMatchObject({
+      action: "WORLD_CUP_SQUADS_SEEDED",
+      entityType: "SQUAD",
+      metadata: { teamCount: 48, playerCount: 1248 },
+    });
+  });
+
+  it("syncs live provider fixtures and generates real match polls", async () => {
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      const href = String(url);
+      if (href.includes("/matches?season=2026")) {
+        return new Response(JSON.stringify({
+          matches: [
+            {
+              id: 100,
+              utcDate: "2026-06-20T18:00:00Z",
+              status: "TIMED",
+              stage: "GROUP_STAGE",
+              group: "GROUP_D",
+              matchday: 1,
+              homeTeam: { id: 1, name: "Brazil", shortName: "Brazil", tla: "BRA" },
+              awayTeam: { id: 2, name: "Argentina", shortName: "Argentina", tla: "ARG" },
+              score: { fullTime: { home: null, away: null } },
+            },
+            {
+              id: 101,
+              utcDate: "2026-06-21T18:00:00Z",
+              status: "TIMED",
+              stage: "GROUP_STAGE",
+              group: "GROUP_F",
+              matchday: 1,
+              homeTeam: { id: 3, name: "England", shortName: "England", tla: "ENG" },
+              awayTeam: { id: 4, name: "Spain", shortName: "Spain", tla: "ESP" },
+              score: { fullTime: { home: null, away: null } },
+            },
+          ],
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (href.includes("/standings?season=2026")) {
+        return new Response(JSON.stringify({ standings: [] }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (href.includes("/scorers?season=2026")) {
+        return new Response(JSON.stringify({ scorers: [] }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response(JSON.stringify({}), { status: 404, headers: { "content-type": "application/json" } });
+    }));
+
+    const syncResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/fixtures/sync-live",
+      body: JSON.stringify({ replaceExisting: true }),
+      env: { FOOTBALL_DATA_API_KEY: "test-key", FOOTBALL_DATA_BASE_URL: "https://fd.test/v4" },
+    });
+    const generateResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/polls/generate",
+      body: JSON.stringify({ limit: 1, status: "OPEN", replaceExisting: true }),
+      env: {},
+    });
+
+    expect(syncResponse.status).toBe(200);
+    expect(syncResponse.body.fixtures).toEqual([
+      expect.objectContaining({
+        id: "fd-100",
+        homeTeamId: "bra",
+        awayTeamId: "arg",
+        pollCloseAt: "2026-06-20T17:45:00.000Z",
+      }),
+      expect.objectContaining({
+        id: "fd-101",
+        homeTeamId: "eng",
+        awayTeamId: "esp",
+      }),
+    ]);
+    expect(syncResponse.body.game.questions.some((question) => question.matchId === "bra-arg")).toBe(false);
+    expect(generateResponse.status).toBe(200);
+    expect(generateResponse.body.fixtures).toHaveLength(1);
+    expect(generateResponse.body.questions).toEqual(expect.arrayContaining([
+      expect.objectContaining({
+        id: "draft-fd-100-match-result",
+        matchId: "fd-100",
+        status: "OPEN",
+        options: ["Brazil", "Argentina", "Draw"],
+      }),
+      expect.objectContaining({
+        matchId: "fd-100",
+        type: "PLAYER",
+        status: "OPEN",
+      }),
+    ]));
+    expect(generateResponse.body.game.auditRecords.at(-1)).toMatchObject({
+      action: "POLLS_GENERATED_AND_PUBLISHED",
+      metadata: { matchCount: 1, status: "OPEN" },
     });
   });
 
