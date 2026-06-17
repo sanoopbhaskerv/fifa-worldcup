@@ -14,7 +14,10 @@ export const fantasyParticipant = (participantId: string, participants: FantasyP
   participants.find((participant) => participant.id === participantId);
 
 export const fantasyQuestionsForMatch = (matchId: string, questions: FantasyQuestion[]) =>
-  questions.filter((question) => question.matchId === matchId);
+  questions.filter((question) => question.matchId === matchId && question.status !== "DRAFT");
+
+export const fantasyPublishedQuestions = (questions: FantasyQuestion[]) =>
+  questions.filter((question) => question.status !== "DRAFT");
 
 export const fantasyOpenQuestions = (data: FantasyGameData) =>
   data.questions.filter((question) => question.status === "OPEN");

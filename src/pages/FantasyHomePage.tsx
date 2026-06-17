@@ -13,7 +13,7 @@ import { formatDate, formatKickoff } from "../utils/football";
 export default function FantasyHomePage() {
   const { data } = useFantasy();
   const activeRow = data.leaderboard.find((row) => row.participantId === data.activeParticipantId);
-  const nextMatch = data.matches.find((match) => match.status === "SCHEDULED") ?? data.matches[0];
+  const nextMatch = data.matches.find((match) => match.status !== "COMPLETED" && fantasyQuestionsForMatch(match.id, data.questions).length > 0);
   const openQuestions = fantasyOpenQuestions(data);
   const nextQuestions = nextMatch ? fantasyQuestionsForMatch(nextMatch.id, data.questions) : [];
   const homeCandidates = nextMatch ? fantasySquadCandidates(nextMatch.homeTeamId, data.squadPlayers).slice(0, 3) : [];
@@ -41,7 +41,7 @@ export default function FantasyHomePage() {
         <article><span>Badge</span><strong>{activeRow?.badges[0] ?? "None"}</strong><small>current fun title</small></article>
       </section>
 
-      {nextMatch && (
+      {nextMatch ? (
         <section className="fantasy-feature-match">
           <div className="section-heading">
             <div><span className="eyebrow">Next poll set</span><h2>{fantasyMatchTitle(nextMatch, data.teams)}</h2></div>
@@ -65,6 +65,14 @@ export default function FantasyHomePage() {
               <span key={player.id}>{player.name}<small>{fantasyTeamName(player.teamId, data.teams)} · {player.position}</small></span>
             ))}
           </div>
+        </section>
+      ) : (
+        <section className="content-section fantasy-feature-match">
+          <div className="section-heading">
+            <div><span className="eyebrow">Next poll set</span><h2>No published polls yet</h2></div>
+            <Link to="/fantasy/admin/polls">Open admin <ArrowIcon /></Link>
+          </div>
+          <p>Sync fixtures, generate drafts, then publish the first match polls.</p>
         </section>
       )}
 

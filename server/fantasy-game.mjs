@@ -1283,7 +1283,7 @@ export const generateFantasyPolls = async (input = {}) => {
   }
 
   const matchesToGenerate = game.matches
-    .filter((match) => match.status !== "COMPLETED")
+    .filter((match) => match.status === "SCHEDULED")
     .filter((match) => !requestedIds || requestedIds.has(match.id))
     .sort((left, right) => left.kickoff.localeCompare(right.kickoff))
     .slice(0, requestedIds ? game.matches.length : limit);

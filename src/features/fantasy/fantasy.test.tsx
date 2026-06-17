@@ -9,6 +9,7 @@ import { fantasyGameData } from "../../mocks/fantasy";
 import { FantasyLeaderboard } from "./FantasyLeaderboard";
 import { FantasyQuestionCard } from "./FantasyQuestionCard";
 import FantasyHomePage from "../../pages/FantasyHomePage";
+import FantasyPollsPage from "../../pages/FantasyPollsPage";
 import FantasyAdminScoreReviewPage from "../../pages/FantasyAdminScoreReviewPage";
 import FantasyAdminSquadsPage from "../../pages/FantasyAdminSquadsPage";
 import FantasyAdminPollsPage from "../../pages/FantasyAdminPollsPage";
@@ -73,6 +74,23 @@ describe("fantasy prediction game", () => {
     expect(screen.getByRole("heading", { name: "World Cup Friends League" })).toBeInTheDocument();
     expect(screen.getByText("Brazil vs Argentina")).toBeInTheDocument();
     expect(screen.getByText("Vinicius Jr")).toBeInTheDocument();
+  });
+
+  it("hides draft-only polls from the player polls page", () => {
+    vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({
+      data: {
+        ...fantasyGameData,
+        questions: fantasyGameData.questions
+          .filter((question) => question.matchId === "bra-arg")
+          .map((question) => ({ ...question, status: "DRAFT" })),
+      },
+    });
+
+    renderWithQueryClient(<FantasyPollsPage />);
+
+    expect(screen.getByRole("heading", { name: "No published polls yet" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Brazil vs Argentina" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Tournament-long")).not.toBeInTheDocument();
   });
 
   it("renders admin score review rows", () => {
