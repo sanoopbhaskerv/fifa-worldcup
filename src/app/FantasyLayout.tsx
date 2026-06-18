@@ -2,6 +2,7 @@ import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ArrowIcon, CalendarIcon, HomeIcon, PlayerIcon, TableIcon, TrophyIcon } from "../components/Icons";
 import { PasswordField } from "../components/PasswordField";
+import { ThemeSwitcher } from "../components/ThemeSwitcher";
 import { useCreateFantasySignup, useFantasyGame, useJoinFantasyGame, useLoginFantasyParticipant } from "../services/fantasy-queries";
 import { storage, type StoredFantasyIdentity } from "../utils/storage";
 
@@ -61,7 +62,10 @@ export const FantasyLayout = () => {
               <strong>{tournament.name}</strong>
             </div>
             <NavLink className="fantasy-player-chip" to="/fantasy/profile"><span>{activeParticipant?.avatar ?? "P"}</span><strong>{activeParticipant?.nickname ?? identity.nickname}</strong></NavLink>
-            <NavLink className="fantasy-home-link" to="/competitions/world-cup/2026">Scores <ArrowIcon /></NavLink>
+            <div className="fantasy-topbar__actions">
+              <ThemeSwitcher compact />
+              <NavLink className="fantasy-home-link" to="/competitions/world-cup/2026">Scores <ArrowIcon /></NavLink>
+            </div>
           </div>
         </header>
         <div className="app-frame fantasy-frame">

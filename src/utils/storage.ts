@@ -1,8 +1,11 @@
+import { defaultTheme, resolveTheme, type ThemeId } from "./theme";
+
 const KEYS = {
   favorites: "full-time:favorites:v1",
   fantasyIdentity: "full-time:fantasy-identity:v1",
   recents: "full-time:recents:v1",
   selection: "full-time:last-selection:v1",
+  theme: "full-time:theme:v1",
 } as const;
 
 export interface StoredSelection {
@@ -75,4 +78,10 @@ export const storage = {
   },
   getSelection: () => read<StoredSelection | null>(KEYS.selection, null),
   setSelection: (value: StoredSelection) => write(KEYS.selection, value),
+  getStoredTheme: () => {
+    const value = read<string | null>(KEYS.theme, null);
+    return value ? resolveTheme(value) : null;
+  },
+  getTheme: () => resolveTheme(read<string>(KEYS.theme, defaultTheme)),
+  setTheme: (value: ThemeId) => write(KEYS.theme, value),
 };

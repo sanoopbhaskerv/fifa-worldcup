@@ -2,6 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { BracketIcon, CalendarIcon, ChevronIcon, HomeIcon, PlayerIcon, SignalIcon, TableIcon, TrophyIcon } from "../components/Icons";
+import { ThemeSwitcher } from "../components/ThemeSwitcher";
 import { CompetitionPicker } from "../features/competitions/CompetitionPicker";
 import { PullToRefreshIndicator } from "../components/PullToRefreshIndicator";
 import { useFavorites } from "../hooks/use-favorites";
@@ -97,7 +98,10 @@ export const CompetitionLayout = () => {
               <span className="competition-emblem" style={{ "--competition-accent": competition.accent } as React.CSSProperties}>{competition.emblem}</span>
               <span><small>Competition</small><strong>{competition.shortName}</strong></span><ChevronIcon />
             </button>
-            <label className="edition-select"><span className="sr-only">Edition</span><select value={editionId} onChange={(event) => selectEdition(event.target.value)}>{competition.editions.map((edition) => <option value={edition.id} key={edition.id}>{edition.name}</option>)}</select></label>
+            <div className="topbar__actions">
+              <ThemeSwitcher compact />
+              <label className="edition-select"><span className="sr-only">Edition</span><select value={editionId} onChange={(event) => selectEdition(event.target.value)}>{competition.editions.map((edition) => <option value={edition.id} key={edition.id}>{edition.name}</option>)}</select></label>
+            </div>
           </div>
         </header>
         <div className="app-frame">

@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { storage } from "./storage";
+import { defaultTheme } from "./theme";
 
 describe("storage", () => {
   it("persists favorites and selections", () => {
@@ -21,5 +22,20 @@ describe("storage", () => {
     storage.clearFantasyIdentity();
 
     expect(storage.getFantasyIdentity()).toBeNull();
+  });
+
+  it("persists theme and falls back for invalid values", () => {
+    storage.setTheme("neon");
+    expect(storage.getTheme()).toBe("neon");
+    expect(storage.getStoredTheme()).toBe("neon");
+
+    localStorage.setItem("full-time:theme:v1", JSON.stringify("unknown-theme"));
+    expect(storage.getTheme()).toBe(defaultTheme);
+    expect(storage.getStoredTheme()).toBe(defaultTheme);
+  });
+
+  it("returns null when no explicit theme has been stored", () => {
+    localStorage.removeItem("full-time:theme:v1");
+    expect(storage.getStoredTheme()).toBeNull();
   });
 });

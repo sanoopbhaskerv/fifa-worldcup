@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowIcon, CalendarIcon, TableIcon, TrophyIcon } from "../components/Icons";
+import { ThemeSwitcher } from "../components/ThemeSwitcher";
 import { useFantasyGame } from "../services/fantasy-queries";
 import { storage } from "../utils/storage";
 import { fantasyDeadlineLabel, fantasyOpenQuestions } from "../utils/fantasy";
@@ -29,6 +30,7 @@ export default function HomePage() {
         <Link className="brand" to="/"><span className="brand__mark">F</span><span>FullTime</span></Link>
         <p>Football scores and a friends prediction game in one place.</p>
         <div className="home-auth-actions" aria-label="Fantasy account">
+          <ThemeSwitcher compact className="home-theme-switcher" />
           {fantasyIdentity ? (
             <Link to="/fantasy/profile">
               <span>{fantasyIdentity.nickname.slice(0, 2).toUpperCase()}</span>

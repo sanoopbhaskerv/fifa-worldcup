@@ -1,0 +1,58 @@
+:root {
+  color-scheme: dark;
+
+  --font-body: "Sora", "Avenir Next", "Segoe UI", system-ui, sans-serif;
+  --font-display: "Rajdhani", "Avenir Next Condensed", "Arial Narrow", system-ui, sans-serif;
+
+  --theme-canvas: #07130f;
+  --theme-surface: #0d1d17;
+  --theme-surface-2: #13261f;
+  --theme-surface-3: #193028;
+  --theme-text: #f7f8f2;
+  --theme-muted: #9dafa5;
+  --theme-line: rgba(255, 255, 255, 0.09);
+  --theme-accent: #c9ff47;
+  --theme-danger: #ff6b62;
+  --theme-warning: #ffca58;
+
+  --on-accent: #07130f;
+  --on-warning: #241a00;
+  --on-danger: #220605;
+  --on-cancelled: #ffc0bb;
+  --on-notice: #ffe3a0;
+
+  --topbar-bg: color-mix(in srgb, var(--canvas) 90%, transparent);
+  --bottom-nav-bg: color-mix(in srgb, var(--canvas) 96%, transparent);
+  --overlay-bg: color-mix(in srgb, var(--surface-2) 96%, transparent);
+  --overlay-border: color-mix(in srgb, var(--line) 100%, transparent);
+  --overlay-muted: color-mix(in srgb, var(--text) 55%, transparent);
+  --notice-border: color-mix(in srgb, var(--warning) 22%, transparent);
+  --notice-bg: color-mix(in srgb, var(--warning) 8%, transparent);
+  --chip-hover-border: color-mix(in srgb, var(--text) 20%, transparent);
+
+  --team-badge-seed: #678;
+  --team-badge-text: #ffffff;
+  --team-badge-light: #ffffff;
+  --team-badge-dark: #000000;
+  --form-draw-bg: #53635b;
+  --form-loss-bg: #78413e;
+  --football-tile-accent: #71d6ff;
+
+  --canvas: var(--theme-canvas);
+  --surface: var(--theme-surface);
+  --surface-2: var(--theme-surface-2);
+  --surface-3: var(--theme-surface-3);
+  --text: var(--theme-text);
+  --muted: var(--theme-muted);
+  --line: var(--theme-line);
+  --accent: var(--theme-accent);
+  --danger: var(--theme-danger);
+  --warning: var(--theme-warning);
+
+  --radius: 18px;
+  --shadow: 0 22px 60px rgba(0, 0, 0, 0.25);
+
+  --app-background: radial-gradient(circle at 82% -10%, color-mix(in srgb, var(--accent) 11%, transparent), transparent 28rem), var(--canvas);
+  --home-background: radial-gradient(circle at 80% -15%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 28rem), var(--canvas);
+  --join-background: radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 44%), var(--canvas);
+}

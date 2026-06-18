@@ -1,0 +1,59 @@
+:root[data-theme="pitch"] {
+  --theme-canvas: #07130f;
+  --theme-surface: #0d1d17;
+  --theme-surface-2: #13261f;
+  --theme-surface-3: #193028;
+  --theme-text: #f7f8f2;
+  --theme-muted: #9dafa5;
+  --theme-line: rgba(255, 255, 255, 0.09);
+  --theme-accent: #c9ff47;
+  --theme-danger: #ff6b62;
+  --theme-warning: #ffca58;
+  --on-accent: #07130f;
+  --football-tile-accent: #71d6ff;
+}
+
+:root[data-theme="ocean"] {
+  --theme-canvas: #081422;
+  --theme-surface: #11253a;
+  --theme-surface-2: #17314d;
+  --theme-surface-3: #1f3f60;
+  --theme-text: #eef6ff;
+  --theme-muted: #9fb6cb;
+  --theme-line: rgba(223, 239, 255, 0.15);
+  --theme-accent: #56d5ff;
+  --theme-danger: #ff7a82;
+  --theme-warning: #ffd166;
+  --on-accent: #062033;
+  --football-tile-accent: #7cc9ff;
+}
+
+:root[data-theme="sunset"] {
+  --theme-canvas: #1f0f12;
+  --theme-surface: #31181d;
+  --theme-surface-2: #3f1f25;
+  --theme-surface-3: #512a31;
+  --theme-text: #fff4ef;
+  --theme-muted: #c9a7a0;
+  --theme-line: rgba(255, 225, 214, 0.14);
+  --theme-accent: #ffb347;
+  --theme-danger: #ff6f7d;
+  --theme-warning: #ffd166;
+  --on-accent: #3a1f00;
+  --football-tile-accent: #ff8c6c;
+}
+
+:root[data-theme="neon"] {
+  --theme-canvas: #120b24;
+  --theme-surface: #1d1234;
+  --theme-surface-2: #28184a;
+  --theme-surface-3: #342060;
+  --theme-text: #f3edff;
+  --theme-muted: #b8a8d8;
+  --theme-line: rgba(238, 223, 255, 0.14);
+  --theme-accent: #7dff9a;
+  --theme-danger: #ff7db2;
+  --theme-warning: #ffd86b;
+  --on-accent: #07240f;
+  --football-tile-accent: #86b8ff;
+}
