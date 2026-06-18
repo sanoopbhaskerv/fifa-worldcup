@@ -226,6 +226,22 @@ describe("fantasy prediction game", () => {
     expect(screen.getByRole("button", { name: "Publish filtered upcoming" })).toBeDisabled();
   });
 
+  it("opens admin poll draft filters in a dialog while league stays outside", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({ data: fantasyGameData });
+
+    renderWithQueryClient(<FantasyAdminPollsPage />);
+
+    await user.click(screen.getByRole("button", { name: /Filters/ }));
+
+    const dialog = await screen.findByRole("dialog", { name: /Filter matches/ });
+    expect(screen.getByLabelText("League")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("Match")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("From date")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("To date")).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText("League")).not.toBeInTheDocument();
+  });
+
   it("renders poll response coverage for admin follow-up", () => {
     vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({
       data: {

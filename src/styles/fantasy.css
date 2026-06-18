@@ -1497,6 +1497,16 @@
 	opacity: .58;
 }
 
+.fantasy-admin-polls__inline-filters {
+	display: grid;
+	gap: 14px;
+}
+
+.fantasy-admin-polls__filter-trigger {
+	justify-content: center;
+	width: 100%;
+}
+
 .fantasy-player-grid {
 	display: grid;
 	gap: 8px;
@@ -2273,6 +2283,14 @@
   .fantasy-page-actions a {
     flex: 0 0 auto;
   }
+
+	.fantasy-admin-polls__inline-filters {
+		display: none;
+	}
+
+	.fantasy-admin-polls__filter-trigger {
+		display: inline-flex !important;
+	}
 }
 
 @media (min-width: 760px) {
@@ -2288,6 +2306,16 @@
   .fantasy-page-actions__filter-trigger {
     display: none !important;
   }
+
+	.fantasy-admin-polls__inline-filters {
+		display: grid;
+		gap: 14px;
+	}
+
+	.fantasy-admin-polls__filter-trigger {
+		display: none !important;
+	}
+
   .fantasy-filter-backdrop {
     align-items: center;
     padding: 30px;
