@@ -4,7 +4,7 @@ import { useFantasyFixtures, useSyncFantasyFixtures, useUpdateFantasyFixture } f
 import type { FantasyMatch } from "../types/fantasy";
 import { fantasyDeadlineLabel, fantasyMatchTitle } from "../utils/fantasy";
 import { formatDate, formatKickoff } from "../utils/football";
-import { PageHeading } from "./FixturesPage";
+import { PageHeading } from "../components/PageSections";
 
 const importanceOptions: FantasyMatch["importance"][] = ["NORMAL", "BIG_MATCH", "KNOCKOUT", "FINAL"];
 const statusOptions: FantasyMatch["status"][] = ["SCHEDULED", "LOCKED", "COMPLETED"];

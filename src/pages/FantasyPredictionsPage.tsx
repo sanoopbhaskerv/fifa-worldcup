@@ -1,6 +1,6 @@
 import { useFantasy } from "../app/fantasy-context";
 import { fantasyMatchTitle } from "../utils/fantasy";
-import { PageHeading } from "./FixturesPage";
+import { PageHeading } from "../components/PageSections";
 
 /**
  * Displays the active participant's submitted predictions.

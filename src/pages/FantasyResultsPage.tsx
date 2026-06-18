@@ -1,6 +1,6 @@
 import { useFantasy } from "../app/fantasy-context";
 import { fantasyMatchTitle, fantasyTeamName } from "../utils/fantasy";
-import { PageHeading } from "./FixturesPage";
+import { PageHeading } from "../components/PageSections";
 
 /**
  * Displays completed fantasy match results and recaps.

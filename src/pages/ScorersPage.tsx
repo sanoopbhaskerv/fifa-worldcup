@@ -1,6 +1,6 @@
 import { useCompetition } from "../app/competition-context";
 import { ScorerList } from "../features/scorers/ScorerList";
-import { PageHeading } from "./FixturesPage";
+import { PageHeading } from "../components/PageSections";
 
 /**
  * Displays top scorers for competitions with scorer data.

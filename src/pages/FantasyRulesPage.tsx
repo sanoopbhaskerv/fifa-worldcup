@@ -1,4 +1,4 @@
-import { PageHeading } from "./FixturesPage";
+import { PageHeading } from "../components/PageSections";
 
 const matchRules = [
   ["Winner", "5"],

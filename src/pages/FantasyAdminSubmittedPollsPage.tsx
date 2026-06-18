@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
 import { fantasyGroupName, fantasyMatchTitle, fantasyParticipant, fantasyParticipantIdsForGroup, fantasyQuestionsForGroup } from "../utils/fantasy";
 import { formatKickoff } from "../utils/football";
-import { PageHeading } from "./FixturesPage";
+import { PageHeading } from "../components/PageSections";
 
 const answerLabel = (answer: string | string[]) => Array.isArray(answer) ? answer.join(", ") : answer;
 

@@ -7,7 +7,7 @@ import type { FantasyUserPollKind } from "../types/fantasy";
 import { fantasyDeadlineLabel, fantasyMatchTitle, fantasyTeamName } from "../utils/fantasy";
 import { fantasyUserPollDefinitions, fantasyUserPollOptions } from "../utils/fantasy-user-polls";
 import { formatDate, formatKickoff } from "../utils/football";
-import { PageHeading } from "./FixturesPage";
+import { PageHeading } from "../components/PageSections";
 
 /**
  * Displays the player-facing poll creation workflow.

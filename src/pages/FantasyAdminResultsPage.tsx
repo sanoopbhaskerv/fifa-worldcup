@@ -2,7 +2,7 @@ import { Link } from "react-router-dom";
 import { ArrowIcon } from "../components/Icons";
 import { useFantasy } from "../app/fantasy-context";
 import { fantasyMatchTitle, fantasyTeamName } from "../utils/fantasy";
-import { PageHeading } from "./FixturesPage";
+import { PageHeading } from "../components/PageSections";
 
 /**
  * Displays the admin result-entry workspace.

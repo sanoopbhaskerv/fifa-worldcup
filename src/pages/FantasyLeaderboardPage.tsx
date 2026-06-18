@@ -1,6 +1,6 @@
 import { useFantasy } from "../app/fantasy-context";
 import { FantasyLeaderboard } from "../features/fantasy/FantasyLeaderboard";
-import { PageHeading } from "./FixturesPage";
+import { PageHeading } from "../components/PageSections";
 
 /**
  * Displays the full friends-league leaderboard and awards.

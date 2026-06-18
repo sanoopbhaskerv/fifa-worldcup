@@ -4,7 +4,7 @@ import { useGenerateFantasyPolls, useResetFantasyPolls, useSaveFantasyQuestionDr
 import { generateFantasyQuestionDraft, unknownFantasyPlayerOptions } from "../utils/fantasy-ai";
 import { fantasyDeadlineLabel, fantasyMatchTitle } from "../utils/fantasy";
 import { formatDate, formatKickoff } from "../utils/football";
-import { PageHeading } from "./FixturesPage";
+import { PageHeading } from "../components/PageSections";
 
 /**
  * Displays local AI-host-style poll drafts generated from templates and squad data.

@@ -3,7 +3,7 @@ import { useFantasy } from "../app/fantasy-context";
 import { useFantasySquads, useImportFantasySquads, useSeedFantasyWorldCupSquads, useUpdateFantasySquadPlayer, useUpdateFantasyTeam } from "../services/fantasy-queries";
 import type { FantasySquadPlayer, FantasyTeam } from "../types/fantasy";
 import { fantasyTeamName } from "../utils/fantasy";
-import { PageHeading } from "./FixturesPage";
+import { PageHeading } from "../components/PageSections";
 
 const positionOptions: FantasySquadPlayer["position"][] = ["GK", "DEF", "MID", "FWD"];
 const importPlaceholder = `teamName,fifaCode,group,playerName,position,shirtNumber,scorer,star,motm,boot,glove

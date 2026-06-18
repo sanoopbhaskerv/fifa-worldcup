@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
 import { useFantasyQuestionTemplates, useUpdateFantasyQuestionTemplate } from "../services/fantasy-queries";
 import type { FantasyMatchImportance, FantasyQuestionTemplate } from "../types/fantasy";
-import { PageHeading } from "./FixturesPage";
+import { PageHeading } from "../components/PageSections";
 
 const importanceOptions: FantasyMatchImportance[] = ["NORMAL", "BIG_MATCH", "KNOCKOUT", "FINAL"];
 

@@ -3,7 +3,7 @@ import { useFantasy } from "../app/fantasy-context";
 import { PasswordField } from "../components/PasswordField";
 import { useChangeFantasyPassword, useUpdateFantasyParticipant } from "../services/fantasy-queries";
 import { storage } from "../utils/storage";
-import { PageHeading } from "./FixturesPage";
+import { PageHeading } from "../components/PageSections";
 
 /**
  * Displays the active fantasy participant profile editor.

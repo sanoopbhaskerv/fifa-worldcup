@@ -4,7 +4,7 @@ import { useFantasy } from "../app/fantasy-context";
 import { usePublishFantasyScores } from "../services/fantasy-queries";
 import { buildFantasyScoreReview } from "../utils/fantasy-scoring";
 import { fantasyMatchTitle } from "../utils/fantasy";
-import { PageHeading } from "./FixturesPage";
+import { PageHeading } from "../components/PageSections";
 
 /**
  * Displays deterministic score-review rows for one match result.

@@ -1,6 +1,6 @@
 import { useCompetition } from "../app/competition-context";
 import { BracketView } from "../features/brackets/BracketView";
-import { PageHeading } from "./FixturesPage";
+import { PageHeading } from "../components/PageSections";
 
 /**
  * Displays the knockout bracket for competitions that expose tie data.

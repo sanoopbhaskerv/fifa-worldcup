@@ -1,10 +1,10 @@
 import { useEffect, useMemo, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { useCompetition } from "../app/competition-context";
-import { MatchCard } from "../features/matches/MatchCard";
 import type { MatchStatus } from "../types/domain";
-import { filterMatches, formatDate, groupMatchesByDate } from "../utils/football";
+import { filterMatches, groupMatchesByDate } from "../utils/football";
 import { EmptyState, MatchFilters, PageHeading } from "../components/PageSections";
+import { DateMatchGroups } from "../components/DateMatchGroups";
 
 const filters: { label: string; value: "ALL" | MatchStatus }[] = [
   { label: "All", value: "ALL" }, { label: "Live", value: "LIVE" }, { label: "Upcoming", value: "UPCOMING" },
@@ -84,10 +84,13 @@ export default function FixturesPage() {
         onStageChange={(value) => update("stage", value)}
         stageOptions={stages}
       />
-      {groupedEntries.map(([date, dateMatches]) => <section className="date-group" id={`fixtures-${date}`} key={date}><h2><span>{date === targetDate && <em className="date-group__anchor">Current</em>}{formatDate(date, true)}</span><small>{dateMatches?.length} matches</small></h2><div className="match-list">{dateMatches?.map((match) => <MatchCard key={match.id} match={match} />)}</div></section>)}
+      <DateMatchGroups
+        groupedEntries={groupedEntries}
+        countLabel="matches"
+        targetDate={targetDate}
+        sectionIdPrefix="fixtures"
+      />
       {matches.length === 0 && <EmptyState title="No fixtures found" body="Try another status, stage, or search term." />}
     </div>
   );
 }
-
-export { EmptyState, PageHeading } from "../components/PageSections";

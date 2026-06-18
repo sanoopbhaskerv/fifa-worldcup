@@ -1,7 +1,7 @@
 import { useCompetition } from "../app/competition-context";
 import { StandingsTable } from "../features/standings/StandingsTable";
 import type { Standing } from "../types/domain";
-import { PageHeading } from "./FixturesPage";
+import { PageHeading } from "../components/PageSections";
 
 /**
  * Displays one standings table per group or a single league table.

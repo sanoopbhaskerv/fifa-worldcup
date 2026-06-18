@@ -3,7 +3,7 @@ import { useFantasy } from "../app/fantasy-context";
 import { useUpdateFantasyTournament } from "../services/fantasy-queries";
 import type { FantasyTournament } from "../types/fantasy";
 import { formatDate } from "../utils/football";
-import { PageHeading } from "./FixturesPage";
+import { PageHeading } from "../components/PageSections";
 
 const statusOptions: FantasyTournament["status"][] = ["UPCOMING", "LIVE", "COMPLETE"];
 

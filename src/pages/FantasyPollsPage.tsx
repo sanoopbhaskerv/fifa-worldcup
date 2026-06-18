@@ -6,7 +6,7 @@ import { useFantasy } from "../app/fantasy-context";
 import { useSubmitFantasyPrediction, useSubmitFantasyPredictions } from "../services/fantasy-queries";
 import { fantasyDeadlineLabel, fantasyMatchTitle, fantasyPredictionForQuestion, fantasyPublishedQuestions, fantasyQuestionsForGroup, fantasyQuestionsForMatch } from "../utils/fantasy";
 import { formatDate, formatKickoff } from "../utils/football";
-import { PageHeading } from "./FixturesPage";
+import { PageHeading } from "../components/PageSections";
 import type { FantasyQuestion } from "../types/fantasy";
 
 /**

@@ -3,7 +3,7 @@ import { useFantasy } from "../app/fantasy-context";
 import { useCreateFantasyParticipant, useFantasyGroups, useFantasyParticipants, useSaveFantasyGroup, useUpdateFantasyParticipantCredentials, useUpdateFantasyParticipantRole } from "../services/fantasy-queries";
 import type { FantasyAdminParticipant } from "../types/fantasy";
 import { fantasyTeamName } from "../utils/fantasy";
-import { PageHeading } from "./FixturesPage";
+import { PageHeading } from "../components/PageSections";
 
 /**
  * Displays friend participant administration and invite codes.
