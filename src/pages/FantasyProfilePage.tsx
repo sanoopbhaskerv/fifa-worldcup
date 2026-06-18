@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
 import { LabeledInput, LabeledSelect } from "../components/FormFields";
+import { ErrorMessage, SuccessMessage } from "../components/FeedbackMessages";
 import { PasswordField } from "../components/PasswordField";
 import { useChangeFantasyPassword, useUpdateFantasyParticipant } from "../services/fantasy-queries";
 import { storage } from "../utils/storage";
@@ -65,8 +66,8 @@ export default function FantasyProfilePage() {
             {updateParticipant.isPending ? "Saving..." : "Save profile"}
           </button>
         </form>
-        {updateParticipant.isSuccess && <p className="fantasy-success-note">Profile saved.</p>}
-        {updateParticipant.isError && <p role="alert">{updateParticipant.error.message}</p>}
+        {updateParticipant.isSuccess && <SuccessMessage>Profile saved.</SuccessMessage>}
+        {updateParticipant.isError && <ErrorMessage>{updateParticipant.error.message}</ErrorMessage>}
       </section>
       <section className="content-section fantasy-profile-editor">
         <div className="section-heading">
@@ -113,13 +114,13 @@ export default function FantasyProfilePage() {
             placeholder="Repeat password"
             value={newPasswordConfirm}
           />
-          {newPasswordConfirm.length > 0 && !passwordMatches && <p role="alert">Passwords do not match.</p>}
+          {newPasswordConfirm.length > 0 && !passwordMatches && <ErrorMessage>Passwords do not match.</ErrorMessage>}
           <button className="button button--primary" disabled={changePassword.isPending || newPassword.length < 8 || !passwordMatches || (Boolean(participant.passwordChangedAt) && currentPassword.length === 0)} type="submit">
             {changePassword.isPending ? "Saving..." : participant.passwordChangedAt ? "Change password" : "Set password"}
           </button>
         </form>
-        {changePassword.isSuccess && <p className="fantasy-success-note">Password updated.</p>}
-        {changePassword.isError && <p role="alert">{changePassword.error.message}</p>}
+        {changePassword.isSuccess && <SuccessMessage>Password updated.</SuccessMessage>}
+        {changePassword.isError && <ErrorMessage>{changePassword.error.message}</ErrorMessage>}
       </section>
     </div>
   );

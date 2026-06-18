@@ -24,6 +24,15 @@ type LabeledInputProps = {
   placeholder?: string;
   ariaLabel?: string;
   autoComplete?: string;
+  minLength?: number;
+};
+
+type LabeledCheckboxProps = {
+  label: ReactNode;
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  className?: string;
+  ariaLabel?: string;
 };
 
 export const LabeledSelect = ({
@@ -60,6 +69,7 @@ export const LabeledInput = ({
   placeholder,
   ariaLabel,
   autoComplete,
+  minLength,
 }: LabeledInputProps) => (
   <label>
     {label}
@@ -69,10 +79,29 @@ export const LabeledInput = ({
       max={max}
       maxLength={maxLength}
       min={min}
+      minLength={minLength}
       placeholder={placeholder}
       type={type}
       value={value}
       onChange={(event) => onChange(event.target.value)}
     />
+  </label>
+);
+
+export const LabeledCheckbox = ({
+  label,
+  checked,
+  onChange,
+  className,
+  ariaLabel,
+}: LabeledCheckboxProps) => (
+  <label className={className}>
+    <input
+      aria-label={ariaLabel}
+      checked={checked}
+      onChange={(event) => onChange(event.target.checked)}
+      type="checkbox"
+    />
+    {label}
   </label>
 );

@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
-import { LabeledInput } from "../components/FormFields";
+import { LabeledCheckbox, LabeledInput } from "../components/FormFields";
+import { ErrorMessage, SuccessMessage } from "../components/FeedbackMessages";
 import { useFantasyQuestionTemplates, useUpdateFantasyQuestionTemplate } from "../services/fantasy-queries";
 import type { FantasyMatchImportance, FantasyQuestionTemplate } from "../types/fantasy";
 import { PageHeading } from "../components/PageSections";
@@ -41,7 +42,7 @@ export default function FantasyAdminQuestionTemplatesPage() {
         </aside>
         {activeTemplate && <QuestionTemplateEditor key={activeTemplate.id} template={activeTemplate} />}
       </div>
-      {templatesQuery.isError && <p role="alert">{templatesQuery.error.message}</p>}
+      {templatesQuery.isError && <ErrorMessage>{templatesQuery.error.message}</ErrorMessage>}
     </div>
   );
 }
@@ -97,25 +98,29 @@ const QuestionTemplateEditor = ({ template }: { template: FantasyQuestionTemplat
           <span>Type <strong>{template.type.replaceAll("_", " ")}</strong></span>
           <span>Options <strong>{template.optionMode.replaceAll("_", " ")}</strong></span>
         </div>
-        <label className="fantasy-toggle-row">
-          <input checked={enabled} onChange={(event) => setEnabled(event.target.checked)} type="checkbox" />
-          Enabled for draft generation
-        </label>
+        <LabeledCheckbox
+          checked={enabled}
+          className="fantasy-toggle-row"
+          label="Enabled for draft generation"
+          onChange={setEnabled}
+        />
         <div className="fantasy-importance-editor" aria-label="Match importance levels">
           {importanceOptions.map((importance) => (
-            <label key={importance}>
-              <input checked={importanceLevels.includes(importance)} onChange={(event) => updateImportance(importance, event.target.checked)} type="checkbox" />
-              {importance.replace("_", " ")}
-            </label>
+            <LabeledCheckbox
+              checked={importanceLevels.includes(importance)}
+              key={importance}
+              label={importance.replace("_", " ")}
+              onChange={(checked) => updateImportance(importance, checked)}
+            />
           ))}
         </div>
         <button className="button button--primary" disabled={updateTemplate.isPending || importanceLevels.length === 0} type="submit">
           {updateTemplate.isPending ? "Saving..." : "Save template"}
         </button>
       </form>
-      {importanceLevels.length === 0 && <p role="alert">Choose at least one match importance.</p>}
-      {updateTemplate.isError && <p role="alert">{updateTemplate.error.message}</p>}
-      {updateTemplate.isSuccess && <p className="fantasy-success-note">Template saved.</p>}
+      {importanceLevels.length === 0 && <ErrorMessage>Choose at least one match importance.</ErrorMessage>}
+      {updateTemplate.isError && <ErrorMessage>{updateTemplate.error.message}</ErrorMessage>}
+      {updateTemplate.isSuccess && <SuccessMessage>Template saved.</SuccessMessage>}
     </section>
   );
 };

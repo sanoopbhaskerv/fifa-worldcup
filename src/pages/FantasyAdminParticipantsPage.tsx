@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
-import { LabeledInput, LabeledSelect } from "../components/FormFields";
+import { LabeledCheckbox, LabeledInput, LabeledSelect } from "../components/FormFields";
+import { ErrorMessage, SuccessMessage } from "../components/FeedbackMessages";
 import { useCreateFantasyParticipant, useFantasyGroups, useFantasyParticipants, useSaveFantasyGroup, useUpdateFantasyParticipantCredentials, useUpdateFantasyParticipantRole } from "../services/fantasy-queries";
 import type { FantasyAdminParticipant } from "../types/fantasy";
 import { fantasyTeamName } from "../utils/fantasy";
@@ -78,8 +79,8 @@ export default function FantasyAdminParticipantsPage() {
               {createParticipant.isPending ? "Creating..." : "Create invite"}
             </button>
           </form>
-          {createParticipant.isError && <p role="alert">{createParticipant.error.message}</p>}
-          {createParticipant.isSuccess && <p className="fantasy-success-note">Invite created: {createParticipant.data.invite.inviteCode}</p>}
+          {createParticipant.isError && <ErrorMessage>{createParticipant.error.message}</ErrorMessage>}
+          {createParticipant.isSuccess && <SuccessMessage>Invite created: {createParticipant.data.invite.inviteCode}</SuccessMessage>}
         </section>
         <section className="content-section fantasy-participant-list">
           <div className="section-heading"><div><span className="eyebrow">Friends</span><h2>{rows.length} participants</h2></div></div>
@@ -123,11 +124,12 @@ export default function FantasyAdminParticipantsPage() {
                         );
                       }}
                     >
-                      <input
-                        aria-label={`Temporary password for ${participant.nickname}`}
+                      <LabeledInput
+                        ariaLabel={`Temporary password for ${participant.nickname}`}
                         autoComplete="new-password"
+                        label={""}
                         minLength={8}
-                        onChange={(event) => setTemporaryPasswords((current) => ({ ...current, [participant.id]: event.target.value }))}
+                        onChange={(value) => setTemporaryPasswords((current) => ({ ...current, [participant.id]: value }))}
                         placeholder="Temporary password"
                         type="password"
                         value={temporaryPasswords[participant.id] ?? ""}
@@ -170,22 +172,20 @@ export default function FantasyAdminParticipantsPage() {
             <LabeledInput label="Description" onChange={setGroupDescription} placeholder="Optional note" value={groupDescription} />
             <div className="fantasy-player-option-picker" aria-label="Group members">
               {rows.map((participant) => (
-                <label key={participant.id}>
-                  <input
-                    checked={groupParticipantIds.includes(participant.id)}
-                    onChange={() => toggleGroupParticipant(participant.id)}
-                    type="checkbox"
-                  />
-                  <span>{participant.nickname}<small>{participant.id}</small></span>
-                </label>
+                <LabeledCheckbox
+                  checked={groupParticipantIds.includes(participant.id)}
+                  key={participant.id}
+                  label={<span>{participant.nickname}<small>{participant.id}</small></span>}
+                  onChange={() => toggleGroupParticipant(participant.id)}
+                />
               ))}
             </div>
             <button className="button button--primary" disabled={saveGroup.isPending || !groupName.trim() || groupParticipantIds.length === 0} type="submit">
               {saveGroup.isPending ? "Saving..." : activeGroupId ? "Update group" : "Create group"}
             </button>
           </form>
-          {saveGroup.isSuccess && <p className="fantasy-success-note">Group saved: {saveGroup.data.group.name}</p>}
-          {saveGroup.isError && <p role="alert">{saveGroup.error.message}</p>}
+          {saveGroup.isSuccess && <SuccessMessage>Group saved: {saveGroup.data.group.name}</SuccessMessage>}
+          {saveGroup.isError && <ErrorMessage>{saveGroup.error.message}</ErrorMessage>}
         </section>
       </div>
     </div>

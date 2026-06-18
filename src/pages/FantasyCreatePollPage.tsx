@@ -2,7 +2,8 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowIcon } from "../components/Icons";
 import { useFantasy } from "../app/fantasy-context";
-import { LabeledSelect } from "../components/FormFields";
+import { LabeledCheckbox, LabeledSelect } from "../components/FormFields";
+import { ErrorMessage, SuccessMessage } from "../components/FeedbackMessages";
 import { useCreateFantasyUserPoll } from "../services/fantasy-queries";
 import type { FantasyUserPollKind } from "../types/fantasy";
 import { fantasyDeadlineLabel, fantasyMatchTitle, fantasyTeamName } from "../utils/fantasy";
@@ -101,11 +102,11 @@ export default function FantasyCreatePollPage() {
             </form>
           )}
           {createPoll.isSuccess && (
-            <p className="fantasy-success-note">
+            <SuccessMessage>
               Poll published. <Link to="/fantasy/polls">View polls <ArrowIcon /></Link>
-            </p>
+            </SuccessMessage>
           )}
-          {createPoll.isError && <p role="alert">{createPoll.error.message}</p>}
+          {createPoll.isError && <ErrorMessage>{createPoll.error.message}</ErrorMessage>}
         </section>
 
         <section className="content-section fantasy-user-poll-preview">
@@ -131,14 +132,12 @@ export default function FantasyCreatePollPage() {
           {isPlayerPoll && activeMatch && (
             <div className="fantasy-player-option-picker" aria-label="Player options">
               {matchSquad.filter((player) => kind === "FIRST_GOAL_SCORER" ? player.isScorerCandidate : player.isMotmCandidate).map((player) => (
-                <label key={player.id}>
-                  <input
-                    checked={selectedPlayerOptions.includes(player.name)}
-                    onChange={() => togglePlayerOption(player.name)}
-                    type="checkbox"
-                  />
-                  <span>{player.name}<small>{fantasyTeamName(player.teamId, data.teams)} · {player.position}</small></span>
-                </label>
+                <LabeledCheckbox
+                  checked={selectedPlayerOptions.includes(player.name)}
+                  key={player.id}
+                  label={<span>{player.name}<small>{fantasyTeamName(player.teamId, data.teams)} · {player.position}</small></span>}
+                  onChange={() => togglePlayerOption(player.name)}
+                />
               ))}
             </div>
           )}

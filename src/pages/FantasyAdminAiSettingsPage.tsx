@@ -2,7 +2,8 @@ import { useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
 import { useFantasyAiSettings, useUpdateFantasyAiSettings } from "../services/fantasy-queries";
 import type { FantasyAiBanterLevel, FantasyAiMode, FantasyAiSettings, FantasyMatchImportance, FantasyQuestionCategory } from "../types/fantasy";
-import { LabeledInput, LabeledSelect } from "../components/FormFields";
+import { LabeledCheckbox, LabeledInput, LabeledSelect } from "../components/FormFields";
+import { ErrorMessage, SuccessMessage } from "../components/FeedbackMessages";
 import { PageHeading } from "../components/PageSections";
 import { SectionHeading } from "../components/SectionHeading";
 
@@ -47,7 +48,7 @@ export default function FantasyAdminAiSettingsPage() {
         </section>
         <AiSettingsEditor categories={categories} settings={settings} />
       </div>
-      {settingsQuery.isError && <p role="alert">{settingsQuery.error.message}</p>}
+      {settingsQuery.isError && <ErrorMessage>{settingsQuery.error.message}</ErrorMessage>}
     </div>
   );
 }
@@ -111,14 +112,8 @@ const AiSettingsEditor = ({ categories, settings }: { categories: FantasyQuestio
           min="0"
         />
         <div className="fantasy-ai-toggle-grid">
-          <label>
-            <input checked={externalProviderEnabled} onChange={(event) => setExternalProviderEnabled(event.target.checked)} type="checkbox" />
-            External provider
-          </label>
-          <label>
-            <input checked={fallbackToTemplates} onChange={(event) => setFallbackToTemplates(event.target.checked)} type="checkbox" />
-            Template fallback
-          </label>
+          <LabeledCheckbox checked={externalProviderEnabled} label="External provider" onChange={setExternalProviderEnabled} />
+          <LabeledCheckbox checked={fallbackToTemplates} label="Template fallback" onChange={setFallbackToTemplates} />
         </div>
         <div className="fantasy-ai-number-grid" aria-label="Max questions by importance">
           {importanceOptions.map((importance) => (
@@ -130,19 +125,21 @@ const AiSettingsEditor = ({ categories, settings }: { categories: FantasyQuestio
         </div>
         <div className="fantasy-ai-category-grid" aria-label="Enabled question categories">
           {categories.map((category) => (
-            <label key={category}>
-              <input checked={enabledCategories.includes(category)} onChange={(event) => updateCategory(category, event.target.checked)} type="checkbox" />
-              {category.replaceAll("_", " ")}
-            </label>
+            <LabeledCheckbox
+              checked={enabledCategories.includes(category)}
+              key={category}
+              label={category.replaceAll("_", " ")}
+              onChange={(checked) => updateCategory(category, checked)}
+            />
           ))}
         </div>
         <button className="button button--primary" disabled={updateSettings.isPending || enabledCategories.length === 0} type="submit">
           {updateSettings.isPending ? "Saving..." : "Save AI settings"}
         </button>
       </form>
-      {enabledCategories.length === 0 && <p role="alert">Choose at least one question category.</p>}
-      {updateSettings.isError && <p role="alert">{updateSettings.error.message}</p>}
-      {updateSettings.isSuccess && <p className="fantasy-success-note">AI settings saved.</p>}
+      {enabledCategories.length === 0 && <ErrorMessage>Choose at least one question category.</ErrorMessage>}
+      {updateSettings.isError && <ErrorMessage>{updateSettings.error.message}</ErrorMessage>}
+      {updateSettings.isSuccess && <SuccessMessage>AI settings saved.</SuccessMessage>}
     </section>
   );
 };

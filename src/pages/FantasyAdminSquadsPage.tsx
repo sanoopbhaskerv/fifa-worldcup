@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
-import { LabeledInput, LabeledSelect } from "../components/FormFields";
+import { LabeledCheckbox, LabeledInput, LabeledSelect } from "../components/FormFields";
+import { ErrorMessage, SuccessMessage } from "../components/FeedbackMessages";
 import { useFantasySquads, useImportFantasySquads, useSeedFantasyWorldCupSquads, useUpdateFantasySquadPlayer, useUpdateFantasyTeam } from "../services/fantasy-queries";
 import type { FantasySquadPlayer, FantasyTeam } from "../types/fantasy";
 import { fantasyTeamName } from "../utils/fantasy";
@@ -84,7 +85,7 @@ export default function FantasyAdminSquadsPage() {
           {activePlayer && <PlayerEditor key={activePlayer.id} player={activePlayer} teams={teams} />}
         </div>
       </section>
-      {squadsQuery.isError && <p role="alert">{squadsQuery.error.message}</p>}
+      {squadsQuery.isError && <ErrorMessage>{squadsQuery.error.message}</ErrorMessage>}
     </div>
   );
 }
@@ -102,8 +103,8 @@ const SquadImportPanel = () => {
       <button disabled={seedSquads.isPending} onClick={() => seedSquads.mutate()} type="button">
         {seedSquads.isPending ? "Uploading..." : "Upload bundled squads"}
       </button>
-      {seedSquads.isError && <p role="alert">{seedSquads.error.message}</p>}
-      {seedSquads.isSuccess && <p className="fantasy-success-note">Uploaded {seedSquads.data.teams.length} teams and {seedSquads.data.squadPlayers.length} players.</p>}
+      {seedSquads.isError && <ErrorMessage>{seedSquads.error.message}</ErrorMessage>}
+      {seedSquads.isSuccess && <SuccessMessage>Uploaded {seedSquads.data.teams.length} teams and {seedSquads.data.squadPlayers.length} players.</SuccessMessage>}
       <strong>Import data</strong>
       <p>Paste CSV rows or JSON with squadPlayers. Imported teams replace only their own players.</p>
       <form
@@ -117,8 +118,8 @@ const SquadImportPanel = () => {
           {importSquads.isPending ? "Importing..." : "Import squads"}
         </button>
       </form>
-      {importSquads.isError && <p role="alert">{importSquads.error.message}</p>}
-      {importSquads.isSuccess && <p className="fantasy-success-note">Imported {importSquads.data.squadPlayers.length} players.</p>}
+      {importSquads.isError && <ErrorMessage>{importSquads.error.message}</ErrorMessage>}
+      {importSquads.isSuccess && <SuccessMessage>Imported {importSquads.data.squadPlayers.length} players.</SuccessMessage>}
     </section>
   );
 };
@@ -159,8 +160,8 @@ const TeamEditor = ({ team }: { team: FantasyTeam }) => {
           {updateTeam.isPending ? "Saving..." : "Save team"}
         </button>
       </form>
-      {updateTeam.isError && <p role="alert">{updateTeam.error.message}</p>}
-      {updateTeam.isSuccess && <p className="fantasy-success-note">Team saved.</p>}
+      {updateTeam.isError && <ErrorMessage>{updateTeam.error.message}</ErrorMessage>}
+      {updateTeam.isSuccess && <SuccessMessage>Team saved.</SuccessMessage>}
     </section>
   );
 };
@@ -222,18 +223,20 @@ const PlayerEditor = ({ player, teams }: { player: FantasySquadPlayer; teams: Fa
             ["isGoldenBootCandidate", "Boot"],
             ["isGoldenGloveCandidate", "Glove"],
           ].map(([flag, label]) => (
-            <label key={flag}>
-              <input checked={flags[flag as keyof typeof flags]} onChange={(event) => updateFlag(flag as keyof typeof flags, event.target.checked)} type="checkbox" />
-              {label}
-            </label>
+            <LabeledCheckbox
+              checked={flags[flag as keyof typeof flags]}
+              key={flag}
+              label={label}
+              onChange={(checked) => updateFlag(flag as keyof typeof flags, checked)}
+            />
           ))}
         </div>
         <button className="button button--primary" disabled={updatePlayer.isPending} type="submit">
           {updatePlayer.isPending ? "Saving..." : "Save player"}
         </button>
       </form>
-      {updatePlayer.isError && <p role="alert">{updatePlayer.error.message}</p>}
-      {updatePlayer.isSuccess && <p className="fantasy-success-note">Player saved.</p>}
+      {updatePlayer.isError && <ErrorMessage>{updatePlayer.error.message}</ErrorMessage>}
+      {updatePlayer.isSuccess && <SuccessMessage>Player saved.</SuccessMessage>}
     </section>
   );
 };
