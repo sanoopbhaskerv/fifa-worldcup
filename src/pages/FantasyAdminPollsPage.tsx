@@ -1,4 +1,4 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
 import { LabeledSelect } from "../components/FormFields";
 import { ErrorMessage, SuccessMessage } from "../components/FeedbackMessages";
@@ -18,13 +18,17 @@ export default function FantasyAdminPollsPage() {
   const { data } = useFantasy();
   const [activeMatchId, setActiveMatchId] = useState(data.matches[0]?.id ?? "");
   const [groupId, setGroupId] = useState(data.groups[0]?.id ?? "group-main");
+  const [matchFilterId, setMatchFilterId] = useState("");
   const [dateRange, setDateRange] = useState(() => nextSevenDaysMatchRange());
   const saveDrafts = useSaveFantasyQuestionDrafts(data.activeParticipantId);
   const generatePolls = useGenerateFantasyPolls(data.activeParticipantId);
   const resetPolls = useResetFantasyPolls(data.activeParticipantId);
-  const filteredMatches = useMemo(() => (
+  const dateFilteredMatches = useMemo(() => (
     data.matches.filter((match) => matchPassesDateRange(match, dateRange))
   ), [data.matches, dateRange]);
+  const filteredMatches = useMemo(() => (
+    matchFilterId ? dateFilteredMatches.filter((match) => match.id === matchFilterId) : dateFilteredMatches
+  ), [dateFilteredMatches, matchFilterId]);
   const matchNumbers = useMemo(() => new Map(
     [...data.matches]
       .sort((left, right) => left.kickoff.localeCompare(right.kickoff))
@@ -47,9 +51,19 @@ export default function FantasyAdminPollsPage() {
   const draft = useMemo(() => activeMatch ? generateFantasyQuestionDraft(activeMatch, data) : undefined, [activeMatch, data]);
   const hasUnknownOptions = draft?.questions.some((question) => unknownFantasyPlayerOptions(question, data).length > 0) ?? false;
   const groupOptions = data.groups.map((group) => ({ value: group.id, label: group.name }));
+  const matchOptions = dateFilteredMatches.map((match) => ({
+    value: match.id,
+    label: `${fantasyMatchTitle(match, data.teams)} - ${formatDate(match.kickoff, true)}`,
+  }));
   const canCreatePollsForActiveMatch = activeMatch?.status === "SCHEDULED";
   const bulkMatchIds = upcomingFilteredMatches.map((match) => match.id);
   const bulkPayload = { groupId, limit: bulkMatchIds.length || 1, matchIds: bulkMatchIds, replaceExisting: true, status: "DRAFT" as const };
+
+  useEffect(() => {
+    if (matchFilterId && !dateFilteredMatches.some((match) => match.id === matchFilterId)) {
+      setMatchFilterId("");
+    }
+  }, [dateFilteredMatches, matchFilterId]);
 
   const saveQuestions = (status: "DRAFT" | "OPEN") => {
     if (!activeMatch || !draft || !canCreatePollsForActiveMatch) return;
@@ -66,6 +80,17 @@ export default function FantasyAdminPollsPage() {
             <p>Create template-grounded polls for the next synced fixtures using stored squads.</p>
             <LabeledSelect label="Group" onChange={setGroupId} options={groupOptions} value={groupId} />
             <MatchDateRangeFilter onChange={setDateRange} value={dateRange} />
+            {dateFilteredMatches.length > 1 && (
+              <LabeledSelect
+                label="Match"
+                onChange={(value) => {
+                  setMatchFilterId(value);
+                  if (value) setActiveMatchId(value);
+                }}
+                options={[{ value: "", label: "All matches in range" }, ...matchOptions]}
+                value={matchFilterId}
+              />
+            )}
             <button disabled={generatePolls.isPending || bulkMatchIds.length === 0} onClick={() => generatePolls.mutate(bulkPayload)} type="button">
               {generatePolls.isPending ? "Generating..." : "Draft next 8"}
             </button>

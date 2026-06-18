@@ -167,7 +167,8 @@ describe("fantasy prediction game", () => {
     expect(screen.getByRole("button", { name: "Save player" })).toBeInTheDocument();
   });
 
-  it("renders generated poll drafts from squad data", () => {
+  it("renders generated poll drafts from squad data", async () => {
+    const user = userEvent.setup();
     vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({ data: fantasyGameData });
 
     renderWithQueryClient(<FantasyAdminPollsPage />);
@@ -180,6 +181,9 @@ describe("fantasy prediction game", () => {
     expect(screen.getByText("4 submitted")).toBeInTheDocument();
     expect(screen.getAllByText("Validated against templates and squad data").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Lionel Messi").length).toBeGreaterThan(0);
+    await user.click(screen.getByRole("button", { name: "All matches" }));
+    await user.selectOptions(screen.getByLabelText("Match"), "eng-esp");
+    expect(screen.getByRole("heading", { name: "England vs Spain" })).toBeInTheDocument();
   });
 
   it("filters poll management matches by date and blocks completed match publishing", async () => {
