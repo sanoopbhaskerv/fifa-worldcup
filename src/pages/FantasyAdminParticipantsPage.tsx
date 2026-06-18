@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
-import { useCreateFantasyParticipant, useFantasyParticipants } from "../services/fantasy-queries";
+import { useCreateFantasyParticipant, useFantasyParticipants, useUpdateFantasyParticipantRole } from "../services/fantasy-queries";
 import type { FantasyAdminParticipant } from "../types/fantasy";
 import { fantasyTeamName } from "../utils/fantasy";
 import { PageHeading } from "./FixturesPage";
@@ -14,6 +14,7 @@ export default function FantasyAdminParticipantsPage() {
   const { data } = useFantasy();
   const participantsQuery = useFantasyParticipants();
   const createParticipant = useCreateFantasyParticipant(data.activeParticipantId);
+  const updateRole = useUpdateFantasyParticipantRole(data.activeParticipantId);
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
   const [favoriteTeamId, setFavoriteTeamId] = useState(data.teams[0]?.id ?? "");
@@ -70,13 +71,24 @@ export default function FantasyAdminParticipantsPage() {
                   <span>{participant.avatar ?? participant.nickname.slice(0, 2).toUpperCase()}</span>
                   <div>
                     <strong>{participant.nickname}</strong>
-                    <small>{participant.name} · {fantasyTeamName(participant.favoriteTeamId, data.teams)} · {predictionCount} picks</small>
+                    <small>{participant.name} · {participant.id} · {participant.role ?? "PLAYER"} · {fantasyTeamName(participant.favoriteTeamId, data.teams)} · {predictionCount} picks</small>
+                    {(participant.email || participant.phone) && <small>{participant.email ?? participant.phone}</small>}
                   </div>
-                  <code>{participant.invite?.inviteCode ?? "No invite"}</code>
+                  <div className="fantasy-participant-actions">
+                    <code>{participant.invite?.inviteCode ?? "No invite"}</code>
+                    <button
+                      disabled={updateRole.isPending && updateRole.variables?.participantId === participant.id}
+                      onClick={() => updateRole.mutate({ participantId: participant.id, role: participant.role === "ADMIN" ? "PLAYER" : "ADMIN" })}
+                      type="button"
+                    >
+                      {participant.role === "ADMIN" ? "Remove admin" : "Make admin"}
+                    </button>
+                  </div>
                 </article>
               );
             })}
           </div>
+          {updateRole.isError && <p role="alert">{updateRole.error.message}</p>}
         </section>
       </div>
     </div>

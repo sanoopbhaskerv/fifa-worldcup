@@ -3,6 +3,7 @@ import type { FantasyGameData } from "../types/fantasy";
 
 export interface FantasyContextValue {
   data: FantasyGameData;
+  isAdmin?: boolean;
 }
 
 /**

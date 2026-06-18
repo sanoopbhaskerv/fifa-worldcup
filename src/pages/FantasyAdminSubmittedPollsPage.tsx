@@ -3,54 +3,79 @@ import { fantasyMatchTitle, fantasyParticipant } from "../utils/fantasy";
 import { formatKickoff } from "../utils/football";
 import { PageHeading } from "./FixturesPage";
 
+const answerLabel = (answer: string | string[]) => Array.isArray(answer) ? answer.join(", ") : answer;
+
 /**
- * Displays player-created polls for admin review.
+ * Displays poll response coverage for admin follow-up.
  *
- * @returns Admin submitted polls page.
+ * @returns Admin poll response page.
  */
 export default function FantasyAdminSubmittedPollsPage() {
   const { data } = useFantasy();
-  const submittedPolls = data.questions
-    .filter((question) => question.source === "USER" || question.createdByParticipantId || question.id.startsWith("user-"))
-    .sort((left, right) => (right.createdAt ?? "").localeCompare(left.createdAt ?? ""));
+  const visibleQuestions = data.questions
+    .filter((question) => question.status !== "DRAFT")
+    .sort((left, right) => (left.closeAt || "").localeCompare(right.closeAt || ""));
 
   return (
     <div className="page fantasy-page">
-      <PageHeading eyebrow="Admin" title="Submitted polls" description="Review polls created by players and see who submitted them." />
+      <PageHeading eyebrow="Admin" title="Poll responses" description="See who answered each poll and who is still pending so you can follow up." />
       <section className="content-section fantasy-submitted-polls">
         <div className="section-heading">
-          <div><span className="eyebrow">User generated</span><h2>{submittedPolls.length} polls</h2></div>
+          <div><span className="eyebrow">Coverage</span><h2>{visibleQuestions.length} polls</h2></div>
         </div>
         <div className="fantasy-submitted-poll-list">
-          {submittedPolls.map((question) => {
+          {visibleQuestions.map((question) => {
             const match = data.matches.find((item) => item.id === question.matchId);
-            const creator = question.createdByParticipantId ? fantasyParticipant(question.createdByParticipantId, data.participants) : undefined;
-            const answerCount = data.predictions.filter((prediction) => prediction.questionId === question.id).length;
+            const responses = data.predictions
+              .filter((prediction) => prediction.questionId === question.id)
+              .sort((left, right) => left.submittedAt.localeCompare(right.submittedAt));
+            const answeredIds = new Set(responses.map((prediction) => prediction.participantId));
+            const pending = data.participants.filter((participant) => !answeredIds.has(participant.id));
             return (
               <article className="fantasy-submitted-poll" key={question.id}>
                 <header>
                   <div>
                     <span className="eyebrow">{question.category.replaceAll("_", " ")}</span>
                     <h3>{question.text}</h3>
+                    <p>{match ? fantasyMatchTitle(match, data.teams) : "Tournament poll"} · locks {formatKickoff(question.closeAt)}</p>
                   </div>
-                  <strong>{answerCount} picks</strong>
+                  <strong>{responses.length}/{data.participants.length}</strong>
                 </header>
-                <dl>
-                  <div><dt>Submitted by</dt><dd>{creator?.nickname ?? "Unknown player"}</dd></div>
-                  <div><dt>Match</dt><dd>{match ? fantasyMatchTitle(match, data.teams) : "Tournament poll"}</dd></div>
-                  <div><dt>Status</dt><dd>{question.status}</dd></div>
-                  <div><dt>Locks</dt><dd>{formatKickoff(question.closeAt)}</dd></div>
-                </dl>
-                {question.options.length > 0 && (
-                  <div className="fantasy-draft-options">
-                    {question.options.map((option) => <span key={option}>{option}</span>)}
-                  </div>
-                )}
-                {question.type === "EXACT_SCORE" && <p>Free score answer</p>}
+                <div className="fantasy-response-columns">
+                  <section>
+                    <h4>Answered</h4>
+                    {responses.map((prediction) => {
+                      const participant = fantasyParticipant(prediction.participantId, data.participants);
+                      return (
+                        <div className="fantasy-response-row" key={prediction.id}>
+                          <span>{participant?.avatar ?? participant?.nickname.slice(0, 2).toUpperCase() ?? "P"}</span>
+                          <div>
+                            <strong>{participant?.nickname ?? prediction.participantId}</strong>
+                            <small>{answerLabel(prediction.answer)} · {formatKickoff(prediction.submittedAt)}</small>
+                          </div>
+                        </div>
+                      );
+                    })}
+                    {responses.length === 0 && <p>No answers yet.</p>}
+                  </section>
+                  <section>
+                    <h4>Pending</h4>
+                    {pending.map((participant) => (
+                      <div className="fantasy-response-row fantasy-response-row--pending" key={participant.id}>
+                        <span>{participant.avatar ?? participant.nickname.slice(0, 2).toUpperCase()}</span>
+                        <div>
+                          <strong>{participant.nickname}</strong>
+                          <small>{participant.email ?? participant.phone ?? participant.id}</small>
+                        </div>
+                      </div>
+                    ))}
+                    {pending.length === 0 && <p>Everyone has answered.</p>}
+                  </section>
+                </div>
               </article>
             );
           })}
-          {submittedPolls.length === 0 && <p>No player-submitted polls yet.</p>}
+          {visibleQuestions.length === 0 && <p>No published polls yet.</p>}
         </div>
       </section>
     </div>

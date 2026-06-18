@@ -15,6 +15,7 @@ const footballDestination = () => {
  * @returns Minimal home page with product-area tiles.
  */
 export default function HomePage() {
+  const fantasyIdentity = storage.getFantasyIdentity();
   const openQuestions = fantasyOpenQuestions(fantasyGameData);
   const activeRow = fantasyGameData.leaderboard.find((row) => row.participantId === fantasyGameData.activeParticipantId);
   const nextMatch = fantasyGameData.matches.find((match) => match.status === "SCHEDULED");
@@ -25,6 +26,19 @@ export default function HomePage() {
       <header className="home-header">
         <Link className="brand" to="/"><span className="brand__mark">F</span><span>FULL TIME</span></Link>
         <p>Football scores and a friends prediction game in one place.</p>
+        <div className="home-auth-actions" aria-label="Fantasy account">
+          {fantasyIdentity ? (
+            <Link to="/fantasy/profile">
+              <span>{fantasyIdentity.nickname.slice(0, 2).toUpperCase()}</span>
+              <strong>{fantasyIdentity.nickname}</strong>
+            </Link>
+          ) : (
+            <>
+              <Link to="/fantasy">Login</Link>
+              <Link to="/fantasy">Sign up</Link>
+            </>
+          )}
+        </div>
       </header>
 
       <section className="home-launch-grid" aria-label="Choose an area">
@@ -62,7 +76,8 @@ export default function HomePage() {
       <section className="home-mini-row" aria-label="Shortcuts">
         <Link to="/fantasy/polls"><CalendarIcon /><span><strong>Polls</strong><small>Answer before lock</small></span></Link>
         <Link to="/fantasy/leaderboard"><TableIcon /><span><strong>Leaderboard</strong><small>Friends ranking</small></span></Link>
-        <Link to="/fantasy/admin/results"><TrophyIcon /><span><strong>Admin</strong><small>Result review</small></span></Link>
+        {fantasyIdentity?.role === "ADMIN" && <Link to="/fantasy/admin/results"><TrophyIcon /><span><strong>Admin</strong><small>Result review</small></span></Link>}
+        <Link to="/fantasy/profile"><TrophyIcon /><span><strong>Profile</strong><small>Nickname and login</small></span></Link>
       </section>
     </main>
   );

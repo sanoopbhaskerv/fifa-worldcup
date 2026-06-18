@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
-import { useGenerateFantasyPolls, useSaveFantasyQuestionDrafts } from "../services/fantasy-queries";
+import { useGenerateFantasyPolls, useResetFantasyPolls, useSaveFantasyQuestionDrafts } from "../services/fantasy-queries";
 import { generateFantasyQuestionDraft, unknownFantasyPlayerOptions } from "../utils/fantasy-ai";
 import { fantasyDeadlineLabel, fantasyMatchTitle } from "../utils/fantasy";
 import { formatDate, formatKickoff } from "../utils/football";
@@ -16,6 +16,7 @@ export default function FantasyAdminPollsPage() {
   const [activeMatchId, setActiveMatchId] = useState(data.matches[0]?.id ?? "");
   const saveDrafts = useSaveFantasyQuestionDrafts(data.activeParticipantId);
   const generatePolls = useGenerateFantasyPolls(data.activeParticipantId);
+  const resetPolls = useResetFantasyPolls(data.activeParticipantId);
   const activeMatch = data.matches.find((match) => match.id === activeMatchId) ?? data.matches[0];
   const draft = useMemo(() => activeMatch ? generateFantasyQuestionDraft(activeMatch, data) : undefined, [activeMatch, data]);
   const hasUnknownOptions = draft?.questions.some((question) => unknownFantasyPlayerOptions(question, data).length > 0) ?? false;
@@ -38,8 +39,13 @@ export default function FantasyAdminPollsPage() {
             <button disabled={generatePolls.isPending} onClick={() => generatePolls.mutate({ limit: 8, replaceExisting: true, status: "OPEN" })} type="button">
               {generatePolls.isPending ? "Publishing..." : "Publish next 8"}
             </button>
+            <button disabled={resetPolls.isPending} onClick={() => resetPolls.mutate({ keepTournamentQuestions: true, limit: 16, replaceExisting: true, status: "OPEN" })} type="button">
+              {resetPolls.isPending ? "Resetting..." : "Clear and publish new"}
+            </button>
             {generatePolls.isSuccess && <p className="fantasy-success-note">Saved {generatePolls.data.questions.length} polls for {generatePolls.data.fixtures.length} fixtures.</p>}
             {generatePolls.isError && <p role="alert">{generatePolls.error.message}</p>}
+            {resetPolls.isSuccess && <p className="fantasy-success-note">Reset complete: {resetPolls.data.questions.length} fresh polls published.</p>}
+            {resetPolls.isError && <p role="alert">{resetPolls.error.message}</p>}
           </div>
           {data.matches.map((match) => (
             <button className={match.id === activeMatch?.id ? "fantasy-match-button fantasy-match-button--active" : "fantasy-match-button"} key={match.id} onClick={() => setActiveMatchId(match.id)} type="button">

@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ArrowIcon, CalendarIcon, HomeIcon, PlayerIcon, TableIcon, TrophyIcon } from "../components/Icons";
-import { useCreateFantasySignup, useFantasyGame, useJoinFantasyGame } from "../services/fantasy-queries";
-import { storage } from "../utils/storage";
+import { useCreateFantasySignup, useFantasyGame, useJoinFantasyGame, useLoginFantasyParticipant } from "../services/fantasy-queries";
+import { storage, type StoredFantasyIdentity } from "../utils/storage";
 
 const fantasyNav = [
   { label: "Home", path: "/fantasy", icon: HomeIcon, end: true },
@@ -46,6 +46,7 @@ export const FantasyLayout = () => {
   const data = { ...gameQuery.data, activeParticipantId: identity.participantId };
   const { tournament } = data;
   const activeParticipant = data.participants.find((participant) => participant.id === identity.participantId);
+  const isAdmin = activeParticipant?.role === "ADMIN";
 
   return (
     <div className="app fantasy-app">
@@ -69,10 +70,12 @@ export const FantasyLayout = () => {
               <div><strong>{tournament.name}</strong><span>{activeParticipant?.nickname ?? tournament.scoringRulesVersion}</span></div>
             </div>
             <nav>{fantasyNav.map((item) => <FantasyNavLink key={item.path} {...item} />)}</nav>
-            <div className="fantasy-nav-group">
-              <span>Admin</span>
-              {fantasyAdminNav.map((item) => <FantasyNavLink key={item.path} {...item} />)}
-            </div>
+            {isAdmin && (
+              <div className="fantasy-nav-group">
+                <span>Admin</span>
+                {fantasyAdminNav.map((item) => <FantasyNavLink key={item.path} {...item} />)}
+              </div>
+            )}
             <NavLink className="section-link" to="/fantasy/rules"><TrophyIcon /><span>Rules</span></NavLink>
             <div className="desktop-nav__footer">
               <span>Friends league</span>
@@ -92,7 +95,7 @@ export const FantasyLayout = () => {
           </aside>
           <main id="main-content" className="main-content">
             <div className="mobile-tabs fantasy-tabs" aria-label="Fantasy sections">{fantasyNav.map((item) => <FantasyNavLink key={item.path} compact {...item} />)}</div>
-            <Outlet context={{ data }} />
+            <Outlet context={{ data, isAdmin }} />
           </main>
         </div>
       </div>
@@ -103,19 +106,24 @@ export const FantasyLayout = () => {
   );
 };
 
-const FantasyJoinScreen = ({ onJoined }: { onJoined: (identity: { participantId: string; nickname: string }) => void }) => {
+const FantasyJoinScreen = ({ onJoined }: { onJoined: (identity: StoredFantasyIdentity) => void }) => {
   const [inviteCode, setInviteCode] = useState("");
+  const [loginIdentifier, setLoginIdentifier] = useState("");
+  const [loginPassword, setLoginPassword] = useState("");
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
+  const [emailOrPhone, setEmailOrPhone] = useState("");
+  const [password, setPassword] = useState("");
   const [favoriteTeamId, setFavoriteTeamId] = useState("");
   const joinFantasy = useJoinFantasyGame();
+  const loginFantasy = useLoginFantasyParticipant();
   const createSignup = useCreateFantasySignup();
   const previewGame = useFantasyGame(undefined);
   const teams = previewGame.data?.teams ?? [];
   const selectedFavoriteTeamId = favoriteTeamId || teams[0]?.id || "";
 
-  const saveIdentity = (participant: { id: string; nickname: string }) => {
-    const nextIdentity = { participantId: participant.id, nickname: participant.nickname };
+  const saveIdentity = (participant: { id: string; nickname: string; role?: "ADMIN" | "PLAYER"; email?: string; phone?: string }) => {
+    const nextIdentity = { participantId: participant.id, nickname: participant.nickname, role: participant.role, email: participant.email, phone: participant.phone };
     storage.setFantasyIdentity(nextIdentity);
     onJoined(nextIdentity);
   };
@@ -127,6 +135,7 @@ const FantasyJoinScreen = ({ onJoined }: { onJoined: (identity: { participantId:
       favoriteTeamId: selectedFavoriteTeamId,
       name: guestNickname,
       nickname: guestNickname,
+      role: "PLAYER",
     }, {
       onSuccess: ({ participant }) => saveIdentity(participant),
     });
@@ -139,6 +148,38 @@ const FantasyJoinScreen = ({ onJoined }: { onJoined: (identity: { participantId:
           <span className="competition-emblem competition-emblem--large">WC</span>
           <span className="eyebrow">Friends league</span>
           <h1>Login or sign up</h1>
+          <form
+            aria-label="Email or phone login"
+            onSubmit={(event) => {
+              event.preventDefault();
+              loginFantasy.mutate({ emailOrPhone: loginIdentifier, password: loginPassword }, {
+                onSuccess: ({ participant }) => saveIdentity(participant),
+              });
+            }}
+          >
+            <label htmlFor="fantasy-login-id">Email or phone</label>
+            <input
+              autoComplete="username"
+              id="fantasy-login-id"
+              onChange={(event) => setLoginIdentifier(event.target.value)}
+              placeholder="you@example.com"
+              value={loginIdentifier}
+            />
+            <label htmlFor="fantasy-login-password">Password</label>
+            <input
+              autoComplete="current-password"
+              id="fantasy-login-password"
+              onChange={(event) => setLoginPassword(event.target.value)}
+              placeholder="Your password"
+              type="password"
+              value={loginPassword}
+            />
+            <button className="button button--primary" disabled={loginFantasy.isPending || !loginIdentifier.trim() || loginPassword.length < 8} type="submit">
+              {loginFantasy.isPending ? "Logging in..." : "Login"}
+            </button>
+          </form>
+          {loginFantasy.isError && <p role="alert">{loginFantasy.error.message}</p>}
+          <div className="fantasy-join-divider"><span>or invite</span></div>
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -161,15 +202,23 @@ const FantasyJoinScreen = ({ onJoined }: { onJoined: (identity: { participantId:
             </button>
           </form>
           {joinFantasy.isError && <p role="alert">{joinFantasy.error.message}</p>}
-          <div className="fantasy-join-divider"><span>or</span></div>
+          <div className="fantasy-join-divider"><span>or sign up</span></div>
           <form
             onSubmit={(event) => {
               event.preventDefault();
-              createSignup.mutate({ favoriteTeamId: selectedFavoriteTeamId, name, nickname }, {
+              createSignup.mutate({ emailOrPhone, favoriteTeamId: selectedFavoriteTeamId, name, nickname, password, role: "PLAYER" }, {
                 onSuccess: ({ participant }) => saveIdentity(participant),
               });
             }}
           >
+            <label htmlFor="fantasy-signup-contact">Email or phone</label>
+            <input
+              autoComplete="username"
+              id="fantasy-signup-contact"
+              onChange={(event) => setEmailOrPhone(event.target.value)}
+              placeholder="you@example.com"
+              value={emailOrPhone}
+            />
             <label htmlFor="fantasy-signup-name">Name</label>
             <input
               autoComplete="name"
@@ -194,8 +243,17 @@ const FantasyJoinScreen = ({ onJoined }: { onJoined: (identity: { participantId:
             >
               {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
             </select>
+            <label htmlFor="fantasy-signup-password">Password</label>
+            <input
+              autoComplete="new-password"
+              id="fantasy-signup-password"
+              onChange={(event) => setPassword(event.target.value)}
+              placeholder="At least 8 characters"
+              type="password"
+              value={password}
+            />
             <div className="fantasy-join-actions">
-              <button className="button button--primary" disabled={createSignup.isPending || !name.trim() || !nickname.trim() || !selectedFavoriteTeamId} type="submit">
+              <button className="button button--primary" disabled={createSignup.isPending || !emailOrPhone.trim() || !name.trim() || !nickname.trim() || password.length < 8 || !selectedFavoriteTeamId} type="submit">
                 {createSignup.isPending ? "Creating..." : "Sign up"}
               </button>
               <button disabled={createSignup.isPending || !selectedFavoriteTeamId} onClick={createGuest} type="button">

@@ -4,6 +4,7 @@ import {
   createFantasyParticipant,
   createFantasySignup,
   createFantasyUserPoll,
+  changeFantasyParticipantPassword,
   getFantasyGame,
   importFantasySquads,
   joinFantasyGame,
@@ -12,7 +13,9 @@ import {
   listFantasyParticipants,
   listFantasyQuestionTemplates,
   listFantasySquads,
+  loginFantasyParticipant,
   publishFantasyScores,
+  resetAndGenerateFantasyPolls,
   saveFantasyQuestionDrafts,
   saveFantasyResult,
   seedFantasyWorldCupSquads,
@@ -22,6 +25,7 @@ import {
   updateFantasyAiSettings,
   updateFantasyFixture,
   updateFantasyParticipant,
+  updateFantasyParticipantRole,
   updateFantasyQuestionTemplate,
   updateFantasySquadPlayer,
   updateFantasyTeam,
@@ -108,6 +112,12 @@ export const handleApiRequest = async ({
       });
     }
 
+    if (requestMethod === "POST" && path === "/api/fantasy/login") {
+      return response(200, await loginFantasyParticipant(parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
     if (requestMethod === "POST" && path === "/api/fantasy/participants") {
       return response(200, await createFantasySignup(parseJsonBody(body)), {
         "cache-control": "no-store",
@@ -121,6 +131,13 @@ export const handleApiRequest = async ({
       });
     }
 
+    const participantPasswordMatch = path.match(/^\/api\/fantasy\/participants\/([^/]+)\/password$/);
+    if (requestMethod === "PUT" && participantPasswordMatch) {
+      return response(200, await changeFantasyParticipantPassword(decodeURIComponent(participantPasswordMatch[1]), parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
     if (requestMethod === "GET" && path === "/api/fantasy/admin/participants") {
       return response(200, await listFantasyParticipants(), {
         "cache-control": "private, max-age=5, stale-while-revalidate=30",
@@ -129,6 +146,13 @@ export const handleApiRequest = async ({
 
     if (requestMethod === "POST" && path === "/api/fantasy/admin/participants") {
       return response(200, await createFantasyParticipant(parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
+    const participantRoleMatch = path.match(/^\/api\/fantasy\/admin\/participants\/([^/]+)\/role$/);
+    if (requestMethod === "PUT" && participantRoleMatch) {
+      return response(200, await updateFantasyParticipantRole(decodeURIComponent(participantRoleMatch[1]), parseJsonBody(body)), {
         "cache-control": "no-store",
       });
     }
@@ -224,6 +248,12 @@ export const handleApiRequest = async ({
 
     if (requestMethod === "POST" && path === "/api/fantasy/admin/polls/generate") {
       return response(200, await generateFantasyPolls(parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
+    if (requestMethod === "POST" && path === "/api/fantasy/admin/polls/reset") {
+      return response(200, await resetAndGenerateFantasyPolls(parseJsonBody(body)), {
         "cache-control": "no-store",
       });
     }

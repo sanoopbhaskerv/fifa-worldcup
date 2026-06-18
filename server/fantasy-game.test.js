@@ -120,6 +120,57 @@ describe("fantasy game API", () => {
     });
   });
 
+  it("signs up and logs in with email and password", async () => {
+    const signupResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/participants",
+      body: JSON.stringify({
+        emailOrPhone: "friend@example.com",
+        favoriteTeamId: "bra",
+        name: "Friend User",
+        nickname: "Fixture Friend",
+        password: "secret123",
+      }),
+      env: {},
+    });
+    const loginResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/login",
+      body: JSON.stringify({ emailOrPhone: "friend@example.com", password: "secret123" }),
+      env: {},
+    });
+
+    expect(signupResponse.status).toBe(200);
+    expect(signupResponse.body.participant).toMatchObject({
+      email: "friend@example.com",
+      role: "PLAYER",
+    });
+    expect(signupResponse.body.participant.passwordHash).toBeUndefined();
+    expect(loginResponse.status).toBe(200);
+    expect(loginResponse.body.participant.id).toBe(signupResponse.body.participant.id);
+  });
+
+  it("sets a password for an invite user and grants admin role", async () => {
+    const passwordResponse = await handleApiRequest({
+      method: "PUT",
+      url: "/api/fantasy/participants/p-sanoop/password",
+      body: JSON.stringify({ newPassword: "worldcup123" }),
+      env: {},
+    });
+    const roleResponse = await handleApiRequest({
+      method: "PUT",
+      url: "/api/fantasy/admin/participants/p-anoop/role",
+      body: JSON.stringify({ role: "ADMIN" }),
+      env: {},
+    });
+
+    expect(passwordResponse.status).toBe(200);
+    expect(passwordResponse.body.participant.passwordChangedAt).toEqual(expect.any(String));
+    expect(passwordResponse.body.participant.passwordHash).toBeUndefined();
+    expect(roleResponse.status).toBe(200);
+    expect(roleResponse.body.participant).toMatchObject({ id: "p-anoop", role: "ADMIN" });
+  });
+
   it("updates a participant display profile", async () => {
     const response = await handleApiRequest({
       method: "PUT",
@@ -745,19 +796,44 @@ describe("fantasy game API", () => {
     expect(scoreResponse.body.game.leaderboard[0]).toMatchObject({
       participantId: "p-sanoop",
       rank: 1,
-      totalPoints: 16,
+      totalPoints: 21,
       todayPoints: 13,
       correctWinners: 1,
       streak: 1,
     });
     expect(republishResponse.body.game.leaderboard[0]).toMatchObject({
       participantId: "p-sanoop",
-      totalPoints: 16,
+      totalPoints: 21,
     });
     expect(scoreResponse.body.game.auditRecords.at(-1)).toMatchObject({
       action: "SCORES_PUBLISHED",
       entityId: "bra-arg",
     });
+  });
+
+  it("clears existing match polls and publishes the new poll set", async () => {
+    const response = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/polls/reset",
+      body: JSON.stringify({ limit: 1, status: "OPEN" }),
+      env: {},
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.questions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ category: "EXACT_SCORE", type: "EXACT_SCORE" }),
+      expect.objectContaining({ category: "FIRST_GOAL_TIME", type: "TIME_WINDOW" }),
+      expect.objectContaining({ category: "PENALTY_GOAL", options: ["Yes", "No"] }),
+      expect.objectContaining({ category: "FIRST_GOAL_SCORER", type: "PLAYER" }),
+    ]));
+    expect(response.body.game.questions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "tournament-winner", category: "TOURNAMENT_WINNER" }),
+      expect.objectContaining({ id: "tournament-finalists", category: "TOURNAMENT_FINALISTS" }),
+      expect.objectContaining({ id: "tournament-golden-boot", category: "GOLDEN_BOOT" }),
+      expect.objectContaining({ id: "tournament-golden-ball", category: "GOLDEN_BALL" }),
+      expect.objectContaining({ id: "tournament-mvp", category: "TOURNAMENT_MVP" }),
+    ]));
+    expect(response.body.game.predictions).toHaveLength(0);
   });
 
   it("maps the local game into DynamoDB-style storage records", async () => {

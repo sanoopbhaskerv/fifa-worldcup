@@ -133,7 +133,7 @@ describe("fantasy prediction game", () => {
 
     expect(screen.getByRole("heading", { name: "Score review" })).toBeInTheDocument();
     expect(screen.getByText("VAR Villain")).toBeInTheDocument();
-    expect(screen.getByText("8 pts")).toBeInTheDocument();
+    expect(screen.getAllByText("8 pts").length).toBeGreaterThan(0);
   });
 
   it("renders squad reference data for admin review", () => {
@@ -160,7 +160,7 @@ describe("fantasy prediction game", () => {
     expect(screen.getAllByText("Lionel Messi").length).toBeGreaterThan(0);
   });
 
-  it("renders submitted user polls for admin review", () => {
+  it("renders poll response coverage for admin follow-up", () => {
     vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({
       data: {
         ...fantasyGameData,
@@ -187,10 +187,11 @@ describe("fantasy prediction game", () => {
 
     renderWithQueryClient(<FantasyAdminSubmittedPollsPage />);
 
-    expect(screen.getByRole("heading", { name: "Submitted polls" })).toBeInTheDocument();
-    expect(screen.getByText("Brazil Boss")).toBeInTheDocument();
-    expect(screen.getByText("Brazil vs Argentina")).toBeInTheDocument();
-    expect(screen.getByText("Who scores the first goal?")).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Poll responses" })).toBeInTheDocument();
+    expect(screen.getAllByText("Brazil Boss").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/Brazil vs Argentina/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Who scores the first goal?").length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("heading", { name: "Pending" }).length).toBeGreaterThan(0);
   });
 
   it("renders participant administration", () => {
@@ -201,6 +202,7 @@ describe("fantasy prediction game", () => {
     expect(screen.getByRole("heading", { name: "Participants" })).toBeInTheDocument();
     expect(screen.getByText("Brazil Boss")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Create invite" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Remove admin" })).toBeInTheDocument();
   });
 
   it("renders the active player profile editor", () => {
@@ -211,6 +213,7 @@ describe("fantasy prediction game", () => {
     expect(screen.getByRole("heading", { name: "Display name" })).toBeInTheDocument();
     expect(screen.getByDisplayValue("Brazil Boss")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save profile" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Set password" })).toBeInTheDocument();
   });
 
   it("renders user poll creation with squad-backed player options", async () => {

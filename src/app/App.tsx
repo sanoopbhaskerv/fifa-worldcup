@@ -1,7 +1,9 @@
 import { lazy, Suspense } from "react";
+import type { ReactElement } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { CompetitionLayout } from "./CompetitionLayout";
 import { FantasyLayout } from "./FantasyLayout";
+import { useFantasy } from "./fantasy-context";
 
 const HomePage = lazy(() => import("../pages/HomePage"));
 const OverviewPage = lazy(() => import("../pages/OverviewPage"));
@@ -30,6 +32,11 @@ const FantasyAdminTournamentPage = lazy(() => import("../pages/FantasyAdminTourn
 const FantasyAdminQuestionTemplatesPage = lazy(() => import("../pages/FantasyAdminQuestionTemplatesPage"));
 const FantasyAdminAiSettingsPage = lazy(() => import("../pages/FantasyAdminAiSettingsPage"));
 
+const FantasyAdminOnly = ({ children }: { children: ReactElement }) => {
+  const { isAdmin } = useFantasy();
+  return isAdmin ? children : <Navigate replace to="/fantasy" />;
+};
+
 /**
  * Defines the top-level route tree with lazy-loaded competition sections.
  *
@@ -57,16 +64,16 @@ export const App = () => (
         <Route path="leaderboard" element={<FantasyLeaderboardPage />} />
         <Route path="results" element={<FantasyResultsPage />} />
         <Route path="rules" element={<FantasyRulesPage />} />
-        <Route path="admin/tournament" element={<FantasyAdminTournamentPage />} />
-        <Route path="admin/participants" element={<FantasyAdminParticipantsPage />} />
-        <Route path="admin/fixtures" element={<FantasyAdminFixturesPage />} />
-        <Route path="admin/squads" element={<FantasyAdminSquadsPage />} />
-        <Route path="admin/templates" element={<FantasyAdminQuestionTemplatesPage />} />
-        <Route path="admin/ai-settings" element={<FantasyAdminAiSettingsPage />} />
-        <Route path="admin/polls" element={<FantasyAdminPollsPage />} />
-        <Route path="admin/submitted-polls" element={<FantasyAdminSubmittedPollsPage />} />
-        <Route path="admin/results" element={<FantasyAdminResultsPage />} />
-        <Route path="admin/score-review/:matchId" element={<FantasyAdminScoreReviewPage />} />
+        <Route path="admin/tournament" element={<FantasyAdminOnly><FantasyAdminTournamentPage /></FantasyAdminOnly>} />
+        <Route path="admin/participants" element={<FantasyAdminOnly><FantasyAdminParticipantsPage /></FantasyAdminOnly>} />
+        <Route path="admin/fixtures" element={<FantasyAdminOnly><FantasyAdminFixturesPage /></FantasyAdminOnly>} />
+        <Route path="admin/squads" element={<FantasyAdminOnly><FantasyAdminSquadsPage /></FantasyAdminOnly>} />
+        <Route path="admin/templates" element={<FantasyAdminOnly><FantasyAdminQuestionTemplatesPage /></FantasyAdminOnly>} />
+        <Route path="admin/ai-settings" element={<FantasyAdminOnly><FantasyAdminAiSettingsPage /></FantasyAdminOnly>} />
+        <Route path="admin/polls" element={<FantasyAdminOnly><FantasyAdminPollsPage /></FantasyAdminOnly>} />
+        <Route path="admin/submitted-polls" element={<FantasyAdminOnly><FantasyAdminSubmittedPollsPage /></FantasyAdminOnly>} />
+        <Route path="admin/results" element={<FantasyAdminOnly><FantasyAdminResultsPage /></FantasyAdminOnly>} />
+        <Route path="admin/score-review/:matchId" element={<FantasyAdminOnly><FantasyAdminScoreReviewPage /></FantasyAdminOnly>} />
       </Route>
       <Route path="/not-found" element={<div className="error-screen"><span className="eyebrow">404</span><h1>That page is off the pitch.</h1><p>The competition or edition may no longer be available.</p><a className="button button--primary" href="/">Go home</a></div>} />
       <Route path="*" element={<Navigate replace to="/not-found" />} />

@@ -10,16 +10,16 @@ describe("fantasy scoring", () => {
   it("builds score review rows from result facts", () => {
     const rows = buildFantasyScoreReview(match, result, fantasyGameData);
 
-    expect(rows[0]).toMatchObject({ nickname: "VAR Villain", totalPoints: 8 });
-    expect(rows.find((row) => row.nickname === "Brazil Boss")?.totalPoints).toBe(3);
+    expect(rows[0]).toMatchObject({ nickname: "Messi Monk", totalPoints: 13 });
+    expect(rows.find((row) => row.nickname === "Brazil Boss")?.totalPoints).toBe(8);
   });
 
-  it("resolves total goals and winner answers", () => {
+  it("resolves exact score and winner answers", () => {
     const winner = fantasyGameData.questions.find((item) => item.id === "q-eng-esp-winner")!;
-    const totalGoals = fantasyGameData.questions.find((item) => item.id === "q-eng-esp-total")!;
+    const exactScore = fantasyGameData.questions.find((item) => item.id === "q-eng-esp-exact-score")!;
 
     expect(resolveFantasyCorrectAnswer(winner, result, fantasyGameData)).toBe("Spain");
-    expect(resolveFantasyCorrectAnswer(totalGoals, result, fantasyGameData)).toBe("2-3");
+    expect(resolveFantasyCorrectAnswer(exactScore, result, fantasyGameData)).toBe("1-2");
   });
 
   it("scores star-player questions from anytime scorers", () => {

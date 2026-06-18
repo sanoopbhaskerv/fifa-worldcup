@@ -1,3 +1,4 @@
+import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { ProviderError } from "./errors.mjs";
 import { createDynamoFantasyStorage } from "./fantasy/dynamodb-storage.mjs";
 import { createMemoryFantasyStorage } from "./fantasy/storage.mjs";
@@ -5,6 +6,7 @@ import { worldCup2026SquadPlayers, worldCup2026Teams } from "./fantasy/world-cup
 import { getLiveCompetitionData } from "./football-data.mjs";
 
 const now = "2026-06-17T12:00:00+05:30";
+const defaultAdminEmail = "sanoopvellangar@gmail.com";
 
 const tournament = {
   id: "world-cup-friends-2026",
@@ -49,19 +51,24 @@ const matches = [
 
 const questions = [
   { id: "q-bra-arg-winner", tournamentId: tournament.id, matchId: "bra-arg", category: "MATCH_WINNER", type: "SINGLE_CHOICE", text: "Who will win the match?", options: ["Brazil", "Argentina", "Draw"], points: 5, status: "OPEN", closeAt: "2026-06-18T20:15:00+05:30" },
+  { id: "q-bra-arg-exact-score", tournamentId: tournament.id, matchId: "bra-arg", category: "EXACT_SCORE", type: "EXACT_SCORE", text: "What will the final score be?", options: [], points: 8, status: "OPEN", closeAt: "2026-06-18T20:15:00+05:30" },
+  { id: "q-bra-arg-first-goal-time", tournamentId: tournament.id, matchId: "bra-arg", category: "FIRST_GOAL_TIME", type: "TIME_WINDOW", text: "When will the first goal be scored?", options: ["Before 10", "11-45", "46-60", "60-90", "90+"], points: 5, status: "OPEN", closeAt: "2026-06-18T20:15:00+05:30" },
+  { id: "q-bra-arg-penalty-goal", tournamentId: tournament.id, matchId: "bra-arg", category: "PENALTY_GOAL", type: "SINGLE_CHOICE", text: "Will there be a penalty goal today?", options: ["Yes", "No"], points: 4, status: "OPEN", closeAt: "2026-06-18T20:15:00+05:30" },
   { id: "q-bra-arg-first-goal", tournamentId: tournament.id, matchId: "bra-arg", category: "FIRST_GOAL_SCORER", type: "PLAYER", text: "Who scores the first goal?", options: ["Vinicius Jr", "Rodrygo", "Lionel Messi", "Julian Alvarez", "Own Goal", "No goal", "Other"], points: 8, status: "OPEN", closeAt: "2026-06-18T20:15:00+05:30" },
   { id: "q-eng-esp-winner", tournamentId: tournament.id, matchId: "eng-esp", category: "MATCH_WINNER", type: "SINGLE_CHOICE", text: "Who won the match?", options: ["England", "Spain", "Draw"], points: 5, status: "SCORED", closeAt: "2026-06-16T23:15:00+05:30" },
-  { id: "q-eng-esp-total", tournamentId: tournament.id, matchId: "eng-esp", category: "TOTAL_GOALS", type: "SCORE_RANGE", text: "Total goals in the match?", options: ["0-1", "2-3", "4+"], points: 3, status: "SCORED", closeAt: "2026-06-16T23:15:00+05:30" },
+  { id: "q-eng-esp-exact-score", tournamentId: tournament.id, matchId: "eng-esp", category: "EXACT_SCORE", type: "EXACT_SCORE", text: "What was the final score?", options: [], points: 8, status: "SCORED", closeAt: "2026-06-16T23:15:00+05:30" },
 ];
 
 const questionTemplates = [
   { id: "tpl-match-result", tournamentId: tournament.id, name: "Match result", category: "MATCH_WINNER", type: "SINGLE_CHOICE", text: "Who will win the match?", optionMode: "MATCH_RESULT", points: 5, enabled: true, importanceLevels: ["NORMAL", "BIG_MATCH", "KNOCKOUT", "FINAL"], sortOrder: 10 },
-  { id: "tpl-first-scoring-team", tournamentId: tournament.id, name: "First scoring team", category: "FIRST_SCORING_TEAM", type: "SINGLE_CHOICE", text: "Which team scores first?", optionMode: "FIRST_SCORING_TEAM", points: 4, enabled: true, importanceLevels: ["NORMAL", "BIG_MATCH", "KNOCKOUT", "FINAL"], sortOrder: 20 },
-  { id: "tpl-total-goals", tournamentId: tournament.id, name: "Total goals", category: "TOTAL_GOALS", type: "SCORE_RANGE", text: "Total goals in the match?", optionMode: "TOTAL_GOALS", points: 3, enabled: true, importanceLevels: ["NORMAL", "BIG_MATCH", "KNOCKOUT", "FINAL"], sortOrder: 30 },
-  { id: "tpl-both-score", tournamentId: tournament.id, name: "Both teams score", category: "BOTH_TEAMS_SCORE", type: "SINGLE_CHOICE", text: "Will both teams score?", optionMode: "YES_NO", points: 3, enabled: true, importanceLevels: ["NORMAL", "BIG_MATCH", "KNOCKOUT", "FINAL"], sortOrder: 40 },
-  { id: "tpl-first-scorer", tournamentId: tournament.id, name: "First goal scorer", category: "FIRST_GOAL_SCORER", type: "PLAYER", text: "Who scores the first goal?", optionMode: "FIRST_GOAL_SCORER", points: 8, maxOptions: 4, enabled: true, importanceLevels: ["NORMAL", "BIG_MATCH", "KNOCKOUT", "FINAL"], sortOrder: 50 },
-  { id: "tpl-star-score", tournamentId: tournament.id, name: "Star player score", category: "STAR_PLAYER_SCORE", type: "SINGLE_CHOICE", text: "Will {player} score?", optionMode: "STAR_PLAYER_SCORE", points: 3, maxOptions: 1, enabled: true, importanceLevels: ["NORMAL", "BIG_MATCH", "KNOCKOUT", "FINAL"], sortOrder: 60 },
-  { id: "tpl-motm", tournamentId: tournament.id, name: "Man of the Match", category: "MAN_OF_THE_MATCH", type: "PLAYER", text: "Who will be Man of the Match?", optionMode: "MAN_OF_THE_MATCH", points: 7, maxOptions: 4, enabled: true, importanceLevels: ["BIG_MATCH", "KNOCKOUT", "FINAL"], sortOrder: 70 },
+  { id: "tpl-total-goals", tournamentId: tournament.id, name: "Exact score", category: "EXACT_SCORE", type: "EXACT_SCORE", text: "What will the final score be?", optionMode: "EXACT_SCORE", points: 8, enabled: true, importanceLevels: ["NORMAL", "BIG_MATCH", "KNOCKOUT", "FINAL"], sortOrder: 20 },
+  { id: "tpl-first-goal-time", tournamentId: tournament.id, name: "First goal time", category: "FIRST_GOAL_TIME", type: "TIME_WINDOW", text: "When will the first goal be scored?", optionMode: "FIRST_GOAL_TIME", points: 5, enabled: true, importanceLevels: ["NORMAL", "BIG_MATCH", "KNOCKOUT", "FINAL"], sortOrder: 30 },
+  { id: "tpl-penalty-goal", tournamentId: tournament.id, name: "Penalty goal", category: "PENALTY_GOAL", type: "SINGLE_CHOICE", text: "Will there be a penalty goal today?", optionMode: "YES_NO", points: 4, enabled: true, importanceLevels: ["NORMAL", "BIG_MATCH", "KNOCKOUT", "FINAL"], sortOrder: 40 },
+  { id: "tpl-first-scorer", tournamentId: tournament.id, name: "First goal scorer", category: "FIRST_GOAL_SCORER", type: "PLAYER", text: "Who scores the first goal?", optionMode: "FIRST_GOAL_SCORER", points: 8, maxOptions: 8, enabled: true, importanceLevels: ["NORMAL", "BIG_MATCH", "KNOCKOUT", "FINAL"], sortOrder: 50 },
+  { id: "tpl-first-scoring-team", tournamentId: tournament.id, name: "First scoring team", category: "FIRST_SCORING_TEAM", type: "SINGLE_CHOICE", text: "Which team scores first?", optionMode: "FIRST_SCORING_TEAM", points: 4, enabled: true, importanceLevels: ["NORMAL", "BIG_MATCH", "KNOCKOUT", "FINAL"], sortOrder: 60 },
+  { id: "tpl-both-score", tournamentId: tournament.id, name: "Both teams score", category: "BOTH_TEAMS_SCORE", type: "SINGLE_CHOICE", text: "Will both teams score?", optionMode: "YES_NO", points: 3, enabled: true, importanceLevels: ["NORMAL", "BIG_MATCH", "KNOCKOUT", "FINAL"], sortOrder: 70 },
+  { id: "tpl-star-score", tournamentId: tournament.id, name: "Star player score", category: "STAR_PLAYER_SCORE", type: "SINGLE_CHOICE", text: "Will {player} score?", optionMode: "STAR_PLAYER_SCORE", points: 3, maxOptions: 1, enabled: true, importanceLevels: ["NORMAL", "BIG_MATCH", "KNOCKOUT", "FINAL"], sortOrder: 80 },
+  { id: "tpl-motm", tournamentId: tournament.id, name: "Man of the Match", category: "MAN_OF_THE_MATCH", type: "PLAYER", text: "Who will be Man of the Match?", optionMode: "MAN_OF_THE_MATCH", points: 7, maxOptions: 8, enabled: true, importanceLevels: ["BIG_MATCH", "KNOCKOUT", "FINAL"], sortOrder: 90 },
 ];
 
 const aiSettings = {
@@ -82,8 +89,8 @@ const aiSettings = {
 
 const activeParticipantId = "p-sanoop";
 const participants = [
-  { id: activeParticipantId, name: "Sanoop", nickname: "Brazil Boss", favoriteTeamId: "bra", avatar: "SB" },
-  { id: "p-anoop", name: "Anoop", nickname: "Messi Monk", favoriteTeamId: "arg", avatar: "AM" },
+  { id: activeParticipantId, name: "Sanoop", nickname: "Brazil Boss", favoriteTeamId: "bra", avatar: "SB", email: defaultAdminEmail, role: "ADMIN", authProvider: "INVITE" },
+  { id: "p-anoop", name: "Anoop", nickname: "Messi Monk", favoriteTeamId: "arg", avatar: "AM", role: "PLAYER", authProvider: "INVITE" },
 ];
 
 const participantInvites = [
@@ -95,9 +102,9 @@ const predictions = [
   { id: "pred-1", questionId: "q-bra-arg-winner", participantId: activeParticipantId, answer: "Brazil", submittedAt: "2026-06-17T18:20:00+05:30" },
   { id: "pred-2", questionId: "q-bra-arg-first-goal", participantId: activeParticipantId, answer: "Vinicius Jr", submittedAt: "2026-06-17T18:22:00+05:30" },
   { id: "pred-3", questionId: "q-eng-esp-winner", participantId: activeParticipantId, answer: "Draw", submittedAt: "2026-06-16T19:10:00+05:30", pointsAwarded: 0 },
-  { id: "pred-4", questionId: "q-eng-esp-total", participantId: activeParticipantId, answer: "2-3", submittedAt: "2026-06-16T19:11:00+05:30", pointsAwarded: 3 },
+  { id: "pred-4", questionId: "q-eng-esp-exact-score", participantId: activeParticipantId, answer: "1-2", submittedAt: "2026-06-16T19:11:00+05:30", pointsAwarded: 8 },
   { id: "pred-5", questionId: "q-eng-esp-winner", participantId: "p-anoop", answer: "Spain", submittedAt: "2026-06-16T20:01:00+05:30", pointsAwarded: 5 },
-  { id: "pred-6", questionId: "q-eng-esp-total", participantId: "p-anoop", answer: "4+", submittedAt: "2026-06-16T20:02:00+05:30", pointsAwarded: 0 },
+  { id: "pred-6", questionId: "q-eng-esp-exact-score", participantId: "p-anoop", answer: "1-2", submittedAt: "2026-06-16T20:02:00+05:30", pointsAwarded: 8 },
 ];
 
 const results = [
@@ -161,7 +168,89 @@ const createFantasyStorage = () => {
 
 const storage = createFantasyStorage();
 
-const gameState = async () => storage.getGame();
+const publicParticipant = (participant) => {
+  const { passwordHash: _passwordHash, ...safeParticipant } = participant;
+  return safeParticipant;
+};
+
+const normalizeContact = (value) => String(value ?? "").trim().toLowerCase();
+
+const normalizePhone = (value) => String(value ?? "").replaceAll(/[^\d+]/g, "");
+
+const contactFor = (input = {}) => {
+  const raw = input.emailOrPhone ?? input.identifier ?? input.email ?? input.phone;
+  const value = String(raw ?? "").trim();
+  if (!value) return {};
+  if (value.includes("@")) return { email: normalizeContact(value) };
+  return { phone: normalizePhone(value) };
+};
+
+const contactMatches = (participant, identifier) => {
+  const contact = contactFor({ identifier });
+  return Boolean(
+    (contact.email && normalizeContact(participant.email) === contact.email) ||
+    (contact.phone && normalizePhone(participant.phone) === contact.phone),
+  );
+};
+
+const passwordDigest = (password, salt) =>
+  createHash("sha256").update(`${salt}:${password}`).digest("hex");
+
+const hashPassword = (password) => {
+  const salt = randomBytes(16).toString("hex");
+  return `sha256$${salt}$${passwordDigest(password, salt)}`;
+};
+
+const verifyPassword = (password, storedHash) => {
+  const [, salt, digest] = String(storedHash ?? "").split("$");
+  if (!salt || !digest) return false;
+  const expected = Buffer.from(digest, "hex");
+  const actual = Buffer.from(passwordDigest(password, salt), "hex");
+  return expected.length === actual.length && timingSafeEqual(expected, actual);
+};
+
+const validatePassword = (password) => {
+  if (typeof password !== "string" || password.length < 8) {
+    throw new ProviderError("Password must be at least 8 characters.", 400, "INVALID_PASSWORD");
+  }
+};
+
+const roleFor = (participant) => {
+  if (participant.role === "ADMIN" || participant.role === "PLAYER") return participant.role;
+  if (participant.id === activeParticipantId || normalizeContact(participant.email) === defaultAdminEmail) return "ADMIN";
+  return "PLAYER";
+};
+
+const normalizeParticipantRecord = (participant) => ({
+  ...participant,
+  email: participant.email ?? (participant.id === activeParticipantId ? defaultAdminEmail : undefined),
+  role: roleFor(participant),
+  authProvider: participant.authProvider ?? (participant.passwordHash ? "PASSWORD" : "INVITE"),
+});
+
+const canonicalTemplateById = new Map(questionTemplates.map((template) => [template.id, template]));
+
+const normalizeGame = (game) => {
+  const existingTemplates = new Map((game.questionTemplates ?? []).map((template) => [template.id, template]));
+  const normalizedTemplates = [
+    ...questionTemplates.map((template) => ({
+      ...(existingTemplates.get(template.id) ?? template),
+      ...canonicalTemplateById.get(template.id),
+    })),
+    ...(game.questionTemplates ?? []).filter((template) => !canonicalTemplateById.has(template.id)),
+  ].sort((left, right) => left.sortOrder - right.sortOrder);
+  return {
+    ...game,
+    participants: game.participants.map(normalizeParticipantRecord),
+    questionTemplates: normalizedTemplates,
+    aiSettings: {
+      ...game.aiSettings,
+      enabledCategories: normalizedTemplates.map((template) => template.category),
+    },
+  };
+};
+
+const gameState = async () => normalizeGame(await storage.getGame());
 
 const audit = async ({ action, actorId, entityId, entityType, metadata = {} }) => {
   const game = await gameState();
@@ -189,7 +278,10 @@ const inviteKey = (value) => String(value).trim().toUpperCase().replaceAll(/\s+/
 
 const publicGame = (game) => {
   const { participantInvites: _participantInvites, ...safeGame } = game;
-  return safeGame;
+  return {
+    ...safeGame,
+    participants: safeGame.participants.map(publicParticipant),
+  };
 };
 
 const withActiveParticipant = (game, participantId) => ({
@@ -215,7 +307,7 @@ const avatar = (value) =>
 const inviteCodeFor = (nickname, seed) => `${slug(nickname).replaceAll("-", "").slice(0, 8).toUpperCase() || "PLAYER"}${seed}`;
 
 const participantsWithInvites = (game) => game.participants.map((participant) => ({
-  ...participant,
+  ...publicParticipant(participant),
   invite: game.participantInvites.find((invite) => invite.participantId === participant.id),
 }));
 
@@ -351,7 +443,7 @@ const validQuestionStatus = new Set(["DRAFT", "OPEN"]);
 const validTournamentStatus = new Set(["UPCOMING", "LIVE", "COMPLETE"]);
 const validPlayerPosition = new Set(["GK", "DEF", "MID", "FWD"]);
 const validQuestionOptionMode = new Set(["MATCH_RESULT", "FIRST_SCORING_TEAM", "TOTAL_GOALS", "EXACT_SCORE", "YES_NO", "FIRST_GOAL_TIME", "FIRST_GOAL_SCORER", "STAR_PLAYER_SCORE", "MAN_OF_THE_MATCH"]);
-const validQuestionCategory = new Set(["MATCH_WINNER", "QUALIFIER", "RESULT_90", "FINAL_SCORE_RANGE", "EXACT_SCORE", "FIRST_SCORING_TEAM", "FIRST_GOAL_TIME", "FIRST_GOAL_SCORER", "ANYTIME_GOAL_SCORER", "STAR_PLAYER_SCORE", "PLAYER_SCORES_2_PLUS", "TOTAL_GOALS", "BOTH_TEAMS_SCORE", "PENALTY_GOAL", "MAN_OF_THE_MATCH", "TOURNAMENT_WINNER", "GOLDEN_BOOT", "GOLDEN_GLOVE"]);
+const validQuestionCategory = new Set(["MATCH_WINNER", "QUALIFIER", "RESULT_90", "FINAL_SCORE_RANGE", "EXACT_SCORE", "FIRST_SCORING_TEAM", "FIRST_GOAL_TIME", "FIRST_GOAL_SCORER", "ANYTIME_GOAL_SCORER", "STAR_PLAYER_SCORE", "PLAYER_SCORES_2_PLUS", "TOTAL_GOALS", "BOTH_TEAMS_SCORE", "PENALTY_GOAL", "MAN_OF_THE_MATCH", "TOURNAMENT_WINNER", "TOURNAMENT_FINALISTS", "GOLDEN_BOOT", "GOLDEN_BALL", "GOLDEN_GLOVE", "TOURNAMENT_MVP"]);
 const validAiMode = new Set(["DISABLED", "TEMPLATE_ONLY", "ASSISTED"]);
 const validAiBanterLevel = new Set(["NONE", "LIGHT", "PLAYFUL"]);
 const playerFallbackOptions = new Set(["Other", "Own Goal", "No goal"]);
@@ -491,6 +583,7 @@ const questionFromTemplate = (template, match, game) => {
     points: isQualifier ? template.points + 1 : template.points,
     status: "DRAFT",
     closeAt: match.pollCloseAt,
+    source: "SYSTEM",
   };
 };
 
@@ -503,6 +596,102 @@ const generatedQuestionsForMatch = (game, match) => {
     .map((template) => questionFromTemplate(template, match, game))
     .filter(Boolean)
     .slice(0, maxQuestions);
+};
+
+const seededTeamOptions = (game, count = 16) =>
+  [...game.teams]
+    .sort((left, right) => (left.rankingSeed ?? 99) - (right.rankingSeed ?? 99))
+    .slice(0, count)
+    .map((team) => team.name);
+
+const tournamentFinalistOptions = (game) => {
+  const contenders = seededTeamOptions(game, 8);
+  const pairings = [];
+  for (let index = 0; index < contenders.length; index += 1) {
+    for (let next = index + 1; next < contenders.length; next += 1) {
+      pairings.push(`${contenders[index]} + ${contenders[next]}`);
+    }
+  }
+  return [...pairings.slice(0, 18), "Other"];
+};
+
+const tournamentPlayerOptions = (game, flag, count = 18) => [
+  ...game.squadPlayers
+    .filter((player) => player[flag])
+    .sort((left, right) => (
+      (game.teams.find((team) => team.id === left.teamId)?.rankingSeed ?? 99) -
+      (game.teams.find((team) => team.id === right.teamId)?.rankingSeed ?? 99) ||
+      left.name.localeCompare(right.name)
+    ))
+    .slice(0, count)
+    .map((player) => player.name),
+  "Other",
+];
+
+const tournamentQuestionsForGame = (game) => {
+  const closeAt = `${game.tournament.startDate}T00:00:00.000Z`;
+  return [
+    {
+      id: "tournament-winner",
+      tournamentId: game.tournament.id,
+      category: "TOURNAMENT_WINNER",
+      type: "SINGLE_CHOICE",
+      text: "Who will win the World Cup?",
+      options: [...seededTeamOptions(game, 20), "Other"],
+      points: 20,
+      status: "OPEN",
+      closeAt,
+      source: "SYSTEM",
+    },
+    {
+      id: "tournament-finalists",
+      tournamentId: game.tournament.id,
+      category: "TOURNAMENT_FINALISTS",
+      type: "SINGLE_CHOICE",
+      text: "Which two teams will reach the final?",
+      options: tournamentFinalistOptions(game),
+      points: 18,
+      status: "OPEN",
+      closeAt,
+      source: "SYSTEM",
+    },
+    {
+      id: "tournament-golden-boot",
+      tournamentId: game.tournament.id,
+      category: "GOLDEN_BOOT",
+      type: "PLAYER",
+      text: "Who will win the Golden Boot?",
+      options: tournamentPlayerOptions(game, "isGoldenBootCandidate"),
+      points: 18,
+      status: "OPEN",
+      closeAt,
+      source: "SYSTEM",
+    },
+    {
+      id: "tournament-golden-ball",
+      tournamentId: game.tournament.id,
+      category: "GOLDEN_BALL",
+      type: "PLAYER",
+      text: "Who will win the Golden Ball?",
+      options: tournamentPlayerOptions(game, "isStarCandidate"),
+      points: 18,
+      status: "OPEN",
+      closeAt,
+      source: "SYSTEM",
+    },
+    {
+      id: "tournament-mvp",
+      tournamentId: game.tournament.id,
+      category: "TOURNAMENT_MVP",
+      type: "PLAYER",
+      text: "Who will be your tournament MVP?",
+      options: tournamentPlayerOptions(game, "isMotmCandidate"),
+      points: 15,
+      status: "OPEN",
+      closeAt,
+      source: "SYSTEM",
+    },
+  ];
 };
 
 const firstGoalWindow = (minute) => {
@@ -729,7 +918,30 @@ export const joinFantasyGame = async ({ inviteCode }) => {
     entityType: "PARTICIPANT",
     metadata: { method: "invite-code" },
   }));
-  return { participant, game: withActiveParticipant(updatedGame, participant.id) };
+  return { participant: publicParticipant(participant), game: withActiveParticipant(updatedGame, participant.id) };
+};
+
+/**
+ * Authenticates a participant using email/phone and password.
+ *
+ * @param input - Login credentials.
+ * @returns Participant identity and active game payload.
+ */
+export const loginFantasyParticipant = async (input = {}) => {
+  const game = await gameState();
+  const identifier = String(input.emailOrPhone ?? input.identifier ?? "").trim();
+  const participant = game.participants.find((item) => contactMatches(item, identifier));
+  if (!participant || !participant.passwordHash || !verifyPassword(input.password, participant.passwordHash)) {
+    throw new ProviderError("Email/phone or password is invalid.", 401, "INVALID_LOGIN");
+  }
+  const updatedGame = await saveGame(game, await audit({
+    action: "PARTICIPANT_JOINED",
+    actorId: participant.id,
+    entityId: participant.id,
+    entityType: "PARTICIPANT",
+    metadata: { method: "password" },
+  }));
+  return { participant: publicParticipant(participant), game: withActiveParticipant(updatedGame, participant.id) };
 };
 
 /**
@@ -754,6 +966,14 @@ export const listFantasyParticipants = async () => {
 export const createFantasyParticipant = async (input) => {
   const game = await gameState();
   const { name, nickname, favoriteTeamId } = participantInput(game, input);
+  const contact = contactFor(input);
+  if ((contact.email || contact.phone) && game.participants.some((participant) => (
+    (contact.email && normalizeContact(participant.email) === contact.email) ||
+    (contact.phone && normalizePhone(participant.phone) === contact.phone)
+  ))) {
+    throw new ProviderError("That email or phone number is already registered.", 409, "PARTICIPANT_EXISTS");
+  }
+  if (input.password) validatePassword(input.password);
   const createdAt = new Date().toISOString();
   const baseId = `p-${slug(nickname) || slug(name) || "participant"}`;
   const duplicateCount = game.participants.filter((participant) => participant.id === baseId || participant.id.startsWith(`${baseId}-`)).length;
@@ -763,6 +983,10 @@ export const createFantasyParticipant = async (input) => {
     nickname: nickname.trim(),
     favoriteTeamId,
     avatar: avatar(nickname),
+    ...contact,
+    role: input.role === "ADMIN" ? "ADMIN" : "PLAYER",
+    authProvider: input.password ? "PASSWORD" : "INVITE",
+    passwordHash: input.password ? hashPassword(input.password) : undefined,
   };
   const invite = {
     id: `invite-${participant.id}`,
@@ -799,7 +1023,7 @@ export const createFantasyParticipant = async (input) => {
     entityType: "PARTICIPANT",
     metadata: { favoriteTeamId },
   }));
-  return { participant, invite, game: publicGame(updatedGame) };
+  return { participant: publicParticipant(participant), invite, game: publicGame(updatedGame) };
 };
 
 /**
@@ -809,6 +1033,12 @@ export const createFantasyParticipant = async (input) => {
  * @returns Created participant, invite, and active game payload.
  */
 export const createFantasySignup = async (input) => {
+  if (input.password) {
+    const contact = contactFor(input);
+    if (!contact.email && !contact.phone) {
+      throw new ProviderError("Email or phone number is required for password signup.", 400, "INVALID_PARTICIPANT");
+    }
+  }
   const created = await createFantasyParticipant({ ...input, actorId: "self-signup" });
   return {
     ...created,
@@ -838,6 +1068,7 @@ export const updateFantasyParticipant = async (participantId, input) => {
     nickname,
     favoriteTeamId,
     avatar: avatar(nickname),
+    ...contactFor(input),
   };
   const favoriteTeam = game.teams.find((team) => team.id === favoriteTeamId)?.name ?? "Unknown";
   const nextGame = {
@@ -856,7 +1087,68 @@ export const updateFantasyParticipant = async (participantId, input) => {
     entityType: "PARTICIPANT",
     metadata: { favoriteTeamId },
   }));
-  return { participant: updatedParticipant, game: withActiveParticipant(updatedGame, participantId) };
+  return { participant: publicParticipant(updatedParticipant), game: withActiveParticipant(updatedGame, participantId) };
+};
+
+/**
+ * Changes or sets a participant password.
+ *
+ * @param participantId - Participant being updated.
+ * @param input - Password fields.
+ * @returns Updated participant and game payload.
+ */
+export const changeFantasyParticipantPassword = async (participantId, input = {}) => {
+  const game = await gameState();
+  const participant = game.participants.find((item) => item.id === participantId);
+  if (!participant) throw new ProviderError("Participant not found.", 404, "NOT_FOUND");
+  validatePassword(input.newPassword);
+  if (participant.passwordHash && !verifyPassword(input.currentPassword, participant.passwordHash)) {
+    throw new ProviderError("Current password is incorrect.", 401, "INVALID_PASSWORD");
+  }
+  const updatedParticipant = {
+    ...participant,
+    passwordHash: hashPassword(input.newPassword),
+    authProvider: "PASSWORD",
+    passwordChangedAt: new Date().toISOString(),
+  };
+  const nextGame = {
+    ...game,
+    participants: game.participants.map((item) => item.id === participantId ? updatedParticipant : item),
+  };
+  const updatedGame = await saveGame(nextGame, await audit({
+    action: "PARTICIPANT_PASSWORD_CHANGED",
+    actorId: participantId,
+    entityId: participantId,
+    entityType: "PARTICIPANT",
+  }));
+  return { participant: publicParticipant(updatedParticipant), game: withActiveParticipant(updatedGame, participantId) };
+};
+
+/**
+ * Grants or removes admin role for a participant.
+ *
+ * @param participantId - Participant being changed.
+ * @param input - Role update payload.
+ * @returns Updated participant and game payload.
+ */
+export const updateFantasyParticipantRole = async (participantId, input = {}) => {
+  const game = await gameState();
+  const participant = game.participants.find((item) => item.id === participantId);
+  if (!participant) throw new ProviderError("Participant not found.", 404, "NOT_FOUND");
+  const role = input.role === "ADMIN" ? "ADMIN" : "PLAYER";
+  const updatedParticipant = { ...participant, role };
+  const nextGame = {
+    ...game,
+    participants: game.participants.map((item) => item.id === participantId ? updatedParticipant : item),
+  };
+  const updatedGame = await saveGame(nextGame, await audit({
+    action: "PARTICIPANT_ROLE_UPDATED",
+    actorId: input.actorId ?? "admin",
+    entityId: participantId,
+    entityType: "PARTICIPANT",
+    metadata: { role },
+  }));
+  return { participant: publicParticipant(updatedParticipant), game: publicGame(updatedGame) };
 };
 
 /**
@@ -1443,6 +1735,43 @@ export const generateFantasyPolls = async (input = {}) => {
 };
 
 /**
+ * Clears existing match polls and user answers, then publishes fresh polls.
+ *
+ * @param input - Reset and generation options.
+ * @returns Freshly generated questions and game payload.
+ */
+export const resetAndGenerateFantasyPolls = async (input = {}) => {
+  const game = await gameState();
+  const keepTournamentQuestions = input.keepTournamentQuestions ?? true;
+  const includeTournamentQuestions = input.includeTournamentQuestions ?? true;
+  const defaultTournamentQuestions = includeTournamentQuestions ? tournamentQuestionsForGame(game) : [];
+  const defaultTournamentQuestionIds = new Set(defaultTournamentQuestions.map((question) => question.id));
+  const preservedTournamentQuestions = keepTournamentQuestions
+    ? game.questions.filter((question) => !question.matchId && !defaultTournamentQuestionIds.has(question.id))
+    : [];
+  const baseGame = {
+    ...game,
+    questions: [...preservedTournamentQuestions, ...defaultTournamentQuestions],
+    predictions: [],
+  };
+  const savedBaseGame = await saveGame(baseGame, await audit({
+    action: "POLLS_RESET",
+    actorId: input.actorId ?? "admin",
+    entityId: game.tournament.id,
+    entityType: "MATCH",
+    metadata: { keepTournamentQuestions },
+  }));
+  await storage.setGame(savedBaseGame);
+  return generateFantasyPolls({
+    status: input.status ?? "OPEN",
+    limit: input.limit ?? 16,
+    replaceExisting: true,
+    matchIds: input.matchIds,
+    actorId: input.actorId ?? "admin",
+  });
+};
+
+/**
  * Creates one published user poll for an upcoming fixture from constrained templates.
  *
  * @param input - User poll creation fields.
@@ -1560,7 +1889,7 @@ export const submitFantasyPrediction = async ({ questionId, participantId, answe
     entityType: "PREDICTION",
     metadata: { answer },
   }));
-  return { prediction, game: updatedGame };
+  return { prediction, game: withActiveParticipant(updatedGame, resolvedParticipantId) };
 };
 
 /**
@@ -1599,7 +1928,7 @@ export const saveFantasyResult = async (matchId, result) => {
     entityType: "RESULT",
     metadata: { homeScore: nextResult.homeScore, awayScore: nextResult.awayScore },
   }));
-  return { result: nextResult, game: updatedGame };
+  return { result: nextResult, game: publicGame(updatedGame) };
 };
 
 /**
@@ -1633,7 +1962,7 @@ export const publishFantasyScores = async (matchId) => {
     entityType: "MATCH",
     metadata: { questionCount: questionIds.size },
   }));
-  return { predictions: updatedGame.predictions.filter((prediction) => questionIds.has(prediction.questionId)), game: updatedGame };
+  return { predictions: updatedGame.predictions.filter((prediction) => questionIds.has(prediction.questionId)), game: publicGame(updatedGame) };
 };
 
 /**

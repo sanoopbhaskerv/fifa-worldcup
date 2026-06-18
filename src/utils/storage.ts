@@ -13,6 +13,9 @@ export interface StoredSelection {
 export interface StoredFantasyIdentity {
   participantId: string;
   nickname: string;
+  role?: "ADMIN" | "PLAYER";
+  email?: string;
+  phone?: string;
 }
 
 /**

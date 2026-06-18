@@ -14,6 +14,11 @@ interface JoinFantasyGameInput {
   inviteCode: string;
 }
 
+interface LoginFantasyParticipantInput {
+  emailOrPhone: string;
+  password: string;
+}
+
 interface JoinFantasyGameResponse {
   participant: FantasyGameData["participants"][number];
   game: FantasyGameData;
@@ -23,11 +28,25 @@ interface CreateFantasyParticipantInput {
   name: string;
   nickname: string;
   favoriteTeamId: string;
+  emailOrPhone?: string;
+  password?: string;
+  role?: "ADMIN" | "PLAYER";
 }
 
 type UpdateFantasyParticipantInput = CreateFantasyParticipantInput & {
   participantId: string;
 };
+
+interface ChangeFantasyPasswordInput {
+  participantId: string;
+  currentPassword?: string;
+  newPassword: string;
+}
+
+interface UpdateFantasyParticipantRoleInput {
+  participantId: string;
+  role: "ADMIN" | "PLAYER";
+}
 
 interface FantasyParticipantsResponse {
   participants: FantasyAdminParticipant[];
@@ -190,6 +209,10 @@ interface GenerateFantasyPollsResponse {
   game: FantasyGameData;
 }
 
+type ResetFantasyPollsInput = GenerateFantasyPollsInput & {
+  keepTournamentQuestions?: boolean;
+};
+
 interface CreateFantasyUserPollInput {
   participantId: string;
   matchId: string;
@@ -253,6 +276,19 @@ const joinFantasyGame = async ({ inviteCode }: JoinFantasyGameInput): Promise<Jo
   return (await response.json()) as JoinFantasyGameResponse;
 };
 
+const loginFantasyParticipant = async (input: LoginFantasyParticipantInput): Promise<JoinFantasyGameResponse> => {
+  const response = await fetch(fantasyApiUrl("/api/fantasy/login"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error?.message ?? "Could not log in.");
+  }
+  return (await response.json()) as JoinFantasyGameResponse;
+};
+
 const fetchFantasyParticipants = async (): Promise<FantasyParticipantsResponse> => {
   const response = await fetch(fantasyApiUrl("/api/fantasy/admin/participants"));
   if (!response.ok) throw new Error("Could not load participants.");
@@ -285,6 +321,19 @@ const updateFantasyParticipant = async ({ participantId, ...input }: UpdateFanta
   return (await response.json()) as UpdateFantasyParticipantResponse;
 };
 
+const changeFantasyPassword = async ({ participantId, ...input }: ChangeFantasyPasswordInput): Promise<UpdateFantasyParticipantResponse> => {
+  const response = await fetch(fantasyApiUrl(`/api/fantasy/participants/${encodeURIComponent(participantId)}/password`), {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error?.message ?? "Could not change password.");
+  }
+  return (await response.json()) as UpdateFantasyParticipantResponse;
+};
+
 const createFantasyAdminParticipant = async (input: CreateFantasyParticipantInput): Promise<CreateFantasyParticipantResponse> => {
   const response = await fetch(fantasyApiUrl("/api/fantasy/admin/participants"), {
     method: "POST",
@@ -296,6 +345,19 @@ const createFantasyAdminParticipant = async (input: CreateFantasyParticipantInpu
     throw new Error(payload?.error?.message ?? "Could not create participant.");
   }
   return (await response.json()) as CreateFantasyParticipantResponse;
+};
+
+const updateFantasyParticipantRole = async ({ participantId, role }: UpdateFantasyParticipantRoleInput): Promise<UpdateFantasyParticipantResponse> => {
+  const response = await fetch(fantasyApiUrl(`/api/fantasy/admin/participants/${encodeURIComponent(participantId)}/role`), {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ role }),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error?.message ?? "Could not update admin access.");
+  }
+  return (await response.json()) as UpdateFantasyParticipantResponse;
 };
 
 const fetchFantasyFixtures = async (): Promise<FantasyFixturesResponse> => {
@@ -465,6 +527,19 @@ const generateFantasyPolls = async (input: GenerateFantasyPollsInput): Promise<G
   return (await response.json()) as GenerateFantasyPollsResponse;
 };
 
+const resetFantasyPolls = async (input: ResetFantasyPollsInput): Promise<GenerateFantasyPollsResponse> => {
+  const response = await fetch(fantasyApiUrl("/api/fantasy/admin/polls/reset"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error?.message ?? "Could not reset fantasy polls.");
+  }
+  return (await response.json()) as GenerateFantasyPollsResponse;
+};
+
 const createFantasyUserPoll = async (input: CreateFantasyUserPollInput): Promise<CreateFantasyUserPollResponse> => {
   const response = await fetch(fantasyApiUrl("/api/fantasy/polls"), {
     method: "POST",
@@ -552,6 +627,21 @@ export const useJoinFantasyGame = () => {
 };
 
 /**
+ * Logs in with email/phone and password.
+ *
+ * @returns TanStack mutation for password login.
+ */
+export const useLoginFantasyParticipant = () => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: loginFantasyParticipant,
+    onSuccess: ({ game, participant }) => {
+      queryClient.setQueryData(fantasyGameQueryKey(participant.id), game);
+    },
+  });
+};
+
+/**
  * Creates a participant from the public signup/guest flow.
  *
  * @returns TanStack mutation for player signup.
@@ -585,6 +675,22 @@ export const useUpdateFantasyParticipant = (participantId?: string) => {
 };
 
 /**
+ * Changes or sets the active participant password.
+ *
+ * @param participantId - Active participant cache key.
+ * @returns TanStack mutation for password updates.
+ */
+export const useChangeFantasyPassword = (participantId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: changeFantasyPassword,
+    onSuccess: ({ game, participant }) => {
+      queryClient.setQueryData(fantasyGameQueryKey(participantId ?? participant.id), game);
+    },
+  });
+};
+
+/**
  * Loads admin participant rows with invite metadata.
  *
  * @returns TanStack query result for participant administration.
@@ -605,6 +711,23 @@ export const useCreateFantasyParticipant = (participantId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: createFantasyAdminParticipant,
+    onSuccess: ({ game }) => {
+      queryClient.invalidateQueries({ queryKey: ["fantasy-participants", fantasyGameData.tournament.id] });
+      queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
+    },
+  });
+};
+
+/**
+ * Updates admin access for one participant.
+ *
+ * @param participantId - Active participant cache key.
+ * @returns TanStack mutation for role changes.
+ */
+export const useUpdateFantasyParticipantRole = (participantId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateFantasyParticipantRole,
     onSuccess: ({ game }) => {
       queryClient.invalidateQueries({ queryKey: ["fantasy-participants", fantasyGameData.tournament.id] });
       queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
@@ -838,6 +961,23 @@ export const useGenerateFantasyPolls = (participantId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: generateFantasyPolls,
+    onSuccess: ({ game }) => {
+      queryClient.invalidateQueries({ queryKey: ["fantasy-fixtures", fantasyGameData.tournament.id] });
+      queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
+    },
+  });
+};
+
+/**
+ * Clears existing poll questions/answers and publishes fresh generated polls.
+ *
+ * @param participantId - Active participant cache key.
+ * @returns TanStack mutation for poll reset.
+ */
+export const useResetFantasyPolls = (participantId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: resetFantasyPolls,
     onSuccess: ({ game }) => {
       queryClient.invalidateQueries({ queryKey: ["fantasy-fixtures", fantasyGameData.tournament.id] });
       queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
