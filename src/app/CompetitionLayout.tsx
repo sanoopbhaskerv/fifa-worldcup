@@ -1,8 +1,7 @@
 import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
-import { useRegisterSW } from "virtual:pwa-register/react";
-import { ArrowIcon, BracketIcon, CalendarIcon, ChevronIcon, HomeIcon, PlayerIcon, SignalIcon, TableIcon, TrophyIcon } from "../components/Icons";
+import { BracketIcon, CalendarIcon, ChevronIcon, HomeIcon, PlayerIcon, SignalIcon, TableIcon, TrophyIcon } from "../components/Icons";
 import { CompetitionPicker } from "../features/competitions/CompetitionPicker";
 import { PullToRefreshIndicator } from "../components/PullToRefreshIndicator";
 import { useFavorites } from "../hooks/use-favorites";
@@ -11,7 +10,6 @@ import { usePullToRefresh } from "../hooks/use-pull-to-refresh";
 import { useCompetitionData, useCompetitions } from "../services/queries";
 import type { Competition } from "../types/domain";
 import { availableSections, formatUpdated, sectionPath, type Section } from "../utils/football";
-import { clearLegacyPwaCaches } from "../utils/pwa-cache";
 import { storage } from "../utils/storage";
 
 const navMeta = {
@@ -39,10 +37,6 @@ export const CompetitionLayout = () => {
   const competition = catalogQuery.data?.find((item) => item.slug === competitionSlug);
   const dataQuery = useCompetitionData(competition?.id ?? "", editionId);
   const {
-    needRefresh: [needRefresh, setNeedRefresh],
-    updateServiceWorker,
-  } = useRegisterSW({ immediate: true });
-  const {
     containerRef: pullRefreshContainerRef,
     progress: pullRefreshProgress,
     pullDistance,
@@ -52,10 +46,6 @@ export const CompetitionLayout = () => {
     isRefreshing: dataQuery.isFetching,
     onRefresh: () => dataQuery.refetch(),
   });
-
-  useEffect(() => {
-    void clearLegacyPwaCaches();
-  }, []);
 
   useEffect(() => {
     if (competition && competition.editions.some((edition) => edition.id === editionId)) {
@@ -88,11 +78,6 @@ export const CompetitionLayout = () => {
     setPickerOpen(false);
   };
   const selectEdition = (nextEdition: string) => navigate(sectionPath(competition, nextEdition, currentSection));
-  const applyUpdate = () => {
-    void updateServiceWorker(true);
-    window.setTimeout(() => window.location.reload(), 700);
-  };
-
   return (
     <div className="app" style={{ "--competition-accent": competition.accent } as React.CSSProperties}>
       <a className="skip-link" href="#main-content">Skip to content</a>
@@ -143,7 +128,6 @@ export const CompetitionLayout = () => {
         {sections.slice(0, 5).map((section) => <SectionLink key={section} section={section} competition={competition} editionId={editionId} bottom />)}
       </nav>
       <CompetitionPicker open={pickerOpen} competitions={catalogQuery.data ?? []} currentId={competition.id} favorites={favorites} recents={storage.getRecents()} onClose={() => setPickerOpen(false)} onSelect={selectCompetition} onToggleFavorite={toggleFavorite} />
-      {needRefresh && <div className="update-toast" role="status"><div><strong>Update ready</strong><span>A new version of Full Time is available.</span></div><button onClick={applyUpdate}>Update <ArrowIcon /></button><button className="icon-button" onClick={() => setNeedRefresh(false)} aria-label="Dismiss update">×</button></div>}
     </div>
   );
 };

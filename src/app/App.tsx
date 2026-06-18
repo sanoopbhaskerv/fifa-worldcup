@@ -3,6 +3,7 @@ import type { ReactElement } from "react";
 import { Navigate, Route, Routes } from "react-router-dom";
 import { CompetitionLayout } from "./CompetitionLayout";
 import { FantasyLayout } from "./FantasyLayout";
+import { PwaUpdatePrompt } from "./PwaUpdatePrompt";
 import { useFantasy } from "./fantasy-context";
 
 const HomePage = lazy(() => import("../pages/HomePage"));
@@ -44,6 +45,7 @@ const FantasyAdminOnly = ({ children }: { children: ReactElement }) => {
  */
 export const App = () => (
   <Suspense fallback={<div className="loading-screen" role="status">Loading view…</div>}>
+    <PwaUpdatePrompt />
     <Routes>
       <Route path="/" element={<HomePage />} />
       <Route path="/competitions/:competitionSlug/:editionId" element={<CompetitionLayout />}>
