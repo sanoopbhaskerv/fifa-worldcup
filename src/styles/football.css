@@ -106,9 +106,9 @@
 .table-team strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 11px; }
 .table-team small { color: var(--muted); font-size: 8px; text-transform: uppercase; letter-spacing: .06em; }
 .position { display: grid; place-items: center; width: 23px; height: 23px; border-radius: 7px; }
-.position--champion, .position--qualified { background: rgba(201,255,71,.15); color: var(--accent); }
-.position--eliminated { background: rgba(255,202,88,.12); color: var(--warning); }
-.position--relegated { background: rgba(255,107,98,.14); color: var(--danger); }
+.position--champion, .position--qualified { background: color-mix(in srgb, var(--accent) 15%, transparent); color: var(--accent); }
+.position--eliminated { background: color-mix(in srgb, var(--warning) 12%, transparent); color: var(--warning); }
+.position--relegated { background: color-mix(in srgb, var(--danger) 14%, transparent); color: var(--danger); }
 .form { display: flex; gap: 3px; }
 .form i { display: grid; place-items: center; width: 18px; height: 18px; border-radius: 5px; font-style: normal; font-size: 8px; }
 .form__w { color: var(--on-accent); background: var(--accent); }.form__d { background: var(--form-draw-bg); }.form__l { background: var(--form-loss-bg); }

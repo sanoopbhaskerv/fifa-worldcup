@@ -12,6 +12,7 @@ import { useCompetitionData, useCompetitions } from "../services/queries";
 import type { Competition } from "../types/domain";
 import { availableSections, formatUpdated, sectionPath, type Section } from "../utils/football";
 import { storage } from "../utils/storage";
+import { useTheme } from "./theme-context";
 
 const navMeta = {
   overview: { label: "Overview", icon: HomeIcon },
@@ -28,6 +29,7 @@ const navMeta = {
  * @returns Routed competition shell with desktop, mobile, and nested section UI.
  */
 export const CompetitionLayout = () => {
+  const { theme } = useTheme();
   const { competitionSlug = "", editionId = "" } = useParams();
   const navigate = useNavigate();
   const location = useLocation();
@@ -82,7 +84,7 @@ export const CompetitionLayout = () => {
 
   const accountDisplayName = accountIdentity?.nickname ?? "Guest";
   return (
-    <div className="app" style={{ "--competition-accent": competition.accent } as React.CSSProperties}>
+    <div className="app" style={{ "--competition-accent": theme === "pitch" ? competition.accent : "var(--accent)" } as React.CSSProperties}>
       <a className="skip-link" href="#main-content">Skip to content</a>
       <PullToRefreshIndicator progress={pullRefreshProgress} state={pullRefreshState} />
       <div
@@ -97,7 +99,7 @@ export const CompetitionLayout = () => {
           <div className="topbar__inner">
             <NavLink className="brand" to="/"><span className="brand__mark">F</span><span>FullTime</span></NavLink>
             <button className="competition-switcher" onClick={() => setPickerOpen(true)}>
-              <span className="competition-emblem" style={{ "--competition-accent": competition.accent } as React.CSSProperties}>{competition.emblem}</span>
+              <span className="competition-emblem" style={{ "--competition-accent": theme === "pitch" ? competition.accent : "var(--accent)" } as React.CSSProperties}>{competition.emblem}</span>
               <span><small>Competition</small><strong>{competition.shortName}</strong></span><ChevronIcon />
             </button>
             <div className="topbar__actions">
@@ -111,7 +113,7 @@ export const CompetitionLayout = () => {
         <div className="app-frame">
           <aside className="desktop-nav" aria-label="Competition sections">
             <div className="desktop-nav__identity">
-              <span className="competition-emblem competition-emblem--large" style={{ "--competition-accent": competition.accent } as React.CSSProperties}>{competition.emblem}</span>
+              <span className="competition-emblem competition-emblem--large" style={{ "--competition-accent": theme === "pitch" ? competition.accent : "var(--accent)" } as React.CSSProperties}>{competition.emblem}</span>
               <div><strong>{competition.name}</strong><span>{editionId} edition</span></div>
             </div>
             <nav>{sections.map((section) => <SectionLink key={section} section={section} competition={competition} editionId={editionId} />)}</nav>
