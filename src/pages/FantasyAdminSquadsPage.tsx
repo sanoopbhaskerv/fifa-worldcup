@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
+import { LabeledSelect } from "../components/FormFields";
 import { useFantasySquads, useImportFantasySquads, useSeedFantasyWorldCupSquads, useUpdateFantasySquadPlayer, useUpdateFantasyTeam } from "../services/fantasy-queries";
 import type { FantasySquadPlayer, FantasyTeam } from "../types/fantasy";
 import { fantasyTeamName } from "../utils/fantasy";
@@ -190,6 +191,8 @@ const PlayerEditor = ({ player, teams }: { player: FantasySquadPlayer; teams: Fa
     isScorerCandidate: player.isScorerCandidate,
     isStarCandidate: player.isStarCandidate,
   });
+  const teamOptions = teams.map((team) => ({ value: team.id, label: team.name }));
+  const positionSelectOptions = positionOptions.map((option) => ({ value: option, label: option }));
 
   const updateFlag = (flag: keyof typeof flags, checked: boolean) => setFlags((current) => ({ ...current, [flag]: checked }));
 
@@ -218,18 +221,13 @@ const PlayerEditor = ({ player, teams }: { player: FantasySquadPlayer; teams: Fa
           Player name
           <input onChange={(event) => setName(event.target.value)} value={name} />
         </label>
-        <label>
-          Team
-          <select onChange={(event) => setTeamId(event.target.value)} value={teamId}>
-            {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
-          </select>
-        </label>
-        <label>
-          Position
-          <select onChange={(event) => setPosition(event.target.value as FantasySquadPlayer["position"])} value={position}>
-            {positionOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-          </select>
-        </label>
+        <LabeledSelect label="Team" onChange={setTeamId} options={teamOptions} value={teamId} />
+        <LabeledSelect
+          label="Position"
+          onChange={(value: string) => setPosition(value as FantasySquadPlayer["position"])}
+          options={positionSelectOptions}
+          value={position}
+        />
         <label>
           Shirt number
           <input min="1" onChange={(event) => setShirtNumber(event.target.value)} type="number" value={shirtNumber} />

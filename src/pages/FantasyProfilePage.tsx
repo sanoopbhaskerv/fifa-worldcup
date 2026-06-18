@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
+import { LabeledSelect } from "../components/FormFields";
 import { PasswordField } from "../components/PasswordField";
 import { useChangeFantasyPassword, useUpdateFantasyParticipant } from "../services/fantasy-queries";
 import { storage } from "../utils/storage";
@@ -23,6 +24,7 @@ export default function FantasyProfilePage() {
   const [newPassword, setNewPassword] = useState("");
   const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
   const passwordMatches = newPassword.length > 0 && newPassword === newPasswordConfirm;
+  const teamOptions = data.teams.map((team) => ({ value: team.id, label: team.name }));
 
   if (!participant) {
     return (
@@ -67,12 +69,7 @@ export default function FantasyProfilePage() {
             Email or phone
             <input autoComplete="username" onChange={(event) => setEmailOrPhone(event.target.value)} placeholder="you@example.com" value={emailOrPhone} />
           </label>
-          <label>
-            Favorite team
-            <select onChange={(event) => setFavoriteTeamId(event.target.value)} value={favoriteTeamId}>
-              {data.teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
-            </select>
-          </label>
+          <LabeledSelect label="Favorite team" onChange={setFavoriteTeamId} options={teamOptions} value={favoriteTeamId} />
           <button className="button button--primary" disabled={updateParticipant.isPending || !name.trim() || !nickname.trim()} type="submit">
             {updateParticipant.isPending ? "Saving..." : "Save profile"}
           </button>

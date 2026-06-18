@@ -409,7 +409,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .fantasy-recap p, .fantasy-recap-note p { color: var(--muted); line-height: 1.55; }
 .fantasy-quick-links { margin-top: 20px; }
 .fantasy-poll-groups { display: grid; gap: 16px; }
-.fantasy-page-actions { display: flex; justify-content: flex-end; margin: -8px 0 14px; }
+.fantasy-page-actions { display: flex; justify-content: flex-end; margin: -8px 0 14px; gap:20px }
 .fantasy-page-actions a { display: inline-flex; align-items: center; gap: 6px; min-height: 40px; padding: 0 12px; border-radius: 10px; color: #07130f; background: var(--accent); font-size: 11px; font-weight: 900; }
 .fantasy-page-actions svg { width: 14px; }
 .fantasy-poll-group .section-heading { align-items: start; }

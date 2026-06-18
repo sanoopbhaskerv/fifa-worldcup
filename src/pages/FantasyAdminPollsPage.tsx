@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
+import { LabeledSelect } from "../components/FormFields";
 import { useGenerateFantasyPolls, useResetFantasyPolls, useSaveFantasyQuestionDrafts } from "../services/fantasy-queries";
 import { generateFantasyQuestionDraft, unknownFantasyPlayerOptions } from "../utils/fantasy-ai";
 import { fantasyDeadlineLabel, fantasyMatchTitle } from "../utils/fantasy";
@@ -21,6 +22,7 @@ export default function FantasyAdminPollsPage() {
   const activeMatch = data.matches.find((match) => match.id === activeMatchId) ?? data.matches[0];
   const draft = useMemo(() => activeMatch ? generateFantasyQuestionDraft(activeMatch, data) : undefined, [activeMatch, data]);
   const hasUnknownOptions = draft?.questions.some((question) => unknownFantasyPlayerOptions(question, data).length > 0) ?? false;
+  const groupOptions = data.groups.map((group) => ({ value: group.id, label: group.name }));
   const saveQuestions = (status: "DRAFT" | "OPEN") => {
     if (!activeMatch || !draft) return;
     saveDrafts.mutate({ groupId, matchId: activeMatch.id, questions: draft.questions, status });
@@ -34,12 +36,7 @@ export default function FantasyAdminPollsPage() {
           <div className="fantasy-squad-import">
             <strong>Bulk generation</strong>
             <p>Create template-grounded polls for the next synced fixtures using stored squads.</p>
-            <label>
-              Group
-              <select onChange={(event) => setGroupId(event.target.value)} value={groupId}>
-                {data.groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
-              </select>
-            </label>
+            <LabeledSelect label="Group" onChange={setGroupId} options={groupOptions} value={groupId} />
             <button disabled={generatePolls.isPending} onClick={() => generatePolls.mutate({ groupId, limit: 8, replaceExisting: true, status: "DRAFT" })} type="button">
               {generatePolls.isPending ? "Generating..." : "Draft next 8"}
             </button>

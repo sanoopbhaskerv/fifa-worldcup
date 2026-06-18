@@ -3,6 +3,7 @@ import { useState } from "react";
 import { FantasyQuestionCard } from "../features/fantasy/FantasyQuestionCard";
 import { ArrowIcon } from "../components/Icons";
 import { useFantasy } from "../app/fantasy-context";
+import { LabeledSelect } from "../components/FormFields";
 import { useSubmitFantasyPrediction, useSubmitFantasyPredictions } from "../services/fantasy-queries";
 import { fantasyDeadlineLabel, fantasyMatchTitle, fantasyPredictionForQuestion, fantasyPublishedQuestions, fantasyQuestionsForGroup, fantasyQuestionsForMatch } from "../utils/fantasy";
 import { formatDate, formatKickoff } from "../utils/football";
@@ -41,18 +42,14 @@ export default function FantasyPollsPage() {
   const clearDrafts = (questionIds: string[]) => {
     setDraftAnswers((current) => Object.fromEntries(Object.entries(current).filter(([questionId]) => !questionIds.includes(questionId))));
   };
+  const groupOptions = data.groups.map((group) => ({ value: group.id, label: group.name }));
 
   return (
     <div className="page fantasy-page">
       <PageHeading eyebrow="Prediction polls" title="Published polls" description="Answer open match polls before lock time. Drafts stay hidden until an admin publishes them." />
       <div className="fantasy-page-actions">
         {data.groups.length > 1 && (
-          <label>
-            Group
-            <select onChange={(event) => setGroupId(event.target.value)} value={groupId}>
-              {data.groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
-            </select>
-          </label>
+          <LabeledSelect label="Group" onChange={setGroupId} options={groupOptions} value={groupId} />
         )}
         <Link to="/fantasy/create-poll">Create poll <ArrowIcon /></Link>
       </div>

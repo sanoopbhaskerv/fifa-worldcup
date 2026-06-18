@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
+import { LabeledSelect } from "../components/FormFields";
 import { fantasyGroupName, fantasyMatchTitle, fantasyParticipant, fantasyParticipantIdsForGroup, fantasyQuestionsForGroup } from "../utils/fantasy";
 import { formatKickoff } from "../utils/football";
 import { PageHeading } from "../components/PageSections";
@@ -19,6 +20,7 @@ export default function FantasyAdminSubmittedPollsPage() {
   const visibleQuestions = fantasyQuestionsForGroup(groupId, data.questions)
     .filter((question) => question.status !== "DRAFT")
     .sort((left, right) => (left.closeAt || "").localeCompare(right.closeAt || ""));
+  const groupOptions = data.groups.map((group) => ({ value: group.id, label: group.name }));
 
   return (
     <div className="page fantasy-page">
@@ -26,12 +28,7 @@ export default function FantasyAdminSubmittedPollsPage() {
       <section className="content-section fantasy-submitted-polls">
         <div className="section-heading">
           <div><span className="eyebrow">Coverage</span><h2>{visibleQuestions.length} polls</h2><p>{fantasyGroupName(groupId, data)}</p></div>
-          <label>
-            Group
-            <select onChange={(event) => setGroupId(event.target.value)} value={groupId}>
-              {data.groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
-            </select>
-          </label>
+          <LabeledSelect ariaLabel="Group" label="Group" onChange={setGroupId} options={groupOptions} value={groupId} />
         </div>
         <div className="fantasy-submitted-poll-list">
           {visibleQuestions.map((question) => {

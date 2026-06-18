@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
+import { LabeledInput, LabeledSelect } from "../components/FormFields";
 import { useCreateFantasyParticipant, useFantasyGroups, useFantasyParticipants, useSaveFantasyGroup, useUpdateFantasyParticipantCredentials, useUpdateFantasyParticipantRole } from "../services/fantasy-queries";
 import type { FantasyAdminParticipant } from "../types/fantasy";
 import { fantasyTeamName } from "../utils/fantasy";
@@ -31,6 +32,8 @@ export default function FantasyAdminParticipantsPage() {
   );
   const rows: FantasyAdminParticipant[] = participantsQuery.data?.participants ?? data.participants.map((participant) => ({ ...participant }));
   const groupRows = groupsQuery.data?.groups ?? data.groups;
+  const teamOptions = data.teams.map((team) => ({ value: team.id, label: team.name }));
+  const existingGroupOptions = [{ value: "", label: "Create new group" }, ...groupRows.map((group) => ({ value: group.id, label: group.name }))];
 
   const selectGroup = (groupId: string) => {
     const group = data.groups.find((item) => item.id === groupId);
@@ -68,20 +71,9 @@ export default function FantasyAdminParticipantsPage() {
               );
             }}
           >
-            <label>
-              Name
-              <input onChange={(event) => setName(event.target.value)} placeholder="Friend name" value={name} />
-            </label>
-            <label>
-              Nickname
-              <input onChange={(event) => setNickname(event.target.value)} placeholder="Leaderboard nickname" value={nickname} />
-            </label>
-            <label>
-              Favorite team
-              <select onChange={(event) => setFavoriteTeamId(event.target.value)} value={favoriteTeamId}>
-                {data.teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
-              </select>
-            </label>
+            <LabeledInput label="Name" onChange={setName} placeholder="Friend name" value={name} />
+            <LabeledInput label="Nickname" onChange={setNickname} placeholder="Leaderboard nickname" value={nickname} />
+            <LabeledSelect label="Favorite team" onChange={setFavoriteTeamId} options={teamOptions} value={favoriteTeamId} />
             <button className="button button--primary" disabled={createParticipant.isPending || !name.trim() || !nickname.trim()} type="submit">
               {createParticipant.isPending ? "Creating..." : "Create invite"}
             </button>
@@ -173,13 +165,7 @@ export default function FantasyAdminParticipantsPage() {
               });
             }}
           >
-            <label>
-              Existing group
-              <select onChange={(event) => selectGroup(event.target.value)} value={activeGroupId}>
-                <option value="">Create new group</option>
-                {groupRows.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
-              </select>
-            </label>
+            <LabeledSelect label="Existing group" onChange={selectGroup} options={existingGroupOptions} value={activeGroupId} />
             <label>
               Group name
               <input onChange={(event) => setGroupName(event.target.value)} placeholder="Weekend crew" value={groupName} />

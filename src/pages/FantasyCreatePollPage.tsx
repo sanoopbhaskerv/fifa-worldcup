@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowIcon } from "../components/Icons";
 import { useFantasy } from "../app/fantasy-context";
+import { LabeledSelect } from "../components/FormFields";
 import { useCreateFantasyUserPoll } from "../services/fantasy-queries";
 import type { FantasyUserPollKind } from "../types/fantasy";
 import { fantasyDeadlineLabel, fantasyMatchTitle, fantasyTeamName } from "../utils/fantasy";
@@ -38,6 +39,12 @@ export default function FantasyCreatePollPage() {
       ...(kind === "FIRST_GOAL_SCORER" ? ["Own Goal", "No goal", "Other"] : ["Other"]),
     ].filter((option, index, values) => values.indexOf(option) === index)
     : options;
+  const groupOptions = data.groups.map((group) => ({ value: group.id, label: group.name }));
+  const matchOptions = upcomingMatches.map((match) => ({
+    value: match.id,
+    label: `${fantasyMatchTitle(match, data.teams)} · ${formatKickoff(match.kickoff)}`,
+  }));
+  const pollOptions = fantasyUserPollDefinitions.map((item) => ({ value: item.kind, label: item.label }));
 
   const updateKind = (nextKind: FantasyUserPollKind) => {
     setKind(nextKind);
@@ -79,30 +86,9 @@ export default function FantasyCreatePollPage() {
                 });
               }}
             >
-              <label>
-                Group
-                <select onChange={(event) => setGroupId(event.target.value)} value={groupId}>
-                  {data.groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
-                </select>
-              </label>
-              <label>
-                Match
-                <select onChange={(event) => updateMatchId(event.target.value)} value={activeMatch?.id ?? ""}>
-                  {upcomingMatches.map((match) => (
-                    <option key={match.id} value={match.id}>
-                      {fantasyMatchTitle(match, data.teams)} · {formatKickoff(match.kickoff)}
-                    </option>
-                  ))}
-                </select>
-              </label>
-              <label>
-                Poll
-                <select onChange={(event) => updateKind(event.target.value as FantasyUserPollKind)} value={kind}>
-                  {fantasyUserPollDefinitions.map((item) => (
-                    <option key={item.kind} value={item.kind}>{item.label}</option>
-                  ))}
-                </select>
-              </label>
+              <LabeledSelect label="Group" onChange={setGroupId} options={groupOptions} value={groupId} />
+              <LabeledSelect label="Match" onChange={updateMatchId} options={matchOptions} value={activeMatch?.id ?? ""} />
+              <LabeledSelect label="Poll" onChange={(value: string) => updateKind(value as FantasyUserPollKind)} options={pollOptions} value={kind} />
               {activeMatch && (
                 <div className="fantasy-create-match-summary">
                   <strong>{fantasyMatchTitle(activeMatch, data.teams)}</strong>
