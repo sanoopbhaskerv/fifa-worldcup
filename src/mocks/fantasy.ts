@@ -522,6 +522,7 @@ export const fantasyGameData: FantasyGameData = {
   leaderboard,
   badges,
   auditRecords: [],
+  aiMessages: [],
   activeParticipantId,
   recaps: [
     {
