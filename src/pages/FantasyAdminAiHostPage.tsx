@@ -4,7 +4,7 @@ import { ErrorMessage, SuccessMessage } from "../components/FeedbackMessages";
 import { LabeledSelect } from "../components/FormFields";
 import { PageHeading } from "../components/PageSections";
 import { SectionHeading } from "../components/SectionHeading";
-import { useDiscardFantasyAiMessage, useDraftFantasyAiMessage, useFantasyAiMessages, usePublishFantasyAiMessage, useRegenerateFantasyAiMessage, useUpdateFantasyAiMessage } from "../services/fantasy-queries";
+import { useDiscardFantasyAiMessage, useDraftFantasyAiMessage, useFantasyAiMessages, usePublishFantasyAiMessage, useRegenerateFantasyAiMessage, useTestFantasyAiProvider, useUpdateFantasyAiMessage } from "../services/fantasy-queries";
 import type { FantasyAiMessage, FantasyAiMessageType } from "../types/fantasy";
 import { fantasyMatchTitle } from "../utils/fantasy";
 import { formatDate, formatKickoff } from "../utils/football";
@@ -24,6 +24,7 @@ export default function FantasyAdminAiHostPage() {
   const { data } = useFantasy();
   const messagesQuery = useFantasyAiMessages();
   const draftMessage = useDraftFantasyAiMessage(data.activeParticipantId);
+  const testProvider = useTestFantasyAiProvider(data.activeParticipantId);
   const [type, setType] = useState<FantasyAiMessageType>("REMINDER");
   const [groupId, setGroupId] = useState(data.groups[0]?.id ?? "group-main");
   const [matchId, setMatchId] = useState(data.matches.find((match) => match.status !== "COMPLETED")?.id ?? data.matches[0]?.id ?? "");
@@ -50,7 +51,7 @@ export default function FantasyAdminAiHostPage() {
 
   return (
     <div className="page fantasy-page">
-      <PageHeading eyebrow="Admin" title="AI host" description="Create template-grounded host messages. This stays free because drafts are generated from structured match, poll, and leaderboard data." />
+      <PageHeading eyebrow="Admin" title="AI host" description="Create host message drafts from structured match, poll, and leaderboard data. Assisted mode can call the configured external AI provider within daily guardrails." />
       <div className="fantasy-ai-host">
         <section className="content-section fantasy-ai-host-composer">
           <SectionHeading eyebrow="Draft" title="Generate host message" />
@@ -77,8 +78,22 @@ export default function FantasyAdminAiHostPage() {
             <button className="button button--primary" disabled={draftMessage.isPending || (type !== "LEADERBOARD_SUMMARY" && !matchId)} onClick={createDraft} type="button">
               {draftMessage.isPending ? "Drafting..." : "Generate draft"}
             </button>
+            <button
+              className="button"
+              disabled={testProvider.isPending}
+              onClick={() => testProvider.mutate({ actorId: data.activeParticipantId })}
+              type="button"
+            >
+              {testProvider.isPending ? "Testing..." : "Test external AI"}
+            </button>
             {draftMessage.isSuccess && <SuccessMessage>Draft ready: {draftMessage.data.message.title}</SuccessMessage>}
             {draftMessage.isError && <ErrorMessage>{draftMessage.error.message}</ErrorMessage>}
+            {testProvider.isSuccess && (
+              <SuccessMessage>
+                External AI responded: {testProvider.data.message.title}. Today: {testProvider.data.usage.calls} call(s), {testProvider.data.usage.estimatedCostCents}c estimated.
+              </SuccessMessage>
+            )}
+            {testProvider.isError && <ErrorMessage>{testProvider.error.message}</ErrorMessage>}
           </div>
         </section>
 

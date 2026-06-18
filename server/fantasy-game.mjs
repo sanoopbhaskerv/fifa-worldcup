@@ -2049,7 +2049,7 @@ const todayKey = () => new Date().toISOString().slice(0, 10);
 const aiUsageForToday = (game) => {
   const today = todayKey();
   const records = (game.auditRecords ?? []).filter((record) =>
-    record.action === "AI_MESSAGE_DRAFTED" &&
+    ["AI_MESSAGE_DRAFTED", "AI_PROVIDER_TESTED"].includes(record.action) &&
     record.createdAt?.slice(0, 10) === today &&
     record.metadata?.source === "EXTERNAL_AI"
   );
@@ -2282,6 +2282,43 @@ export const createFantasyRecapDraft = async (input = {}, env = {}) => createAiM
  * @returns Draft AI message and game payload.
  */
 export const createFantasyLeaderboardDraft = async (input = {}, env = {}) => createAiMessageDraft("LEADERBOARD_SUMMARY", input, env);
+
+/**
+ * Verifies the external AI provider with current leaderboard context.
+ *
+ * @param input - Optional actor identifier for audit.
+ * @param env - Provider configuration.
+ * @returns Generated provider sample and updated usage data.
+ */
+export const testFantasyAiProvider = async (input = {}, env = {}) => {
+  const game = await gameState();
+  const context = {
+    ...leaderboardContext(game, input),
+    providerTest: true,
+  };
+  const generated = await externalDraftFromContext("LEADERBOARD_SUMMARY", context, game, env);
+  const updatedGame = await saveGame(game, await audit({
+    action: "AI_PROVIDER_TESTED",
+    actorId: input.actorId ?? "admin",
+    entityId: game.tournament.id,
+    entityType: "AI_SETTINGS",
+    metadata: {
+      type: "LEADERBOARD_SUMMARY",
+      source: generated.source,
+      estimatedCostCents: generated.estimatedCostCents ?? 0,
+    },
+  }));
+  return {
+    message: {
+      type: "LEADERBOARD_SUMMARY",
+      source: generated.source,
+      title: generated.title,
+      body: generated.body,
+    },
+    usage: aiUsageForToday(updatedGame),
+    game: publicGame(updatedGame),
+  };
+};
 
 /**
  * Updates admin-editable AI host copy without changing visibility.

@@ -145,6 +145,15 @@ interface FantasyAiMessageResponse {
   game: FantasyGameData;
 }
 
+interface FantasyAiProviderTestResponse {
+  message: Pick<FantasyAiMessage, "type" | "source" | "title" | "body">;
+  usage: {
+    calls: number;
+    estimatedCostCents: number;
+  };
+  game: FantasyGameData;
+}
+
 interface ImportFantasySquadsInput {
   source: string;
 }
@@ -517,6 +526,19 @@ const draftFantasyAiMessage = async ({ type, ...input }: DraftFantasyAiMessageIn
     throw new Error(payload?.error?.message ?? "Could not create AI host draft.");
   }
   return (await response.json()) as FantasyAiMessageResponse;
+};
+
+const testFantasyAiProvider = async (input: { actorId?: string }): Promise<FantasyAiProviderTestResponse> => {
+  const response = await fetch(fantasyApiUrl("/api/fantasy/admin/ai-messages/provider-test"), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error?.message ?? "Could not test external AI provider.");
+  }
+  return (await response.json()) as FantasyAiProviderTestResponse;
 };
 
 const updateFantasyAiMessage = async ({ messageId, ...input }: UpdateFantasyAiMessageInput): Promise<FantasyAiMessageResponse> => {
@@ -1184,6 +1206,23 @@ export const useDraftFantasyAiMessage = (participantId?: string) => {
     mutationFn: draftFantasyAiMessage,
     onSuccess: ({ game }) => {
       queryClient.invalidateQueries({ queryKey: ["fantasy-ai-messages", fantasyTournamentId] });
+      queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
+    },
+  });
+};
+
+/**
+ * Calls the configured external AI provider once without publishing a message.
+ *
+ * @param participantId - Active participant cache key.
+ * @returns TanStack mutation for provider validation.
+ */
+export const useTestFantasyAiProvider = (participantId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: testFantasyAiProvider,
+    onSuccess: ({ game }) => {
+      queryClient.invalidateQueries({ queryKey: ["fantasy-ai-settings", fantasyTournamentId] });
       queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
     },
   });

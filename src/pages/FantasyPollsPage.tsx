@@ -61,6 +61,19 @@ export default function FantasyPollsPage() {
   const clearDrafts = (questionIds: string[]) => {
     setDraftAnswers((current) => Object.fromEntries(Object.entries(current).filter(([questionId]) => !questionIds.includes(questionId))));
   };
+  const saveChangedAnswers = (questions: FantasyQuestion[]) => {
+    const changed = changedAnswers(questions);
+    if (changed.length === 0) return;
+    submitPredictions.mutate({
+      participantId: data.activeParticipantId,
+      predictions: changed.map(({ answer, questionId }) => ({ answer, questionId })),
+    }, {
+      onSuccess: () => clearDrafts(changed.map(({ questionId }) => questionId)),
+    });
+  };
+  const bulkSaveLabel = (changedCount: number) => (
+    submitPredictions.isPending ? "Saving..." : changedCount > 0 ? `Save ${changedCount} changed` : "All saved"
+  );
   const groupOptions = data.groups.map((group) => ({ value: group.id, label: group.name }));
   const matchOptions = dateFilteredPollMatches.map(({ match }) => ({
     value: match.id,
@@ -142,15 +155,10 @@ export default function FantasyPollsPage() {
                   <strong>{questions.reduce((sum, question) => sum + question.points, 0)} pts</strong>
                   <button
                     disabled={submitPredictions.isPending || changed.length === 0}
-                    onClick={() => submitPredictions.mutate({
-                      participantId: data.activeParticipantId,
-                      predictions: changed.map(({ answer, questionId }) => ({ answer, questionId })),
-                    }, {
-                      onSuccess: () => clearDrafts(changed.map(({ questionId }) => questionId)),
-                    })}
+                    onClick={() => saveChangedAnswers(questions)}
                     type="button"
                   >
-                    {submitPredictions.isPending ? "Saving..." : changed.length > 0 ? `Save ${changed.length} changed` : "All saved"}
+                    {bulkSaveLabel(changed.length)}
                   </button>
                 </div>
               </div>
@@ -174,29 +182,33 @@ export default function FantasyPollsPage() {
                   />
                 ))}
               </div>
+              <div className="fantasy-poll-actions fantasy-poll-actions--bottom">
+                <strong>{changed.length > 0 ? `${changed.length} changed` : "All saved"}</strong>
+                <button
+                  disabled={submitPredictions.isPending || changed.length === 0}
+                  onClick={() => saveChangedAnswers(questions)}
+                  type="button"
+                >
+                  {bulkSaveLabel(changed.length)}
+                </button>
+              </div>
             </section>
           );
         })}
-        {tournamentQuestions.length > 0 && !resolvedMatchId && dateRange.fromDate === "" && dateRange.toDate === "" && !dateRange.groupStageOnly && (
+        {tournamentQuestions.length > 0 && !resolvedMatchId && dateRange.fromDate === "" && dateRange.toDate === "" && !dateRange.groupStageOnly && (() => {
+          const changed = changedAnswers(tournamentQuestions);
+          return (
           <section className="content-section fantasy-poll-group">
             <div className="section-heading">
               <div><span className="eyebrow">Tournament-long</span><h2>Big calls</h2><p>These lock before the tournament starts and carry higher points.</p></div>
               <div className="fantasy-poll-actions">
                 <strong>{tournamentQuestions.reduce((sum, question) => sum + question.points, 0)} pts</strong>
                 <button
-                  disabled={submitPredictions.isPending || changedAnswers(tournamentQuestions).length === 0}
-                  onClick={() => {
-                    const changed = changedAnswers(tournamentQuestions);
-                    submitPredictions.mutate({
-                      participantId: data.activeParticipantId,
-                      predictions: changed.map(({ answer, questionId }) => ({ answer, questionId })),
-                    }, {
-                      onSuccess: () => clearDrafts(changed.map(({ questionId }) => questionId)),
-                    });
-                  }}
+                  disabled={submitPredictions.isPending || changed.length === 0}
+                  onClick={() => saveChangedAnswers(tournamentQuestions)}
                   type="button"
                 >
-                  {submitPredictions.isPending ? "Saving..." : changedAnswers(tournamentQuestions).length > 0 ? `Save ${changedAnswers(tournamentQuestions).length} changed` : "All saved"}
+                  {bulkSaveLabel(changed.length)}
                 </button>
               </div>
             </div>
@@ -220,8 +232,19 @@ export default function FantasyPollsPage() {
                 />
               ))}
             </div>
+            <div className="fantasy-poll-actions fantasy-poll-actions--bottom">
+              <strong>{changed.length > 0 ? `${changed.length} changed` : "All saved"}</strong>
+              <button
+                disabled={submitPredictions.isPending || changed.length === 0}
+                onClick={() => saveChangedAnswers(tournamentQuestions)}
+                type="button"
+              >
+                {bulkSaveLabel(changed.length)}
+              </button>
+            </div>
           </section>
-        )}
+          );
+        })()}
       </div>
       {isFilterOpen && createPortal(
           <motion.div

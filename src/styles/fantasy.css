@@ -528,6 +528,17 @@
 	gap: var(--space-3);
 }
 
+.fantasy-poll-actions--bottom {
+	margin-top: var(--space-4);
+	padding-top: var(--space-4);
+	border-top: 1px solid var(--line);
+}
+
+.fantasy-poll-actions--bottom>strong {
+	color: var(--text);
+	background: color-mix(in srgb, var(--surface-2) 78%, transparent);
+}
+
 .fantasy-poll-actions button {
 	min-height: 38px;
 	padding: 0 11px;

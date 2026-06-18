@@ -33,6 +33,7 @@ import {
   generateFantasyPolls,
   submitFantasyPrediction,
   submitFantasyPredictions,
+  testFantasyAiProvider,
   updateFantasyAiSettings,
   updateFantasyAiMessage,
   updateFantasyFixture,
@@ -241,6 +242,12 @@ export const handleApiRequest = async ({
 
     if (requestMethod === "POST" && path === "/api/fantasy/admin/ai-messages/scheduled") {
       return response(200, await runScheduledFantasyAiGeneration(parseJsonBody(body), env), {
+        "cache-control": "no-store",
+      });
+    }
+
+    if (requestMethod === "POST" && path === "/api/fantasy/admin/ai-messages/provider-test") {
+      return response(200, await testFantasyAiProvider(parseJsonBody(body), env), {
         "cache-control": "no-store",
       });
     }
