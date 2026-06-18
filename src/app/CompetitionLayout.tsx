@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { BracketIcon, CalendarIcon, ChevronIcon, HomeIcon, PlayerIcon, SignalIcon, TableIcon, TrophyIcon } from "../components/Icons";
 import { AccountMenu } from "../components/AccountMenu";
@@ -40,6 +40,9 @@ export const CompetitionLayout = () => {
   const catalogQuery = useCompetitions();
   const competition = catalogQuery.data?.find((item) => item.slug === competitionSlug);
   const dataQuery = useCompetitionData(competition?.id ?? "", editionId);
+  
+  //main container ref to reset scroll
+  const containerRef = useRef<HTMLDivElement>(null);
   const {
     containerRef: pullRefreshContainerRef,
     progress: pullRefreshProgress,
@@ -57,6 +60,16 @@ export const CompetitionLayout = () => {
       storage.addRecent(competition.id);
     }
   }, [competition, editionId]);
+
+  // Reset scroll position on navigation (delayed to ensure content rendered)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      if (containerRef.current) {
+        containerRef.current.scrollTo(0, 0);
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
 
   const currentSection = useMemo<Section>(() => {
     const finalSegment = location.pathname.split("/").at(-1);
@@ -119,7 +132,7 @@ export const CompetitionLayout = () => {
             <nav>{sections.map((section) => <SectionLink key={section} section={section} competition={competition} editionId={editionId} />)}</nav>
             <div className="desktop-nav__footer"><span>{dataQuery.data.source === "live" ? "Live provider" : "Provider data"}</span><small>{dataQuery.data.provider}</small><small>Updated {formatUpdated(dataQuery.data.updatedAt)}</small></div>
           </aside>
-          <main id="main-content" className="main-content">
+          <main id="main-content" className="main-content" ref={containerRef}>
             <div className="mobile-tabs" aria-label="Competition sections">{sections.map((section) => <SectionLink key={section} section={section} competition={competition} editionId={editionId} compact />)}</div>
             <div className="freshness" role="status">
               <span className={dataQuery.isFetching ? "freshness__pulse" : ""} />

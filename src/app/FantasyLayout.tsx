@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { CalendarIcon, HomeIcon, PlayerIcon, TableIcon, TrophyIcon } from "../components/Icons";
 import { AccountMenu } from "../components/AccountMenu";
@@ -35,6 +35,21 @@ const fantasyAdminNav = [
 export const FantasyLayout = () => {
   const [identity, setIdentity] = useState(() => storage.getFantasyIdentity());
   const gameQuery = useFantasyGame(identity?.participantId, Boolean(identity));
+  //main container ref to reset scroll
+  const containerRef = useRef<HTMLDivElement>(null);
+// Reset scroll position on navigation (delayed to ensure content rendered)
+  useEffect(() => {
+    console.log("Resetting scroll position", location.pathname);
+    const timer = setTimeout(() => {
+      console.log("Scroll position reset", containerRef.current?.scrollTop);
+      if (containerRef.current) {
+        console.log("Before reset", containerRef.current);
+        containerRef.current.scrollTo(0, 0);
+        console.log("Scroll position after reset", containerRef.current.scrollTop); 
+      }
+    }, 0);
+    return () => clearTimeout(timer);
+  }, [location.pathname]);
 
   if (!identity) return <FantasyJoinScreen onJoined={setIdentity} />;
 
@@ -99,7 +114,7 @@ export const FantasyLayout = () => {
               <NavLink className="fantasy-link-button" to="/fantasy/profile">Edit display name</NavLink>
             </div>
           </aside>
-          <main id="main-content" className="main-content">
+          <main id="main-content" className="main-content" ref={containerRef}>
             <div className="mobile-tabs fantasy-tabs" aria-label="Fantasy sections">{fantasyNav.map((item) => <FantasyNavLink key={item.path} compact {...item} />)}</div>
             <Outlet context={{ data, isAdmin }} />
           </main>
