@@ -1,6 +1,6 @@
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
-import { LabeledSelect } from "../components/FormFields";
+import { LabeledInput, LabeledSelect } from "../components/FormFields";
 import { ErrorMessage, SuccessMessage } from "../components/FeedbackMessages";
 import { useGenerateFantasyPolls, useResetFantasyPolls, useSaveFantasyQuestionDrafts } from "../services/fantasy-queries";
 import { generateFantasyQuestionDraft, unknownFantasyPlayerOptions } from "../utils/fantasy-ai";
@@ -17,15 +17,34 @@ export default function FantasyAdminPollsPage() {
   const { data } = useFantasy();
   const [activeMatchId, setActiveMatchId] = useState(data.matches[0]?.id ?? "");
   const [groupId, setGroupId] = useState(data.groups[0]?.id ?? "group-main");
+  const [matchDate, setMatchDate] = useState("");
   const saveDrafts = useSaveFantasyQuestionDrafts(data.activeParticipantId);
   const generatePolls = useGenerateFantasyPolls(data.activeParticipantId);
   const resetPolls = useResetFantasyPolls(data.activeParticipantId);
-  const activeMatch = data.matches.find((match) => match.id === activeMatchId) ?? data.matches[0];
+  const filteredMatches = useMemo(() => (
+    matchDate ? data.matches.filter((match) => match.kickoff.slice(0, 10) === matchDate) : data.matches
+  ), [data.matches, matchDate]);
+  const upcomingFilteredMatches = filteredMatches.filter((match) => match.status === "SCHEDULED");
+  const activeMatch = filteredMatches.find((match) => match.id === activeMatchId);
   const draft = useMemo(() => activeMatch ? generateFantasyQuestionDraft(activeMatch, data) : undefined, [activeMatch, data]);
   const hasUnknownOptions = draft?.questions.some((question) => unknownFantasyPlayerOptions(question, data).length > 0) ?? false;
   const groupOptions = data.groups.map((group) => ({ value: group.id, label: group.name }));
+  const canCreatePollsForActiveMatch = activeMatch?.status === "SCHEDULED";
+  const bulkMatchIds = upcomingFilteredMatches.map((match) => match.id);
+  const bulkPayload = { groupId, limit: bulkMatchIds.length || 1, matchIds: bulkMatchIds, replaceExisting: true, status: "DRAFT" as const };
+
+  useEffect(() => {
+    if (filteredMatches.length === 0) {
+      setActiveMatchId("");
+      return;
+    }
+    if (!filteredMatches.some((match) => match.id === activeMatchId)) {
+      setActiveMatchId(filteredMatches[0].id);
+    }
+  }, [activeMatchId, filteredMatches]);
+
   const saveQuestions = (status: "DRAFT" | "OPEN") => {
-    if (!activeMatch || !draft) return;
+    if (!activeMatch || !draft || !canCreatePollsForActiveMatch) return;
     saveDrafts.mutate({ groupId, matchId: activeMatch.id, questions: draft.questions, status });
   };
 
@@ -38,24 +57,27 @@ export default function FantasyAdminPollsPage() {
             <strong>Bulk generation</strong>
             <p>Create template-grounded polls for the next synced fixtures using stored squads.</p>
             <LabeledSelect label="Group" onChange={setGroupId} options={groupOptions} value={groupId} />
-            <button disabled={generatePolls.isPending} onClick={() => generatePolls.mutate({ groupId, limit: 8, replaceExisting: true, status: "DRAFT" })} type="button">
+            <LabeledInput label="Match date" onChange={setMatchDate} type="date" value={matchDate} />
+            {matchDate && <button onClick={() => setMatchDate("")} type="button">Clear date</button>}
+            <button disabled={generatePolls.isPending || bulkMatchIds.length === 0} onClick={() => generatePolls.mutate(bulkPayload)} type="button">
               {generatePolls.isPending ? "Generating..." : "Draft next 8"}
             </button>
-            <button disabled={generatePolls.isPending} onClick={() => generatePolls.mutate({ groupId, limit: 8, replaceExisting: true, status: "OPEN" })} type="button">
-              {generatePolls.isPending ? "Publishing..." : "Publish next 8"}
+            <button disabled={generatePolls.isPending || bulkMatchIds.length === 0} onClick={() => generatePolls.mutate({ ...bulkPayload, status: "OPEN" })} type="button">
+              {generatePolls.isPending ? "Publishing..." : "Publish filtered upcoming"}
             </button>
-            <button disabled={resetPolls.isPending} onClick={() => resetPolls.mutate({ groupId, keepTournamentQuestions: true, limit: 16, replaceExisting: true, status: "OPEN" })} type="button">
+            <button disabled={resetPolls.isPending || bulkMatchIds.length === 0} onClick={() => resetPolls.mutate({ groupId, keepTournamentQuestions: true, limit: bulkMatchIds.length || 1, matchIds: bulkMatchIds, replaceExisting: true, status: "OPEN" })} type="button">
               {resetPolls.isPending ? "Resetting..." : "Clear and publish new"}
             </button>
+            {bulkMatchIds.length === 0 && <ErrorMessage>No upcoming matches found for this date.</ErrorMessage>}
             {generatePolls.isSuccess && <SuccessMessage>Saved {generatePolls.data.questions.length} polls for {generatePolls.data.fixtures.length} fixtures.</SuccessMessage>}
             {generatePolls.isError && <ErrorMessage>{generatePolls.error.message}</ErrorMessage>}
             {resetPolls.isSuccess && <SuccessMessage>Reset complete: {resetPolls.data.questions.length} fresh polls published.</SuccessMessage>}
             {resetPolls.isError && <ErrorMessage>{resetPolls.error.message}</ErrorMessage>}
           </div>
-          {data.matches.map((match) => (
+          {filteredMatches.map((match) => (
             <button className={match.id === activeMatch?.id ? "fantasy-match-button fantasy-match-button--active" : "fantasy-match-button"} key={match.id} onClick={() => setActiveMatchId(match.id)} type="button">
               <strong>{fantasyMatchTitle(match, data.teams)}</strong>
-              <span>{match.importance.replace("_", " ")} · {formatKickoff(match.kickoff)}</span>
+              <span>{match.status.toLowerCase()} · {match.importance.replace("_", " ")} · {formatKickoff(match.kickoff)}</span>
             </button>
           ))}
         </aside>
@@ -70,9 +92,10 @@ export default function FantasyAdminPollsPage() {
               <strong>{draft.questions.length} questions</strong>
             </div>
             <div className="fantasy-ai-message">{draft.introMessage}</div>
+            {!canCreatePollsForActiveMatch && <ErrorMessage>Polls can only be published for upcoming matches.</ErrorMessage>}
             <div className="fantasy-draft-actions">
-              <button disabled={saveDrafts.isPending || hasUnknownOptions || draft.questions.length === 0} onClick={() => saveQuestions("DRAFT")} type="button">Save draft</button>
-              <button disabled={saveDrafts.isPending || hasUnknownOptions || draft.questions.length === 0} onClick={() => saveQuestions("OPEN")} type="button">Publish open</button>
+              <button disabled={saveDrafts.isPending || !canCreatePollsForActiveMatch || hasUnknownOptions || draft.questions.length === 0} onClick={() => saveQuestions("DRAFT")} type="button">Save draft</button>
+              <button disabled={saveDrafts.isPending || !canCreatePollsForActiveMatch || hasUnknownOptions || draft.questions.length === 0} onClick={() => saveQuestions("OPEN")} type="button">Publish open</button>
               {saveDrafts.isSuccess && <SuccessMessage>{saveDrafts.data.questions.length} questions saved as {saveDrafts.data.questions[0]?.status.toLowerCase()}.</SuccessMessage>}
               {saveDrafts.isError && <ErrorMessage>{saveDrafts.error.message}</ErrorMessage>}
             </div>
@@ -95,6 +118,17 @@ export default function FantasyAdminPollsPage() {
                   </article>
                 );
               })}
+            </div>
+          </section>
+        )}
+        {filteredMatches.length === 0 && (
+          <section className="content-section fantasy-draft-panel">
+            <div className="section-heading">
+              <div>
+                <span className="eyebrow">No fixtures</span>
+                <h2>No matches found</h2>
+                <p>Clear the date filter or choose another match date.</p>
+              </div>
             </div>
           </section>
         )}

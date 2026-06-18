@@ -173,6 +173,21 @@ describe("fantasy prediction game", () => {
     expect(screen.getAllByText("Lionel Messi").length).toBeGreaterThan(0);
   });
 
+  it("filters poll management matches by date and blocks completed match publishing", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({ data: fantasyGameData });
+
+    renderWithQueryClient(<FantasyAdminPollsPage />);
+
+    await user.type(screen.getByLabelText("Match date"), "2026-06-16");
+
+    expect(screen.queryByRole("heading", { name: "Brazil vs Argentina" })).not.toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "England vs Spain" })).toBeInTheDocument();
+    expect(screen.getByText("Polls can only be published for upcoming matches.")).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Publish open" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Publish filtered upcoming" })).toBeDisabled();
+  });
+
   it("renders poll response coverage for admin follow-up", () => {
     vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({
       data: {
