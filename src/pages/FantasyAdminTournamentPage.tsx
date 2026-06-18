@@ -4,6 +4,7 @@ import { useUpdateFantasyTournament } from "../services/fantasy-queries";
 import type { FantasyTournament } from "../types/fantasy";
 import { formatDate } from "../utils/football";
 import { LabeledInput, LabeledSelect } from "../components/FormFields";
+import { ErrorMessage, SuccessMessage } from "../components/FeedbackMessages";
 import { PageHeading } from "../components/PageSections";
 import { SectionHeading } from "../components/SectionHeading";
 
@@ -90,8 +91,8 @@ export default function FantasyAdminTournamentPage() {
               {updateTournament.isPending ? "Saving..." : "Save tournament"}
             </button>
           </form>
-          {updateTournament.isError && <p role="alert">{updateTournament.error.message}</p>}
-          {updateTournament.isSuccess && <p className="fantasy-success-note">Tournament setup saved.</p>}
+          {updateTournament.isError && <ErrorMessage>{updateTournament.error.message}</ErrorMessage>}
+          {updateTournament.isSuccess && <SuccessMessage>Tournament setup saved.</SuccessMessage>}
         </section>
       </div>
     </div>

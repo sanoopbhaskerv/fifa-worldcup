@@ -92,7 +92,7 @@ export const CompetitionLayout = () => {
         {!online && <div className="network-banner" role="status"><SignalIcon />You’re offline. Showing saved competition data.</div>}
         <header className="topbar">
           <div className="topbar__inner">
-            <NavLink className="brand" to="/"><span className="brand__mark">F</span><span>FULL TIME</span></NavLink>
+            <NavLink className="brand" to="/"><span className="brand__mark">F</span><span>FullTime</span></NavLink>
             <button className="competition-switcher" onClick={() => setPickerOpen(true)}>
               <span className="competition-emblem" style={{ "--competition-accent": competition.accent } as React.CSSProperties}>{competition.emblem}</span>
               <span><small>Competition</small><strong>{competition.shortName}</strong></span><ChevronIcon />

@@ -55,7 +55,7 @@ export const FantasyLayout = () => {
       <div className="app-scroll">
         <header className="topbar fantasy-topbar">
           <div className="topbar__inner">
-            <NavLink className="brand" to="/"><span className="brand__mark">F</span><span>FULL TIME</span></NavLink>
+            <NavLink className="brand" to="/"><span className="brand__mark">F</span><span>FullTime</span></NavLink>
             <div className="fantasy-title">
               <small>Prediction game</small>
               <strong>{tournament.name}</strong>

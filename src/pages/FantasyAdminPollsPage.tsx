@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
 import { LabeledSelect } from "../components/FormFields";
+import { ErrorMessage, SuccessMessage } from "../components/FeedbackMessages";
 import { useGenerateFantasyPolls, useResetFantasyPolls, useSaveFantasyQuestionDrafts } from "../services/fantasy-queries";
 import { generateFantasyQuestionDraft, unknownFantasyPlayerOptions } from "../utils/fantasy-ai";
 import { fantasyDeadlineLabel, fantasyMatchTitle } from "../utils/fantasy";
@@ -46,10 +47,10 @@ export default function FantasyAdminPollsPage() {
             <button disabled={resetPolls.isPending} onClick={() => resetPolls.mutate({ groupId, keepTournamentQuestions: true, limit: 16, replaceExisting: true, status: "OPEN" })} type="button">
               {resetPolls.isPending ? "Resetting..." : "Clear and publish new"}
             </button>
-            {generatePolls.isSuccess && <p className="fantasy-success-note">Saved {generatePolls.data.questions.length} polls for {generatePolls.data.fixtures.length} fixtures.</p>}
-            {generatePolls.isError && <p role="alert">{generatePolls.error.message}</p>}
-            {resetPolls.isSuccess && <p className="fantasy-success-note">Reset complete: {resetPolls.data.questions.length} fresh polls published.</p>}
-            {resetPolls.isError && <p role="alert">{resetPolls.error.message}</p>}
+            {generatePolls.isSuccess && <SuccessMessage>Saved {generatePolls.data.questions.length} polls for {generatePolls.data.fixtures.length} fixtures.</SuccessMessage>}
+            {generatePolls.isError && <ErrorMessage>{generatePolls.error.message}</ErrorMessage>}
+            {resetPolls.isSuccess && <SuccessMessage>Reset complete: {resetPolls.data.questions.length} fresh polls published.</SuccessMessage>}
+            {resetPolls.isError && <ErrorMessage>{resetPolls.error.message}</ErrorMessage>}
           </div>
           {data.matches.map((match) => (
             <button className={match.id === activeMatch?.id ? "fantasy-match-button fantasy-match-button--active" : "fantasy-match-button"} key={match.id} onClick={() => setActiveMatchId(match.id)} type="button">
@@ -72,8 +73,8 @@ export default function FantasyAdminPollsPage() {
             <div className="fantasy-draft-actions">
               <button disabled={saveDrafts.isPending || hasUnknownOptions || draft.questions.length === 0} onClick={() => saveQuestions("DRAFT")} type="button">Save draft</button>
               <button disabled={saveDrafts.isPending || hasUnknownOptions || draft.questions.length === 0} onClick={() => saveQuestions("OPEN")} type="button">Publish open</button>
-              {saveDrafts.isSuccess && <span>{saveDrafts.data.questions.length} questions saved as {saveDrafts.data.questions[0]?.status.toLowerCase()}.</span>}
-              {saveDrafts.isError && <span role="alert">{saveDrafts.error.message}</span>}
+              {saveDrafts.isSuccess && <SuccessMessage>{saveDrafts.data.questions.length} questions saved as {saveDrafts.data.questions[0]?.status.toLowerCase()}.</SuccessMessage>}
+              {saveDrafts.isError && <ErrorMessage>{saveDrafts.error.message}</ErrorMessage>}
             </div>
             <div className="fantasy-draft-list">
               {draft.questions.map((question) => {

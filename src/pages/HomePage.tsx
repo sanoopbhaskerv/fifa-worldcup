@@ -26,7 +26,7 @@ export default function HomePage() {
   return (
     <main className="home-shell">
       <header className="home-header">
-        <Link className="brand" to="/"><span className="brand__mark">F</span><span>FULL TIME</span></Link>
+        <Link className="brand" to="/"><span className="brand__mark">F</span><span>FullTime</span></Link>
         <p>Football scores and a friends prediction game in one place.</p>
         <div className="home-auth-actions" aria-label="Fantasy account">
           {fantasyIdentity ? (

@@ -5,6 +5,7 @@ import type { FantasyMatch } from "../types/fantasy";
 import { fantasyDeadlineLabel, fantasyMatchTitle } from "../utils/fantasy";
 import { formatDate, formatKickoff } from "../utils/football";
 import { LabeledInput, LabeledSelect } from "../components/FormFields";
+import { ErrorMessage, SuccessMessage } from "../components/FeedbackMessages";
 import { PageHeading } from "../components/PageSections";
 import { SectionHeading } from "../components/SectionHeading";
 
@@ -43,8 +44,8 @@ export default function FantasyAdminFixturesPage() {
             <button disabled={syncFixtures.isPending} onClick={() => syncFixtures.mutate()} type="button">
               {syncFixtures.isPending ? "Syncing..." : "Sync live fixtures"}
             </button>
-            {syncFixtures.isSuccess && <p className="fantasy-success-note">Synced {syncFixtures.data.fixtures.length} fixtures.</p>}
-            {syncFixtures.isError && <p role="alert">{syncFixtures.error.message}</p>}
+            {syncFixtures.isSuccess && <SuccessMessage>Synced {syncFixtures.data.fixtures.length} fixtures.</SuccessMessage>}
+            {syncFixtures.isError && <ErrorMessage>{syncFixtures.error.message}</ErrorMessage>}
           </div>
           {fixtures.map((match) => (
             <button className={match.id === activeMatch?.id ? "fantasy-match-button fantasy-match-button--active" : "fantasy-match-button"} key={match.id} onClick={() => setActiveMatchId(match.id)} type="button">
@@ -100,8 +101,8 @@ const FixtureEditor = ({ match }: { match: FantasyMatch }) => {
           {updateFixture.isPending ? "Saving..." : "Save fixture"}
         </button>
       </form>
-      {updateFixture.isError && <p role="alert">{updateFixture.error.message}</p>}
-      {updateFixture.isSuccess && <p className="fantasy-success-note">Fixture saved for {fantasyMatchTitle(updateFixture.data.fixture, data.teams)}.</p>}
+      {updateFixture.isError && <ErrorMessage>{updateFixture.error.message}</ErrorMessage>}
+      {updateFixture.isSuccess && <SuccessMessage>Fixture saved for {fantasyMatchTitle(updateFixture.data.fixture, data.teams)}.</SuccessMessage>}
     </section>
   );
 };
