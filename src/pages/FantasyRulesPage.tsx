@@ -1,4 +1,5 @@
 import { PageHeading } from "../components/PageSections";
+import { SectionHeading } from "../components/SectionHeading";
 
 const matchRules = [
   ["Winner", "5"],
@@ -36,7 +37,7 @@ export default function FantasyRulesPage() {
         <RulesTable title="Tournament questions" rows={tournamentRules} />
       </div>
       <section className="content-section fantasy-rules-notes">
-        <div className="section-heading"><div><span className="eyebrow">Anti-confusion</span><h2>Hard rules</h2></div></div>
+        <SectionHeading eyebrow="Anti-confusion" title="Hard rules" />
         <ul>
           <li>Polls close 15 minutes before kickoff.</li>
           <li>No late entries after closure.</li>
@@ -51,7 +52,7 @@ export default function FantasyRulesPage() {
 
 const RulesTable = ({ title, rows }: { title: string; rows: string[][] }) => (
   <section className="content-section fantasy-rules-table">
-    <div className="section-heading"><div><span className="eyebrow">Points</span><h2>{title}</h2></div></div>
+    <SectionHeading eyebrow="Points" title={title} />
     <table>
       <thead><tr><th>Prediction</th><th>Points</th></tr></thead>
       <tbody>{rows.map(([label, points]) => <tr key={label}><td>{label}</td><td>{points}</td></tr>)}</tbody>

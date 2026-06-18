@@ -4,6 +4,7 @@ import { useUpdateFantasyTournament } from "../services/fantasy-queries";
 import type { FantasyTournament } from "../types/fantasy";
 import { formatDate } from "../utils/football";
 import { PageHeading } from "../components/PageSections";
+import { SectionHeading } from "../components/SectionHeading";
 
 const statusOptions: FantasyTournament["status"][] = ["UPCOMING", "LIVE", "COMPLETE"];
 
@@ -28,13 +29,11 @@ export default function FantasyAdminTournamentPage() {
       <PageHeading eyebrow="Admin" title="Tournament setup" description="Control the league shell, default lock rule, and scoring version before fixtures and polls are finalized." />
       <div className="fantasy-tournament-admin">
         <section className="content-section fantasy-tournament-summary">
-          <div className="section-heading">
-            <div>
-              <span className="eyebrow">{tournament.editionId}</span>
-              <h2>{tournament.name}</h2>
-              <p>{formatDate(tournament.startDate, true)} to {formatDate(tournament.endDate, true)}</p>
-            </div>
-          </div>
+          <SectionHeading
+            eyebrow={tournament.editionId}
+            title={tournament.name}
+            description={`${formatDate(tournament.startDate, true)} to ${formatDate(tournament.endDate, true)}`}
+          />
           <div className="fantasy-review-summary">
             <article><span>Status</span><strong>{tournament.status}</strong></article>
             <article><span>Players</span><strong>{data.participants.length}</strong></article>
@@ -45,13 +44,11 @@ export default function FantasyAdminTournamentPage() {
           </div>
         </section>
         <section className="content-section fantasy-tournament-editor">
-          <div className="section-heading">
-            <div>
-              <span className="eyebrow">{tournament.competitionId}</span>
-              <h2>League controls</h2>
-              <p>Current scoring model: {tournament.scoringRulesVersion}</p>
-            </div>
-          </div>
+          <SectionHeading
+            eyebrow={tournament.competitionId}
+            title="League controls"
+            description={`Current scoring model: ${tournament.scoringRulesVersion}`}
+          />
           <form
             onSubmit={(event) => {
               event.preventDefault();

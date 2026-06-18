@@ -5,6 +5,7 @@ import type { FantasyMatch } from "../types/fantasy";
 import { fantasyDeadlineLabel, fantasyMatchTitle } from "../utils/fantasy";
 import { formatDate, formatKickoff } from "../utils/football";
 import { PageHeading } from "../components/PageSections";
+import { SectionHeading } from "../components/SectionHeading";
 
 const importanceOptions: FantasyMatch["importance"][] = ["NORMAL", "BIG_MATCH", "KNOCKOUT", "FINAL"];
 const statusOptions: FantasyMatch["status"][] = ["SCHEDULED", "LOCKED", "COMPLETED"];
@@ -60,13 +61,11 @@ const FixtureEditor = ({ match }: { match: FantasyMatch }) => {
 
   return (
     <section className="content-section fantasy-fixture-editor">
-      <div className="section-heading">
-        <div>
-          <span className="eyebrow">{status}</span>
-          <h2>{fantasyMatchTitle(match, data.teams)}</h2>
-          <p>{formatDate(kickoff, true)} · {fantasyDeadlineLabel(pollCloseAt)}</p>
-        </div>
-      </div>
+      <SectionHeading
+        eyebrow={status}
+        title={fantasyMatchTitle(match, data.teams)}
+        description={`${formatDate(kickoff, true)} · ${fantasyDeadlineLabel(pollCloseAt)}`}
+      />
       <form
         onSubmit={(event) => {
           event.preventDefault();

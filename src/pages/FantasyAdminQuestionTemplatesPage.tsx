@@ -3,6 +3,7 @@ import { useFantasy } from "../app/fantasy-context";
 import { useFantasyQuestionTemplates, useUpdateFantasyQuestionTemplate } from "../services/fantasy-queries";
 import type { FantasyMatchImportance, FantasyQuestionTemplate } from "../types/fantasy";
 import { PageHeading } from "../components/PageSections";
+import { SectionHeading } from "../components/SectionHeading";
 
 const importanceOptions: FantasyMatchImportance[] = ["NORMAL", "BIG_MATCH", "KNOCKOUT", "FINAL"];
 
@@ -64,13 +65,11 @@ const QuestionTemplateEditor = ({ template }: { template: FantasyQuestionTemplat
 
   return (
     <section className="content-section fantasy-template-editor">
-      <div className="section-heading">
-        <div>
-          <span className="eyebrow">{enabled ? "Enabled" : "Disabled"}</span>
-          <h2>{template.name}</h2>
-          <p>{template.type.replaceAll("_", " ")} · {template.optionMode.replaceAll("_", " ")}</p>
-        </div>
-      </div>
+      <SectionHeading
+        eyebrow={enabled ? "Enabled" : "Disabled"}
+        title={template.name}
+        description={`${template.type.replaceAll("_", " ")} · ${template.optionMode.replaceAll("_", " ")}`}
+      />
       <form
         onSubmit={(event) => {
           event.preventDefault();

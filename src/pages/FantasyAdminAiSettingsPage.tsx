@@ -3,6 +3,7 @@ import { useFantasy } from "../app/fantasy-context";
 import { useFantasyAiSettings, useUpdateFantasyAiSettings } from "../services/fantasy-queries";
 import type { FantasyAiBanterLevel, FantasyAiMode, FantasyAiSettings, FantasyMatchImportance, FantasyQuestionCategory } from "../types/fantasy";
 import { PageHeading } from "../components/PageSections";
+import { SectionHeading } from "../components/SectionHeading";
 
 const importanceOptions: FantasyMatchImportance[] = ["NORMAL", "BIG_MATCH", "KNOCKOUT", "FINAL"];
 const modeOptions: FantasyAiMode[] = ["TEMPLATE_ONLY", "ASSISTED", "DISABLED"];
@@ -25,12 +26,10 @@ export default function FantasyAdminAiSettingsPage() {
       <PageHeading eyebrow="Admin" title="AI agent settings" description="Set the cost and behavior guardrails used when match poll drafts are generated." />
       <div className="fantasy-ai-admin">
         <section className="content-section fantasy-ai-summary">
-          <div className="section-heading">
-            <div>
-              <span className="eyebrow">{settings.mode.replace("_", " ")}</span>
-              <h2>Generation guardrails</h2>
-            </div>
-          </div>
+          <SectionHeading
+            eyebrow={settings.mode.replace("_", " ")}
+            title="Generation guardrails"
+          />
           <dl className="fantasy-review-summary">
             <article><span>Provider</span><strong>{settings.externalProviderEnabled ? "On" : "Off"}</strong></article>
             <article><span>Budget</span><strong>{settings.dailyBudgetCents}c</strong></article>
@@ -67,12 +66,7 @@ const AiSettingsEditor = ({ categories, settings }: { categories: FantasyQuestio
 
   return (
     <section className="content-section fantasy-ai-editor">
-      <div className="section-heading">
-        <div>
-          <span className="eyebrow">Settings</span>
-          <h2>Draft generation</h2>
-        </div>
-      </div>
+      <SectionHeading eyebrow="Settings" title="Draft generation" />
       <form
         onSubmit={(event) => {
           event.preventDefault();
