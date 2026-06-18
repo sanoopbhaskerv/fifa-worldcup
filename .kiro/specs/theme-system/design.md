@@ -107,3 +107,52 @@ All pages update instantly through shared context.
   - **Mitigation:** single global context provider.
 - **Risk:** Broken contrast in new palettes.
   - **Mitigation:** curated palettes + manual visual QA checklist.
+
+## Phase 7 Extension: Spatial + Typography Tokens
+
+### Objective
+
+Expand tokenization beyond colors by centralizing repeated dimensions and type
+scales without introducing runtime or build complexity.
+
+### Token Model Additions
+
+1. **Spacing primitives**
+
+- Introduce a compact scale (example: `--space-1` to `--space-10`) for reused
+  margin, padding, and gap values.
+
+2. **Type scale primitives**
+
+- Add body/label/heading/display size tokens and line-height tokens.
+- Preserve existing `clamp(...)` usage for hero/page headings via semantic
+  heading tokens.
+
+3. **Layout primitives**
+
+- Add shared max-width tokens (main content, wide content).
+- Add shared section/page inset tokens per viewport tier.
+
+4. **Semantic aliases**
+
+- Map primitives to semantic intent such as:
+  - `--layout-page-max`
+  - `--layout-page-max-wide`
+  - `--layout-page-inline-mobile`
+  - `--layout-page-inline-tablet`
+  - `--size-heading-page`
+  - `--space-section-gap`
+
+### Migration Order
+
+1. Tokenize top-level containers and section wrappers first.
+2. Tokenize repeated heading and label sizes next.
+3. Tokenize high-frequency card/form paddings and gaps.
+4. Keep one-off decorative geometry in-place until repeated.
+
+### Validation Plan
+
+- Run typecheck and focused unit/component tests.
+- Perform route smoke QA on Home, Competition shell, and Fantasy shell at
+  mobile/tablet/desktop widths.
+- Confirm no regressions in overflow behavior and sticky shell chrome.

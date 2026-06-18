@@ -1,21 +1,21 @@
-.home-shell { height: 100dvh; min-height: 100vh; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: calc(18px + env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); background: var(--home-background); }
-.home-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; width: min(100%, 1120px); margin: 0 auto 22px; }
+.home-shell { height: 100dvh; min-height: 100vh; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: calc(var(--space-8) + env(safe-area-inset-top)) var(--layout-page-inline-mobile) calc(var(--space-11) + env(safe-area-inset-bottom)); background: var(--home-background); }
+.home-header { display: flex; align-items: center; justify-content: space-between; gap: var(--space-8); width: min(100%, var(--layout-home-max)); margin: 0 auto var(--space-10); }
 .home-header .brand > span:last-child { display: inline; }
-.home-header p { max-width: 330px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; text-align: right; }
+.home-header p { max-width: 330px; margin: 0; color: var(--muted); font-size: var(--size-body-md); line-height: 1.45; text-align: right; }
 .home-auth-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
-.home-auth-actions a { display: inline-flex; align-items: center; gap: 7px; min-height: 38px; padding: 0 11px; border: 1px solid var(--line); border-radius: 999px; color: var(--text); background: var(--surface); font-size: 11px; font-weight: 900; }
+.home-auth-actions a { display: inline-flex; align-items: center; gap: var(--space-3); min-height: 38px; padding: 0 var(--space-4); border: 1px solid var(--line); border-radius: 999px; color: var(--text); background: var(--surface); font-size: var(--size-body-sm); font-weight: 900; }
 .home-auth-actions a:last-child:not(:only-child) { color: var(--on-accent); border-color: var(--accent); background: var(--accent); }
 .home-auth-actions span { display: grid; place-items: center; width: 24px; height: 24px; border-radius: 999px; color: var(--on-accent); background: var(--accent); font-size: 9px; }
 .home-theme-switcher { align-self: center; }
-.home-launch-grid { display: grid; gap: 12px; width: min(100%, 1120px); margin: 0 auto; }
-.home-tile { position: relative; overflow: hidden; display: flex; min-height: 330px; flex-direction: column; padding: 18px; border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); }
+.home-launch-grid { display: grid; gap: var(--space-5); width: min(100%, var(--layout-home-max)); margin: 0 auto; }
+.home-tile { position: relative; overflow: hidden; display: flex; min-height: 330px; flex-direction: column; padding: var(--space-8); border: 1px solid var(--line); border-radius: 20px; background: var(--surface); box-shadow: var(--shadow); }
 .home-tile::after { content: ""; position: absolute; inset: auto -70px -120px auto; width: 220px; height: 220px; border: 1px solid color-mix(in srgb, var(--accent) 25%, transparent); border-radius: 50%; box-shadow: 0 0 0 40px color-mix(in srgb, var(--accent) 5%, transparent); pointer-events: none; }
 .home-tile--fantasy { border-color: color-mix(in srgb, var(--accent) 25%, transparent); background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 15%, var(--surface)), var(--surface) 62%); }
 .home-tile--football { background: linear-gradient(145deg, color-mix(in srgb, var(--football-tile-accent) 12%, var(--surface)), var(--surface) 62%); }
 .home-tile__top { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
 .home-tile__top svg { color: var(--accent); }
-.home-tile h1, .home-tile h2 { max-width: 720px; margin: 44px 0 10px; font-size: clamp(34px, 10vw, 66px); line-height: .95; letter-spacing: -.04em; }
-.home-tile h2 { font-size: clamp(31px, 8vw, 54px); }
+.home-tile h1, .home-tile h2 { max-width: 720px; margin: 44px 0 var(--space-4); font-size: var(--size-display-home); line-height: .95; letter-spacing: -.04em; }
+.home-tile h2 { font-size: var(--size-display-home-sub); }
 .home-tile p { max-width: 560px; color: var(--muted); line-height: 1.55; }
 .home-tile__stats { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 7px; margin: auto 0 18px; }
 .home-tile__stats div { min-width: 0; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: rgba(255,255,255,.025); }
@@ -23,23 +23,23 @@
 .home-tile__stats dd { overflow: hidden; margin: 5px 0 0; font-size: 15px; font-weight: 900; text-overflow: ellipsis; white-space: nowrap; }
 .home-tile__cta { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: 6px; width: fit-content; min-height: 44px; padding: 0 14px; border-radius: 11px; color: var(--on-accent); background: var(--accent); font-weight: 900; }
 .home-tile__cta svg { width: 15px; }
-.home-mini-row { display: grid; gap: 8px; width: min(100%, 1120px); margin: 12px auto 0; }
+.home-mini-row { display: grid; gap: var(--space-3); width: min(100%, var(--layout-home-max)); margin: var(--space-5) auto 0; }
 .home-mini-row a { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 10px; align-items: center; min-height: 70px; padding: 12px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); }
 .home-mini-row svg { color: var(--accent); }
 .home-mini-row span { display: flex; min-width: 0; flex-direction: column; }
-.home-mini-row strong { font-size: 13px; }
-.home-mini-row small { overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+.home-mini-row strong { font-size: var(--size-title-sm); }
+.home-mini-row small { overflow: hidden; color: var(--muted); font-size: var(--size-label-sm); text-overflow: ellipsis; white-space: nowrap; }
 
 @media (min-width: 520px) {
-	.home-shell { padding-inline: 22px; }
+	.home-shell { padding-inline: var(--layout-page-inline-tablet); }
 	.home-mini-row { grid-template-columns: repeat(3, minmax(0, 1fr)); }
 }
 
 @media (min-width: 760px) {
-	.home-shell { display: grid; align-content: center; padding: 28px 30px; }
-	.home-header { margin-bottom: 28px; }
+	.home-shell { display: grid; align-content: center; padding: var(--space-12) var(--layout-page-inline-desktop); }
+	.home-header { margin-bottom: var(--space-12); }
 	.home-launch-grid { grid-template-columns: minmax(0, 1.12fr) minmax(0, .88fr); }
-	.home-tile { min-height: 430px; padding: 24px; }
+	.home-tile { min-height: 430px; padding: var(--space-11); }
 	.home-tile__stats dd { font-size: 18px; }
 }
 

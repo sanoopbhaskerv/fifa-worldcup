@@ -97,3 +97,21 @@ Acceptance criteria:
 - Storage and resolution logic for theme preference shall be unit tested.
 - Theme switching interaction shall be component tested.
 - Type checks and existing representative UI tests shall pass after migration.
+
+### R8. Spatial And Typography Tokenization
+
+User story: As a developer, I want reusable tokens for spacing, type scale, and
+layout widths so UI consistency improves and future style updates are faster.
+
+Acceptance criteria:
+
+- The system shall define a reusable spacing scale for margins, padding, and
+  gaps used repeatedly across shells.
+- The system shall define typography scale tokens for body, labels, section
+  headings, and display headings used by football/home/fantasy surfaces.
+- The system shall define layout width and section padding tokens for common
+  containers (`page`, home launch shell, fantasy frame).
+- Existing visual rhythm shall be preserved (no abrupt compaction or expansion
+  on mobile/tablet/desktop layouts).
+- Migration shall prioritize repeated values first and avoid tokenizing one-off
+  decorative values unless they become shared.

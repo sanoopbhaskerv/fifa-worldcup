@@ -52,6 +52,48 @@
   --radius: 18px;
   --shadow: 0 22px 60px rgba(0, 0, 0, 0.25);
 
+  --space-1: 4px;
+  --space-2: 6px;
+  --space-3: 8px;
+  --space-4: 10px;
+  --space-5: 12px;
+  --space-6: 14px;
+  --space-7: 16px;
+  --space-8: 18px;
+  --space-9: 20px;
+  --space-10: 22px;
+  --space-11: 24px;
+  --space-12: 28px;
+  --space-13: 30px;
+
+  --size-label-xs: 9px;
+  --size-label-sm: 10px;
+  --size-body-sm: 11px;
+  --size-body-md: 12px;
+  --size-title-sm: 13px;
+  --size-title-md: 14px;
+  --size-title-lg: 19px;
+  --size-display-page: clamp(31px, 8vw, 58px);
+  --size-display-home: clamp(34px, 10vw, 66px);
+  --size-display-home-sub: clamp(31px, 8vw, 54px);
+
+  --layout-shell-max: 1500px;
+  --layout-home-max: 1120px;
+  --layout-page-max: 1120px;
+  --layout-page-max-wide: 1300px;
+  --layout-fantasy-max: 1360px;
+  --layout-reading-max: 640px;
+
+  --layout-page-inline-mobile: 14px;
+  --layout-page-inline-tablet: 22px;
+  --layout-page-inline-desktop: 30px;
+  --layout-page-block-start-mobile: 28px;
+  --layout-page-block-end-mobile: 60px;
+  --layout-page-block-start-tablet: 42px;
+  --layout-page-block-end-tablet: 80px;
+  --layout-page-block-start-desktop: 58px;
+  --layout-page-block-end-desktop: 100px;
+
   --app-background: radial-gradient(circle at 82% -10%, color-mix(in srgb, var(--accent) 11%, transparent), transparent 28rem), var(--canvas);
   --home-background: radial-gradient(circle at 80% -15%, color-mix(in srgb, var(--accent) 13%, transparent), transparent 28rem), var(--canvas);
   --join-background: radial-gradient(circle at 50% 0%, color-mix(in srgb, var(--accent) 16%, transparent), transparent 44%), var(--canvas);

@@ -43,3 +43,13 @@
 - [x] Continue replacing remaining literal color values with semantic tokens.
 - [x] Add optional `prefers-color-scheme` mapping to initial theme default.
 - [ ] Add visual regression snapshots for each theme (future).
+
+## Phase 7. Spatial And Typography Tokens
+
+- [x] Define spacing, typography, and layout-width primitives in `src/styles/tokens.css`.
+- [x] Add semantic aliases for shared page/section insets and heading sizes.
+- [x] Migrate repeated container width and page padding values in global/home/football/fantasy styles.
+- [x] Migrate repeated heading, label, and metadata font-size values to semantic tokens.
+- [x] Migrate repeated card/form spacing (`padding`, `gap`, `margin`) to spacing tokens.
+- [x] Run `yarn typecheck` and focused tests after migration.
+- [x] Perform manual responsive smoke check for Home, Football shell, and Fantasy shell.
