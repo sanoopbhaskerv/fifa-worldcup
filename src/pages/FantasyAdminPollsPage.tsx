@@ -77,7 +77,7 @@ export default function FantasyAdminPollsPage() {
           {filteredMatches.map((match) => (
             <button className={match.id === activeMatch?.id ? "fantasy-match-button fantasy-match-button--active" : "fantasy-match-button"} key={match.id} onClick={() => setActiveMatchId(match.id)} type="button">
               <strong>{fantasyMatchTitle(match, data.teams)}</strong>
-              <span>{match.status.toLowerCase()} · {match.importance.replace("_", " ")} · {formatKickoff(match.kickoff)}</span>
+              <span>{match.status.toLowerCase()} · {match.importance.replace("_", " ")} · {formatDate(match.kickoff, true)} · {formatKickoff(match.kickoff)}</span>
             </button>
           ))}
         </aside>

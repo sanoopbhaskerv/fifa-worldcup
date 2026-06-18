@@ -169,6 +169,7 @@ describe("fantasy prediction game", () => {
 
     expect(screen.getByRole("heading", { name: "Brazil vs Argentina" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Publish open" })).toBeInTheDocument();
+    expect(screen.getAllByText(/Thursday, Jun 18, 2026/).length).toBeGreaterThan(1);
     expect(screen.getAllByText("Validated against templates and squad data").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Lionel Messi").length).toBeGreaterThan(0);
   });
