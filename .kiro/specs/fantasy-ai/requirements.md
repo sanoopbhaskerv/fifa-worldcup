@@ -80,3 +80,46 @@ Acceptance criteria:
 - AI calls and template generations shall create audit records.
 - Admin settings shall include mode, budget, banter level, and fallback controls.
 - A single setting shall disable external AI without redeploying frontend code.
+
+### R7. Admin Message Publishing
+
+User story: As the admin, I want to preview generated host messages before they
+appear to players.
+
+Acceptance criteria:
+
+- The system shall save generated reminders, recaps, and leaderboard summaries
+  as drafts before publishing.
+- Admin shall be able to publish, regenerate, or discard a draft message.
+- Published messages shall be visible on fantasy home and relevant result pages.
+- Draft messages shall not be visible to players.
+- Generated messages shall include their source: `TEMPLATE`, `EXTERNAL_AI`, or
+  `MANUAL`.
+
+### R8. Message Types
+
+User story: As a player, I want the game to feel active without reading long
+posts.
+
+Acceptance criteria:
+
+- Reminder messages shall mention match, lock time, and unanswered poll count.
+- Recap messages shall mention final score, top point winners, and one short
+  football insight.
+- Leaderboard messages shall mention current leader, rank changes, and today's
+  top scorer when available.
+- Messages shall fit a mobile card without truncation.
+- Messages shall avoid insults, sensitive attributes, gambling language, and
+  claims not present in stored data.
+
+### R9. Cost And Provider Guardrails
+
+User story: As the owner, I want to experiment later without surprise bills.
+
+Acceptance criteria:
+
+- External AI shall remain off when `dailyBudgetCents` is `0`.
+- External AI shall have a hard timeout of 8 seconds or less.
+- External AI shall have a daily call counter before any provider call is made.
+- External AI shall cache generated output by context hash.
+- Admin shall see when a generated message used template fallback.
