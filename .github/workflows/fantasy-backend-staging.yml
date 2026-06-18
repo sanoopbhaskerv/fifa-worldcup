@@ -6,7 +6,7 @@ on:
       aws_region:
         description: AWS region for the staging backend.
         required: true
-        default: us-east-1
+        default: ap-south-1
       cors_allow_origin:
         description: Frontend origin allowed by the Lambda Function URL CORS policy.
         required: true
