@@ -3,7 +3,8 @@ import { ArrowIcon, CalendarIcon, TableIcon, TrophyIcon } from "../components/Ic
 import { TeamBadge } from "../components/TeamBadge";
 import { MatchCard } from "../features/matches/MatchCard";
 import { useCompetition } from "../app/competition-context";
-import { formatDate, formatKickoff, formatLiveClock, isActiveLivePhase, sectionPath } from "../utils/football";
+import type { Match } from "../types/domain";
+import { formatDate, formatKickoff, formatLiveClock, isActiveLiveMatch, isActiveLivePhase, sectionPath } from "../utils/football";
 
 /**
  * Displays the competition landing page with hero match, key stats, and quick links.
@@ -13,18 +14,9 @@ import { formatDate, formatKickoff, formatLiveClock, isActiveLivePhase, sectionP
 export default function OverviewPage() {
   const { data, editionId } = useCompetition();
   const { competition, matches, standings, scorers } = data;
-  const featured = matches.find((match) => match.status === "LIVE") ?? matches.find((match) => match.status === "UPCOMING") ?? matches[0];
-  const featuredMeta = featured
-    ? [featured.stage, featured.round]
-      .filter(Boolean)
-      .join(" · ")
-    : "";
-  const featuredLiveClock = featured?.status === "LIVE" ? formatLiveClock(featured) : undefined;
-  const featuredTimeLabel = featured
-    ? featured.status === "LIVE"
-      ? featuredLiveClock ?? "LIVE"
-      : formatKickoff(featured.kickoff)
-    : "";
+  const liveMatches = matches.filter(isActiveLiveMatch);
+  const upcomingMatches = matches.filter((match) => match.status === "UPCOMING");
+  const featuredMatches = (liveMatches.length > 0 ? liveMatches : upcomingMatches.length > 0 ? upcomingMatches : matches.filter((match) => match.status !== "COMPLETED")).slice(0, 5);
   const recent = [...matches]
     .filter((match) => match.status === "COMPLETED")
     .sort((left, right) => Date.parse(right.kickoff) - Date.parse(left.kickoff))
@@ -38,18 +30,10 @@ export default function OverviewPage() {
         <div><span className="eyebrow">{competition.category} · {competition.region}</span><h1>{competition.name}</h1><p>{competition.summary}</p></div>
         <span className="edition-pill">{editionId} edition</span>
       </section>
-      {featured && (
-        <Link className="hero-match" to={`matches/${featured.id}`}>
-          <div className="hero-match__top"><span className={`status status--${featured.status.toLowerCase()}`}>{featured.status === "LIVE" ? <>{isActiveLivePhase(featured.livePhase) && <span className="status__dot" />}LIVE{featuredLiveClock ? ` · ${featuredLiveClock}` : ""}</> : "NEXT MATCH"}</span><span className="hero-match__meta">{featured.matchNumber && <strong aria-label={`Match ${featured.matchNumber}`}>{featured.matchNumber}</strong>}{featuredMeta}</span></div>
-          <div className="hero-match__teams">
-            <div><TeamBadge team={featured.home} size="lg" /><strong>{featured.home.name}</strong></div>
-            <div className="hero-match__score">
-              {featured.homeScore !== undefined ? <><strong>{featured.homeScore} <span>:</span> {featured.awayScore}</strong><span>{featuredTimeLabel}</span></> : <><strong>{featuredTimeLabel}</strong><span>{formatDate(featured.kickoff)}</span></>}
-            </div>
-            <div><TeamBadge team={featured.away} size="lg" /><strong>{featured.away.name}</strong></div>
-          </div>
-          <div className="hero-match__bottom"><span>{featured.venue}, {featured.city}</span><span>Match centre <ArrowIcon /></span></div>
-        </Link>
+      {featuredMatches.length > 0 && (
+        <section className="hero-carousel" aria-label={liveMatches.length > 0 ? "Live matches" : "Featured upcoming matches"}>
+          {featuredMatches.map((match) => <HeroMatchTile key={match.id} match={match} />)}
+        </section>
       )}
       <section className="stat-grid" aria-label="Competition statistics">
         <article><span>Matches</span><strong>{matches.length}</strong><small>{matches.filter((match) => match.status === "COMPLETED").length} completed</small></article>
@@ -76,3 +60,29 @@ export default function OverviewPage() {
     </div>
   );
 }
+
+const HeroMatchTile = ({ match }: { match: Match }) => {
+  const meta = [match.stage, match.round].filter(Boolean).join(" · ");
+  const liveClock = isActiveLiveMatch(match) ? formatLiveClock(match) : undefined;
+  const timeLabel = isActiveLiveMatch(match) ? liveClock ?? "LIVE" : formatKickoff(match.kickoff);
+  const hasScore = match.homeScore !== undefined && match.awayScore !== undefined;
+
+  return (
+    <Link className="hero-match" to={`matches/${match.id}`}>
+      <div className="hero-match__top">
+        <span className={`status status--${match.status.toLowerCase()}`}>
+          {isActiveLiveMatch(match) ? <>{isActiveLivePhase(match.livePhase) && <span className="status__dot" />}LIVE{liveClock ? ` · ${liveClock}` : ""}</> : "NEXT MATCH"}
+        </span>
+        <span className="hero-match__meta">{match.matchNumber && <strong aria-label={`Match ${match.matchNumber}`}>{match.matchNumber}</strong>}{meta}</span>
+      </div>
+      <div className="hero-match__teams">
+        <div><TeamBadge team={match.home} size="lg" /><strong>{match.home.name}</strong></div>
+        <div className="hero-match__score">
+          {hasScore ? <><strong>{match.homeScore} <span>:</span> {match.awayScore}</strong><span>{timeLabel}</span></> : <><strong>{timeLabel}</strong><span>{formatDate(match.kickoff)}</span></>}
+        </div>
+        <div><TeamBadge team={match.away} size="lg" /><strong>{match.away.name}</strong></div>
+      </div>
+      <div className="hero-match__bottom"><span>{match.venue}, {match.city}</span><span>Match centre <ArrowIcon /></span></div>
+    </Link>
+  );
+};

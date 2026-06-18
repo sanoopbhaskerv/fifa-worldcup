@@ -21,6 +21,7 @@ const fantasyAdminNav = [
   { label: "Templates", path: "/fantasy/admin/templates", icon: CalendarIcon },
   { label: "AI settings", path: "/fantasy/admin/ai-settings", icon: CalendarIcon },
   { label: "Poll drafts", path: "/fantasy/admin/polls", icon: CalendarIcon },
+  { label: "Submitted polls", path: "/fantasy/admin/submitted-polls", icon: CalendarIcon },
   { label: "Result entry", path: "/fantasy/admin/results", icon: TrophyIcon },
 ];
 
@@ -137,7 +138,7 @@ const FantasyJoinScreen = ({ onJoined }: { onJoined: (identity: { participantId:
         <section className="fantasy-join-panel">
           <span className="competition-emblem competition-emblem--large">WC</span>
           <span className="eyebrow">Friends league</span>
-          <h1>World Cup prediction game</h1>
+          <h1>Login or sign up</h1>
           <form
             onSubmit={(event) => {
               event.preventDefault();
@@ -146,7 +147,7 @@ const FantasyJoinScreen = ({ onJoined }: { onJoined: (identity: { participantId:
               });
             }}
           >
-            <label htmlFor="fantasy-invite-code">Invite code</label>
+            <label htmlFor="fantasy-invite-code">Login with invite code</label>
             <input
               autoComplete="one-time-code"
               className="fantasy-invite-input"
@@ -156,7 +157,7 @@ const FantasyJoinScreen = ({ onJoined }: { onJoined: (identity: { participantId:
               value={inviteCode}
             />
             <button className="button button--primary" disabled={joinFantasy.isPending || inviteCode.trim().length === 0} type="submit">
-              {joinFantasy.isPending ? "Joining..." : "Join league"}
+              {joinFantasy.isPending ? "Logging in..." : "Login"}
             </button>
           </form>
           {joinFantasy.isError && <p role="alert">{joinFantasy.error.message}</p>}
@@ -195,7 +196,7 @@ const FantasyJoinScreen = ({ onJoined }: { onJoined: (identity: { participantId:
             </select>
             <div className="fantasy-join-actions">
               <button className="button button--primary" disabled={createSignup.isPending || !name.trim() || !nickname.trim() || !selectedFavoriteTeamId} type="submit">
-                {createSignup.isPending ? "Creating..." : "Create player"}
+                {createSignup.isPending ? "Creating..." : "Sign up"}
               </button>
               <button disabled={createSignup.isPending || !selectedFavoriteTeamId} onClick={createGuest} type="button">
                 Play as guest

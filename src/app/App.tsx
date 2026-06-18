@@ -23,6 +23,7 @@ const FantasyAdminResultsPage = lazy(() => import("../pages/FantasyAdminResultsP
 const FantasyAdminScoreReviewPage = lazy(() => import("../pages/FantasyAdminScoreReviewPage"));
 const FantasyAdminSquadsPage = lazy(() => import("../pages/FantasyAdminSquadsPage"));
 const FantasyAdminPollsPage = lazy(() => import("../pages/FantasyAdminPollsPage"));
+const FantasyAdminSubmittedPollsPage = lazy(() => import("../pages/FantasyAdminSubmittedPollsPage"));
 const FantasyAdminParticipantsPage = lazy(() => import("../pages/FantasyAdminParticipantsPage"));
 const FantasyAdminFixturesPage = lazy(() => import("../pages/FantasyAdminFixturesPage"));
 const FantasyAdminTournamentPage = lazy(() => import("../pages/FantasyAdminTournamentPage"));
@@ -63,6 +64,7 @@ export const App = () => (
         <Route path="admin/templates" element={<FantasyAdminQuestionTemplatesPage />} />
         <Route path="admin/ai-settings" element={<FantasyAdminAiSettingsPage />} />
         <Route path="admin/polls" element={<FantasyAdminPollsPage />} />
+        <Route path="admin/submitted-polls" element={<FantasyAdminSubmittedPollsPage />} />
         <Route path="admin/results" element={<FantasyAdminResultsPage />} />
         <Route path="admin/score-review/:matchId" element={<FantasyAdminScoreReviewPage />} />
       </Route>

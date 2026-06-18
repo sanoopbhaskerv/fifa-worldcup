@@ -501,10 +501,13 @@ describe("fantasy game API", () => {
     expect(response.status).toBe(200);
     expect(response.body.question).toMatchObject({
       matchId: "bra-arg",
+      createdByParticipantId: "p-sanoop",
+      source: "USER",
       category: "FIRST_GOAL_SCORER",
       status: "OPEN",
       text: "Who scores the first goal?",
     });
+    expect(response.body.question.createdAt).toEqual(expect.any(String));
     expect(response.body.question.options).toEqual(expect.arrayContaining(["Vinicius Jr", "Lionel Messi", "Own Goal", "No goal", "Other"]));
     expect(response.body.game.questions).toEqual(expect.arrayContaining([
       expect.objectContaining({ id: response.body.question.id }),

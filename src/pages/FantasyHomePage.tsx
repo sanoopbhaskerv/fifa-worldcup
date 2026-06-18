@@ -31,6 +31,7 @@ export default function FantasyHomePage() {
           <span>Your rank</span>
           <strong>#{activeRow?.rank ?? "-"}</strong>
           <small>{activeRow?.totalPoints ?? 0} total points</small>
+          <Link to="/fantasy/profile">Edit nickname <ArrowIcon /></Link>
         </div>
       </section>
 

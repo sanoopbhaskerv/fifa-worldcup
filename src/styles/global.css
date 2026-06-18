@@ -101,7 +101,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .edition-pill { display: none; padding: 9px 13px; border: 1px solid var(--line); border-radius: 99px; color: var(--muted); white-space: nowrap; }
 .eyebrow { color: var(--competition-accent); font-size: 11px; font-weight: 800; letter-spacing: .14em; text-transform: uppercase; }
 
-.hero-match { position: relative; display: block; overflow: hidden; padding: 18px; border: 1px solid rgba(255,255,255,.12); border-radius: 24px; background: linear-gradient(135deg, color-mix(in srgb, var(--competition-accent) 18%, var(--surface)) 0%, var(--surface) 58%); box-shadow: var(--shadow); }
+.hero-carousel { display: grid; grid-auto-columns: minmax(290px, 92%); grid-auto-flow: column; gap: 14px; overflow-x: auto; overscroll-behavior-x: contain; scroll-snap-type: x mandatory; margin-bottom: 16px; padding: 1px 1px 8px; }
+.hero-match { position: relative; display: block; overflow: hidden; scroll-snap-align: start; padding: 18px; border: 1px solid rgba(255,255,255,.12); border-radius: 24px; background: linear-gradient(135deg, color-mix(in srgb, var(--competition-accent) 18%, var(--surface)) 0%, var(--surface) 58%); box-shadow: var(--shadow); }
 .hero-match::after { content: ""; position: absolute; width: 260px; height: 260px; right: -120px; top: -130px; border: 1px solid color-mix(in srgb, var(--competition-accent) 30%, transparent); border-radius: 50%; box-shadow: 0 0 0 42px color-mix(in srgb, var(--competition-accent) 5%, transparent), 0 0 0 84px color-mix(in srgb, var(--competition-accent) 3%, transparent); }
 .hero-match__top, .hero-match__bottom { position: relative; z-index: 1; display: flex; align-items: center; justify-content: space-between; gap: 10px; color: var(--muted); font-size: 11px; }
 .hero-match__meta { display: inline-flex; align-items: center; justify-content: flex-end; gap: 8px; text-align: right; }
@@ -371,6 +372,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .fantasy-score-card { display: flex; min-height: 150px; flex-direction: column; justify-content: center; padding: 18px; border: 1px solid color-mix(in srgb, var(--accent) 24%, transparent); border-radius: 18px; background: linear-gradient(145deg, color-mix(in srgb, var(--accent) 16%, var(--surface)), var(--surface)); box-shadow: var(--shadow); }
 .fantasy-score-card span, .fantasy-score-card small { color: var(--muted); font-size: 11px; }
 .fantasy-score-card strong { color: var(--accent); font-size: 54px; line-height: .9; }
+.fantasy-score-card a { display: inline-flex; align-items: center; gap: 5px; width: fit-content; margin-top: 12px; color: var(--text); font-size: 11px; font-weight: 900; }
+.fantasy-score-card svg { width: 14px; }
 .fantasy-stat-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; margin-bottom: 20px; }
 .fantasy-stat-grid article { display: flex; min-height: 108px; flex-direction: column; padding: 14px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface); }
 .fantasy-stat-grid span, .fantasy-stat-grid small { color: var(--muted); font-size: 10px; }
@@ -555,6 +558,16 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .fantasy-draft-options span { padding: 7px 9px; border: 1px solid var(--line); border-radius: 999px; color: var(--muted); background: var(--surface); font-size: 11px; }
 .fantasy-validation { margin-top: 11px; color: var(--accent); font-size: 10px; font-weight: 800; }
 .fantasy-validation--error { color: var(--danger); }
+.fantasy-submitted-poll-list { display: grid; gap: 10px; }
+.fantasy-submitted-poll { display: grid; gap: 12px; padding: 13px; border: 1px solid var(--line); border-radius: 13px; background: var(--surface-2); }
+.fantasy-submitted-poll header { display: flex; justify-content: space-between; gap: 12px; }
+.fantasy-submitted-poll h3 { margin: 6px 0 0; font-size: 17px; }
+.fantasy-submitted-poll header strong { display: inline-grid; place-items: center; min-width: 60px; height: 34px; border-radius: 999px; color: #07130f; background: var(--accent); font-size: 11px; }
+.fantasy-submitted-poll dl { display: grid; gap: 7px; margin: 0; }
+.fantasy-submitted-poll dl div { display: flex; justify-content: space-between; gap: 12px; padding-top: 7px; border-top: 1px solid var(--line); }
+.fantasy-submitted-poll dt { color: var(--muted); font-size: 10px; }
+.fantasy-submitted-poll dd { margin: 0; text-align: right; font-size: 11px; font-weight: 900; }
+.fantasy-submitted-poll p { margin: 0; color: var(--muted); font-size: 12px; }
 
 @media (min-width: 520px) {
   .page { padding-inline: 22px; }
@@ -580,6 +593,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .page { padding: 42px 30px 80px; }
   .overview-heading { margin-bottom: 32px; }
   .edition-pill { display: block; }
+  .hero-carousel { grid-auto-columns: minmax(520px, 72%); }
   .hero-match { padding: 24px; }
   .hero-match__teams { padding: 38px 10%; }
   .hero-match__teams > div > strong { max-width: 190px; font-size: 17px; }
@@ -643,6 +657,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .main-content { padding-bottom: 0; }
   .page { padding-top: 58px; padding-bottom: 100px; }
   .hero-match__teams { padding-inline: 18%; }
+  .hero-carousel { grid-auto-columns: minmax(720px, 72%); }
   .stat-grid article { min-height: 130px; padding: 19px; }
   .stat-grid strong { font-size: 34px; }
   .fantasy-frame { grid-template-columns: 250px minmax(0, 1fr); }

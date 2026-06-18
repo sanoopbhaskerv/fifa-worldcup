@@ -20,6 +20,7 @@ import FantasyAdminFixturesPage from "../../pages/FantasyAdminFixturesPage";
 import FantasyAdminTournamentPage from "../../pages/FantasyAdminTournamentPage";
 import FantasyAdminQuestionTemplatesPage from "../../pages/FantasyAdminQuestionTemplatesPage";
 import FantasyAdminAiSettingsPage from "../../pages/FantasyAdminAiSettingsPage";
+import FantasyAdminSubmittedPollsPage from "../../pages/FantasyAdminSubmittedPollsPage";
 
 describe("fantasy prediction game", () => {
   const renderWithQueryClient = (children: ReactNode) => {
@@ -157,6 +158,39 @@ describe("fantasy prediction game", () => {
     expect(screen.getByRole("button", { name: "Publish open" })).toBeInTheDocument();
     expect(screen.getAllByText("Validated against templates and squad data").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Lionel Messi").length).toBeGreaterThan(0);
+  });
+
+  it("renders submitted user polls for admin review", () => {
+    vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({
+      data: {
+        ...fantasyGameData,
+        questions: [
+          ...fantasyGameData.questions,
+          {
+            id: "user-bra-arg-first-goal-p-sanoop-20260618",
+            tournamentId: fantasyGameData.tournament.id,
+            matchId: "bra-arg",
+            createdByParticipantId: "p-sanoop",
+            createdAt: "2026-06-18T03:00:00Z",
+            source: "USER",
+            category: "FIRST_GOAL_SCORER",
+            type: "PLAYER",
+            text: "Who scores the first goal?",
+            options: ["Vinicius Jr", "Lionel Messi", "No goal"],
+            points: 8,
+            status: "OPEN",
+            closeAt: "2026-06-18T20:15:00+05:30",
+          },
+        ],
+      },
+    });
+
+    renderWithQueryClient(<FantasyAdminSubmittedPollsPage />);
+
+    expect(screen.getByRole("heading", { name: "Submitted polls" })).toBeInTheDocument();
+    expect(screen.getByText("Brazil Boss")).toBeInTheDocument();
+    expect(screen.getByText("Brazil vs Argentina")).toBeInTheDocument();
+    expect(screen.getByText("Who scores the first goal?")).toBeInTheDocument();
   });
 
   it("renders participant administration", () => {

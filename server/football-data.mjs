@@ -141,6 +141,9 @@ const normalizeMatch = (raw, competitionId, editionId) => {
   const group = normalizeGroup(raw.group);
   const matchday = raw.matchday ? `Matchday ${raw.matchday}` : undefined;
   const rawMatchNumber = raw.matchNumber ?? raw.number;
+  const status = COMPLETED_API_FOOTBALL_PHASES.has(raw.livePhase)
+    ? "COMPLETED"
+    : statusMap[raw.status] ?? "UPCOMING";
   return {
     id: `fd-${raw.id}`,
     competitionId,
@@ -154,7 +157,7 @@ const normalizeMatch = (raw, competitionId, editionId) => {
         ? undefined
         : String(rawMatchNumber),
     kickoff: raw.utcDate,
-    status: statusMap[raw.status] ?? "UPCOMING",
+    status,
     minute:
       raw.minute === null || raw.minute === undefined
         ? undefined

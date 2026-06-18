@@ -210,6 +210,71 @@ describe("football-data.org normalization", () => {
     });
   });
 
+  it("treats terminal API-Football live phases as completed", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url) => {
+        const value = String(url);
+        if (value.includes("/fixtures?live=all")) {
+          return new Response(
+            JSON.stringify({
+              errors: [],
+              response: [
+                {
+                  fixture: {
+                    id: 99,
+                    date: "2026-06-15T19:00:00Z",
+                    status: { short: "FT", elapsed: 90, extra: null },
+                  },
+                  league: { id: 1, season: 2026 },
+                  teams: { home: { name: "Alpha" }, away: { name: "Beta" } },
+                  goals: { home: 2, away: 1 },
+                },
+              ],
+            }),
+            { status: 200, headers: { "content-type": "application/json" } },
+          );
+        }
+        if (value.includes("/matches")) {
+          return jsonResponse({
+            matches: [
+              {
+                id: 42,
+                utcDate: "2026-06-15T19:00:00Z",
+                status: "LIVE",
+                matchday: 1,
+                stage: "GROUP_STAGE",
+                group: "GROUP_A",
+                homeTeam: { id: 1, name: "Alpha", shortName: "Alpha", tla: "ALP" },
+                awayTeam: { id: 2, name: "Beta", shortName: "Beta", tla: "BET" },
+                score: { fullTime: { home: null, away: null } },
+                referees: [],
+              },
+            ],
+          });
+        }
+        if (value.includes("/standings")) return jsonResponse({ standings: [] });
+        return jsonResponse({ scorers: [] });
+      }),
+    );
+
+    const data = await getLiveCompetitionData("world-cup", "2026", {
+      footballDataKey: "test",
+      apiFootballKey: "detail-test",
+      footballDataBaseUrl: "https://example.com/v4",
+      apiFootballBaseUrl: "https://example.com/api-football",
+      apiFootballDailyBudget: "90",
+    });
+
+    expect(data.matches[0]).toMatchObject({
+      status: "COMPLETED",
+      livePhase: "FT",
+      homeScore: 2,
+      awayScore: 1,
+    });
+  });
+
+
   it("derives group standings from match team ids when standings are flattened", async () => {
     vi.stubGlobal(
       "fetch",

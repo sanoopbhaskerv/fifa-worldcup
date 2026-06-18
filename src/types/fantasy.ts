@@ -123,6 +123,9 @@ export interface FantasyQuestion {
   id: string;
   tournamentId: string;
   matchId?: string;
+  createdByParticipantId?: string;
+  createdAt?: string;
+  source?: "ADMIN" | "USER" | "SYSTEM";
   category: FantasyQuestionCategory;
   type: FantasyQuestionType;
   text: string;

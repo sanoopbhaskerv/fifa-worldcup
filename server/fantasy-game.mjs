@@ -1451,7 +1451,8 @@ export const generateFantasyPolls = async (input = {}) => {
 export const createFantasyUserPoll = async (input = {}) => {
   const game = await gameState();
   const participantId = input.participantId;
-  if (!game.participants.some((participant) => participant.id === participantId)) {
+  const participant = game.participants.find((item) => item.id === participantId);
+  if (!participant) {
     throw new ProviderError("Participant not found.", 404, "NOT_FOUND");
   }
   const match = game.matches.find((item) => item.id === input.matchId);
@@ -1487,6 +1488,9 @@ export const createFantasyUserPoll = async (input = {}) => {
     id: `user-${match.id}-${slug(input.kind)}-${slug(participantId)}-${nowId}`,
     tournamentId: game.tournament.id,
     matchId: match.id,
+    createdByParticipantId: participantId,
+    createdAt: new Date().toISOString(),
+    source: "USER",
     category: template.category,
     type: template.type,
     text: input.text?.trim() || template.text,

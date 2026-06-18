@@ -124,6 +124,17 @@ export const formatLiveClock = (match: Match, nowMs = Date.now()) => {
 export const isActiveLivePhase = (phase?: string) =>
   ["1H", "2H", "ET"].includes(phase ?? "");
 
+const terminalLivePhases = new Set(["FT", "AET", "PEN"]);
+
+/**
+ * Determines whether a match should be treated as actively live in primary UI.
+ *
+ * @param match - Match whose normalized status and provider phase should be checked.
+ * @returns True only when the match is live and not in a terminal phase.
+ */
+export const isActiveLiveMatch = (match: Match) =>
+  match.status === "LIVE" && !terminalLivePhases.has(match.livePhase ?? "");
+
 /**
  * Formats an ISO date or timestamp for date-group headings.
  *
