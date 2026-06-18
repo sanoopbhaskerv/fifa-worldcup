@@ -120,6 +120,19 @@ describe("fantasy prediction game", () => {
     expect(screen.queryByText("Tournament-long")).not.toBeInTheDocument();
   });
 
+  it("renders match-level changed-pick save controls", () => {
+    vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({ data: fantasyGameData });
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <FantasyPollsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("heading", { name: "Brazil vs Argentina" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "All saved" }).length).toBeGreaterThan(0);
+  });
+
   it("renders admin score review rows", () => {
     vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({ data: fantasyGameData });
 
@@ -217,6 +230,7 @@ describe("fantasy prediction game", () => {
     expect(screen.getByDisplayValue("Brazil Boss")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save profile" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Set password" })).toBeInTheDocument();
+    expect(screen.getByText("Confirm new password")).toBeInTheDocument();
   });
 
   it("renders user poll creation with squad-backed player options", async () => {

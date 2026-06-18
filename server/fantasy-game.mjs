@@ -2172,27 +2172,7 @@ export const createFantasyUserPoll = async (input = {}) => {
  */
 export const submitFantasyPrediction = async ({ questionId, participantId, answer }) => {
   const game = await gameState();
-  const resolvedParticipantId = participantId ?? game.activeParticipantId;
-  const question = game.questions.find((item) => item.id === questionId);
-  if (!question) throw new ProviderError("Question not found.", 404, "NOT_FOUND");
-  if (!game.participants.some((participant) => participant.id === resolvedParticipantId)) {
-    throw new ProviderError("Participant not found.", 404, "NOT_FOUND");
-  }
-  if (!participantCanAccessQuestion(game, resolvedParticipantId, question)) {
-    throw new ProviderError("This poll is not available in your groups.", 403, "GROUP_ACCESS_DENIED");
-  }
-  if (question.status !== "OPEN") {
-    throw new ProviderError("Prediction poll is locked.", 409, "POLL_LOCKED");
-  }
-  validateAnswer(question, answer);
-
-  const prediction = {
-    id: `pred-${questionId}-${resolvedParticipantId}`,
-    questionId,
-    participantId: resolvedParticipantId,
-    answer,
-    submittedAt: new Date().toISOString(),
-  };
+  const { prediction, resolvedParticipantId } = buildPrediction(game, { questionId, participantId, answer });
   const nextGame = {
     ...game,
     predictions: [
@@ -2208,6 +2188,78 @@ export const submitFantasyPrediction = async ({ questionId, participantId, answe
     metadata: { answer },
   }));
   return { prediction, game: withActiveParticipant(updatedGame, resolvedParticipantId) };
+};
+
+const buildPrediction = (game, { questionId, participantId, answer }) => {
+  const resolvedParticipantId = participantId ?? game.activeParticipantId;
+  const question = game.questions.find((item) => item.id === questionId);
+  if (!question) throw new ProviderError("Question not found.", 404, "NOT_FOUND");
+  if (!game.participants.some((participant) => participant.id === resolvedParticipantId)) {
+    throw new ProviderError("Participant not found.", 404, "NOT_FOUND");
+  }
+  if (!participantCanAccessQuestion(game, resolvedParticipantId, question)) {
+    throw new ProviderError("This poll is not available in your groups.", 403, "GROUP_ACCESS_DENIED");
+  }
+  if (question.status !== "OPEN") {
+    throw new ProviderError("Prediction poll is locked.", 409, "POLL_LOCKED");
+  }
+  validateAnswer(question, answer);
+  return {
+    question,
+    resolvedParticipantId,
+    prediction: {
+      id: `pred-${questionId}-${resolvedParticipantId}`,
+      questionId,
+      participantId: resolvedParticipantId,
+      answer,
+      submittedAt: new Date().toISOString(),
+    },
+  };
+};
+
+/**
+ * Saves multiple changed participant predictions in one write.
+ *
+ * @param input - Bulk prediction mutation input.
+ * @param input.participantId - Participant submitting the answers.
+ * @param input.predictions - Changed question answers to save.
+ * @returns Updated predictions and game payload.
+ */
+export const submitFantasyPredictions = async (input = {}) => {
+  const game = await gameState();
+  const rows = Array.isArray(input.predictions) ? input.predictions : [];
+  if (rows.length === 0) {
+    throw new ProviderError("At least one changed prediction is required.", 400, "INVALID_PREDICTION");
+  }
+  const seenQuestionIds = new Set();
+  const predictions = rows.map((row) => {
+    if (!row?.questionId || seenQuestionIds.has(row.questionId)) {
+      throw new ProviderError("Each changed prediction must reference one unique question.", 400, "INVALID_PREDICTION");
+    }
+    seenQuestionIds.add(row.questionId);
+    return buildPrediction(game, {
+      answer: row.answer,
+      participantId: input.participantId,
+      questionId: row.questionId,
+    }).prediction;
+  });
+  const resolvedParticipantId = predictions[0].participantId;
+  const nextQuestionIds = new Set(predictions.map((prediction) => prediction.questionId));
+  const nextGame = {
+    ...game,
+    predictions: [
+      ...game.predictions.filter((item) => !(item.participantId === resolvedParticipantId && nextQuestionIds.has(item.questionId))),
+      ...predictions,
+    ],
+  };
+  const updatedGame = await saveGame(nextGame, await audit({
+    action: "PREDICTION_SUBMITTED",
+    actorId: resolvedParticipantId,
+    entityId: `bulk-${resolvedParticipantId}`,
+    entityType: "PREDICTION",
+    metadata: { count: predictions.length },
+  }));
+  return { predictions, game: withActiveParticipant(updatedGame, resolvedParticipantId) };
 };
 
 /**

@@ -67,7 +67,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .bottom-nav { position: fixed; z-index: 35; inset: auto 0 0; display: grid; grid-template-columns: repeat(5, 1fr); padding: 7px 6px calc(7px + env(safe-area-inset-bottom)); background: rgba(9, 24, 18, .96); border-top: 1px solid var(--line); backdrop-filter: blur(18px); }
 .section-link--bottom { min-width: 0; min-height: 52px; flex-direction: column; justify-content: center; gap: 3px; padding: 4px; border-radius: 10px; font-size: 10px; }
 .section-link--bottom svg { width: 20px; height: 20px; }
+.section-link--bottom span { max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .section-link--bottom.section-link--active::after { left: 28%; right: 28%; bottom: 1px; }
+.fantasy-bottom-nav { grid-template-columns: repeat(6, minmax(0, 1fr)); }
+.fantasy-bottom-nav .section-link--bottom { font-size: 9px; }
 .freshness { display: flex; align-items: center; justify-content: flex-end; gap: 6px; padding: 8px 14px 0; color: var(--muted); font-size: 9px; }
 .freshness > span { width: 6px; height: 6px; border-radius: 50%; background: var(--competition-accent); }
 .freshness__pulse { animation: freshness-pulse 1s ease-in-out infinite alternate; }
@@ -311,7 +314,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .button { display: inline-flex; min-height: 44px; align-items: center; justify-content: center; padding: 0 18px; border: 0; border-radius: 11px; font-weight: 800; cursor: pointer; }
 .button--primary { color: #07130f; background: var(--accent); }
 
-.home-shell { min-height: 100dvh; overflow-y: auto; padding: calc(18px + env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); background: radial-gradient(circle at 80% -15%, rgba(201,255,71,.1), transparent 28rem), var(--canvas); }
+.home-shell { height: 100dvh; min-height: 100vh; overflow-x: hidden; overflow-y: auto; -webkit-overflow-scrolling: touch; padding: calc(18px + env(safe-area-inset-top)) 14px calc(24px + env(safe-area-inset-bottom)); background: radial-gradient(circle at 80% -15%, rgba(201,255,71,.1), transparent 28rem), var(--canvas); }
 .home-header { display: flex; align-items: center; justify-content: space-between; gap: 18px; width: min(100%, 1120px); margin: 0 auto 22px; }
 .home-header .brand > span:last-child { display: inline; }
 .home-header p { max-width: 330px; margin: 0; color: var(--muted); font-size: 12px; line-height: 1.45; text-align: right; }
@@ -358,7 +361,14 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .fantasy-join-panel h1 { margin: 0; font-size: 38px; line-height: 1; letter-spacing: -.04em; }
 .fantasy-join-panel form { display: grid; gap: 10px; margin-top: 8px; }
 .fantasy-join-panel label { color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
-.fantasy-join-panel input, .fantasy-join-panel select { min-height: 48px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; color: var(--text); background: var(--surface-2); font-weight: 900; }
+.fantasy-join-panel input, .fantasy-join-panel select { min-height: 48px; padding: 0 14px; border: 1px solid var(--line); border-radius: 12px; color: var(--text); background: var(--surface-2); font-size: 16px; font-weight: 900; }
+.password-field { display: grid; gap: 6px; }
+.password-field > span:first-child { color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
+.password-field__control { display: grid; grid-template-columns: minmax(0, 1fr) 44px; overflow: hidden; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
+.password-field__control input { min-width: 0; border: 0; border-radius: 0; background: transparent; }
+.password-field__control button { display: grid; place-items: center; min-height: 48px; border: 0; border-left: 1px solid var(--line); color: var(--muted); background: transparent; cursor: pointer; }
+.password-field__control button:hover { color: var(--text); }
+.password-field__control svg { width: 18px; height: 18px; }
 .fantasy-join-panel .fantasy-invite-input { text-transform: uppercase; }
 .fantasy-join-panel p { margin: 0; color: var(--danger); font-size: 12px; font-weight: 800; }
 .fantasy-join-divider { display: flex; align-items: center; gap: 10px; color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .12em; text-transform: uppercase; }
@@ -404,7 +414,10 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .fantasy-page-actions svg { width: 14px; }
 .fantasy-poll-group .section-heading { align-items: start; }
 .fantasy-poll-group .section-heading p { margin: 5px 0 0; color: var(--muted); font-size: 11px; }
-.fantasy-poll-group .section-heading > strong { display: inline-grid; place-items: center; min-width: 54px; height: 38px; border-radius: 999px; color: #07130f; background: var(--accent); font-size: 12px; }
+.fantasy-poll-group .section-heading > strong, .fantasy-poll-actions > strong { display: inline-grid; place-items: center; min-width: 54px; height: 38px; border-radius: 999px; color: #07130f; background: var(--accent); font-size: 12px; }
+.fantasy-poll-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+.fantasy-poll-actions button { min-height: 38px; padding: 0 11px; border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); border-radius: 999px; color: var(--accent); background: transparent; font-size: 11px; font-weight: 900; cursor: pointer; }
+.fantasy-poll-actions button:disabled { cursor: not-allowed; opacity: .56; }
 .fantasy-poll-list { display: grid; gap: 10px; }
 .fantasy-poll-card { padding: 13px; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); }
 .fantasy-poll-card--open { border-color: color-mix(in srgb, var(--accent) 28%, transparent); }
@@ -421,7 +434,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .fantasy-option--selected { color: #07130f; border-color: var(--accent); background: var(--accent); font-weight: 900; }
 .fantasy-option:disabled { cursor: not-allowed; opacity: .72; }
 .fantasy-score-input { display: grid; gap: 6px; color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
-.fantasy-score-input input { min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 11px; color: var(--text); background: var(--surface); font-weight: 900; letter-spacing: 0; text-transform: none; }
+.fantasy-score-input input { min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 11px; color: var(--text); background: var(--surface); font-size: 16px; font-weight: 900; letter-spacing: 0; text-transform: none; }
 .fantasy-leaderboard { overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); }
 .fantasy-leaderboard__head { display: none; }
 .fantasy-leaderboard__row { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 12px; border-top: 1px solid var(--line); }
@@ -496,7 +509,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .fantasy-create-poll { display: grid; gap: 16px; }
 .fantasy-participant-create form, .fantasy-fixture-editor form, .fantasy-tournament-editor form, .fantasy-team-editor form, .fantasy-player-editor form, .fantasy-template-editor form, .fantasy-ai-editor form, .fantasy-profile-editor form, .fantasy-user-poll-form form { display: grid; gap: 12px; }
 .fantasy-participant-create label, .fantasy-fixture-editor label, .fantasy-tournament-editor label, .fantasy-team-editor label, .fantasy-player-editor label, .fantasy-template-editor label, .fantasy-ai-editor label, .fantasy-profile-editor label, .fantasy-user-poll-form label { display: grid; gap: 6px; color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
-.fantasy-participant-create input, .fantasy-participant-create select, .fantasy-fixture-editor input, .fantasy-fixture-editor select, .fantasy-tournament-editor input, .fantasy-tournament-editor select, .fantasy-team-editor input, .fantasy-player-editor input, .fantasy-player-editor select, .fantasy-template-editor input, .fantasy-ai-editor input, .fantasy-ai-editor select, .fantasy-profile-editor input, .fantasy-profile-editor select, .fantasy-user-poll-form select { min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 11px; color: var(--text); background: var(--surface-2); font-weight: 800; }
+.fantasy-participant-create input, .fantasy-participant-create select, .fantasy-fixture-editor input, .fantasy-fixture-editor select, .fantasy-tournament-editor input, .fantasy-tournament-editor select, .fantasy-team-editor input, .fantasy-player-editor input, .fantasy-player-editor select, .fantasy-template-editor input, .fantasy-ai-editor input, .fantasy-ai-editor select, .fantasy-profile-editor input, .fantasy-profile-editor select, .fantasy-user-poll-form select { min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 11px; color: var(--text); background: var(--surface-2); font-size: 16px; font-weight: 800; }
 .fantasy-participant-create p, .fantasy-fixture-editor p, .fantasy-tournament-editor p, .fantasy-team-editor p, .fantasy-player-editor p, .fantasy-template-editor p, .fantasy-ai-editor p, .fantasy-profile-editor p, .fantasy-user-poll-form p, .fantasy-squad-import p { margin: 0; color: var(--danger); font-size: 12px; font-weight: 800; }
 .fantasy-profile-editor { max-width: 560px; }
 .fantasy-create-match-summary { display: grid; gap: 4px; padding: 12px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); }
@@ -523,7 +536,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .fantasy-participant-actions button { min-height: 32px; padding: 0 10px; border: 0; border-radius: 9px; color: #07130f; background: var(--accent); font-size: 10px; font-weight: 900; cursor: pointer; }
 .fantasy-participant-actions button:disabled { cursor: not-allowed; opacity: .6; }
 .fantasy-temp-password-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: min(100%, 320px); }
-.fantasy-temp-password-form input { flex: 1 1 150px; min-width: 0; min-height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; color: var(--text); background: var(--surface); font-size: 11px; font-weight: 800; }
+.fantasy-temp-password-form input { flex: 1 1 150px; min-width: 0; min-height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; color: var(--text); background: var(--surface); font-size: 16px; font-weight: 800; }
 .fantasy-squad-table .section-heading > strong, .fantasy-draft-panel .section-heading > strong { display: inline-grid; place-items: center; min-width: 80px; height: 38px; border-radius: 999px; color: #07130f; background: var(--accent); font-size: 12px; }
 .fantasy-squad-table .section-heading p, .fantasy-draft-panel .section-heading p { margin: 5px 0 0; color: var(--muted); font-size: 11px; }
 .fantasy-squad-import { display: grid; gap: 9px; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
@@ -662,8 +675,9 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 @media (min-width: 1060px) {
   .topbar__inner { min-height: 76px; }
-  .app-frame { display: grid; grid-template-columns: 250px minmax(0, 1fr); }
-  .desktop-nav { position: sticky; top: 77px; display: flex; height: calc(100vh - 77px); flex-direction: column; padding: 28px 18px 20px; border-right: 1px solid var(--line); }
+  .app-scroll { display: flex; flex-direction: column; overflow: hidden; }
+  .app-frame { display: grid; grid-template-columns: 250px minmax(0, 1fr); width: 100%; flex: 1; min-height: 0; overflow: hidden; }
+  .desktop-nav { position: static; top: auto; display: flex; height: auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; flex-direction: column; padding: 28px 18px 20px; border-right: 1px solid var(--line); }
   .desktop-nav__identity { display: flex; align-items: center; gap: 12px; margin-bottom: 28px; }
   .desktop-nav__identity > div { display: flex; min-width: 0; flex-direction: column; }
   .desktop-nav__identity strong { font-size: 13px; }
@@ -674,7 +688,7 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
   .mobile-tabs, .bottom-nav { display: none; }
   .freshness { padding: 14px 30px 0; }
   .data-notice { margin-inline: 30px; }
-  .main-content { padding-bottom: 0; }
+  .main-content { height: 100%; overflow-y: auto; overscroll-behavior: contain; padding-bottom: 0; }
   .page { padding-top: 58px; padding-bottom: 100px; }
   .hero-match__teams { padding-inline: 18%; }
   .hero-carousel { grid-auto-columns: minmax(720px, 72%); }
@@ -689,4 +703,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; transition-duration: .01ms !important; }
+}
+
+@supports (-webkit-touch-callout: none) {
+  input:not([type="checkbox"]):not([type="radio"]), select, textarea { font-size: 16px !important; }
 }

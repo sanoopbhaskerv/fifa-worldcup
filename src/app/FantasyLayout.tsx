@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
 import { ArrowIcon, CalendarIcon, HomeIcon, PlayerIcon, TableIcon, TrophyIcon } from "../components/Icons";
+import { PasswordField } from "../components/PasswordField";
 import { useCreateFantasySignup, useFantasyGame, useJoinFantasyGame, useLoginFantasyParticipant } from "../services/fantasy-queries";
 import { storage, type StoredFantasyIdentity } from "../utils/storage";
 
@@ -114,6 +115,7 @@ const FantasyJoinScreen = ({ onJoined }: { onJoined: (identity: StoredFantasyIde
   const [nickname, setNickname] = useState("");
   const [emailOrPhone, setEmailOrPhone] = useState("");
   const [password, setPassword] = useState("");
+  const [passwordConfirm, setPasswordConfirm] = useState("");
   const [favoriteTeamId, setFavoriteTeamId] = useState("");
   const joinFantasy = useJoinFantasyGame();
   const loginFantasy = useLoginFantasyParticipant();
@@ -121,6 +123,7 @@ const FantasyJoinScreen = ({ onJoined }: { onJoined: (identity: StoredFantasyIde
   const previewGame = useFantasyGame(undefined);
   const teams = previewGame.data?.teams ?? [];
   const selectedFavoriteTeamId = favoriteTeamId || teams[0]?.id || "";
+  const signupPasswordsMatch = password.length > 0 && password === passwordConfirm;
 
   const saveIdentity = (participant: { id: string; nickname: string; role?: "ADMIN" | "PLAYER"; email?: string; phone?: string }) => {
     const nextIdentity = { participantId: participant.id, nickname: participant.nickname, role: participant.role, email: participant.email, phone: participant.phone };
@@ -170,13 +173,12 @@ const FantasyJoinScreen = ({ onJoined }: { onJoined: (identity: StoredFantasyIde
               placeholder="you@example.com"
               value={loginIdentifier}
             />
-            <label htmlFor="fantasy-login-password">Password</label>
-            <input
+            <PasswordField
               autoComplete="current-password"
               id="fantasy-login-password"
-              onChange={(event) => setLoginPassword(event.target.value)}
+              label="Password"
+              onChange={setLoginPassword}
               placeholder="Your password"
-              type="password"
               value={loginPassword}
             />
             <button className="button button--primary" disabled={loginFantasy.isPending || !loginIdentifier.trim() || loginPassword.length < 8} type="submit">
@@ -211,8 +213,12 @@ const FantasyJoinScreen = ({ onJoined }: { onJoined: (identity: StoredFantasyIde
           <form
             onSubmit={(event) => {
               event.preventDefault();
+              if (!signupPasswordsMatch) return;
               createSignup.mutate({ emailOrPhone, favoriteTeamId: selectedFavoriteTeamId, name, nickname, password, role: "PLAYER" }, {
-                onSuccess: ({ participant }) => saveIdentity(participant),
+                onSuccess: ({ participant }) => {
+                  setPasswordConfirm("");
+                  saveIdentity(participant);
+                },
               });
             }}
           >
@@ -248,17 +254,27 @@ const FantasyJoinScreen = ({ onJoined }: { onJoined: (identity: StoredFantasyIde
             >
               {teams.map((team) => <option key={team.id} value={team.id}>{team.name}</option>)}
             </select>
-            <label htmlFor="fantasy-signup-password">Password</label>
-            <input
+            <PasswordField
               autoComplete="new-password"
               id="fantasy-signup-password"
-              onChange={(event) => setPassword(event.target.value)}
+              label="Password"
+              minLength={8}
+              onChange={setPassword}
               placeholder="At least 8 characters"
-              type="password"
               value={password}
             />
+            <PasswordField
+              autoComplete="new-password"
+              id="fantasy-signup-password-confirm"
+              label="Confirm password"
+              minLength={8}
+              onChange={setPasswordConfirm}
+              placeholder="Repeat password"
+              value={passwordConfirm}
+            />
+            {passwordConfirm.length > 0 && !signupPasswordsMatch && <p role="alert">Passwords do not match.</p>}
             <div className="fantasy-join-actions">
-              <button className="button button--primary" disabled={createSignup.isPending || !emailOrPhone.trim() || !name.trim() || !nickname.trim() || password.length < 8 || !selectedFavoriteTeamId} type="submit">
+              <button className="button button--primary" disabled={createSignup.isPending || !emailOrPhone.trim() || !name.trim() || !nickname.trim() || password.length < 8 || !signupPasswordsMatch || !selectedFavoriteTeamId} type="submit">
                 {createSignup.isPending ? "Creating..." : "Sign up"}
               </button>
               <button disabled={createSignup.isPending || !selectedFavoriteTeamId} onClick={createGuest} type="button">

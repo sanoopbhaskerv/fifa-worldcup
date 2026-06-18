@@ -24,6 +24,7 @@ import {
   syncFantasyFixturesFromProvider,
   generateFantasyPolls,
   submitFantasyPrediction,
+  submitFantasyPredictions,
   updateFantasyAiSettings,
   updateFantasyFixture,
   updateFantasyGroup,
@@ -290,6 +291,12 @@ export const handleApiRequest = async ({
 
     if (requestMethod === "POST" && path === "/api/fantasy/polls") {
       return response(200, await createFantasyUserPoll(parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
+    if (requestMethod === "PUT" && path === "/api/fantasy/predictions") {
+      return response(200, await submitFantasyPredictions(parseJsonBody(body)), {
         "cache-control": "no-store",
       });
     }

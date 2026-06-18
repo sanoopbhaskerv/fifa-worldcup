@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
+import { PasswordField } from "../components/PasswordField";
 import { useChangeFantasyPassword, useUpdateFantasyParticipant } from "../services/fantasy-queries";
 import { storage } from "../utils/storage";
 import { PageHeading } from "./FixturesPage";
@@ -20,6 +21,8 @@ export default function FantasyProfilePage() {
   const [favoriteTeamId, setFavoriteTeamId] = useState(participant?.favoriteTeamId ?? data.teams[0]?.id ?? "");
   const [currentPassword, setCurrentPassword] = useState("");
   const [newPassword, setNewPassword] = useState("");
+  const [newPasswordConfirm, setNewPasswordConfirm] = useState("");
+  const passwordMatches = newPassword.length > 0 && newPassword === newPasswordConfirm;
 
   if (!participant) {
     return (
@@ -84,6 +87,7 @@ export default function FantasyProfilePage() {
         <form
           onSubmit={(event) => {
             event.preventDefault();
+            if (!passwordMatches) return;
             changePassword.mutate({
               currentPassword,
               newPassword,
@@ -92,21 +96,37 @@ export default function FantasyProfilePage() {
               onSuccess: () => {
                 setCurrentPassword("");
                 setNewPassword("");
+                setNewPasswordConfirm("");
               },
             });
           }}
         >
           {participant.passwordChangedAt && (
-            <label>
-              Current password
-              <input autoComplete="current-password" onChange={(event) => setCurrentPassword(event.target.value)} type="password" value={currentPassword} />
-            </label>
+            <PasswordField
+              autoComplete="current-password"
+              label="Current password"
+              onChange={setCurrentPassword}
+              value={currentPassword}
+            />
           )}
-          <label>
-            New password
-            <input autoComplete="new-password" onChange={(event) => setNewPassword(event.target.value)} placeholder="At least 8 characters" type="password" value={newPassword} />
-          </label>
-          <button className="button button--primary" disabled={changePassword.isPending || newPassword.length < 8 || (Boolean(participant.passwordChangedAt) && currentPassword.length === 0)} type="submit">
+          <PasswordField
+            autoComplete="new-password"
+            label="New password"
+            minLength={8}
+            onChange={setNewPassword}
+            placeholder="At least 8 characters"
+            value={newPassword}
+          />
+          <PasswordField
+            autoComplete="new-password"
+            label="Confirm new password"
+            minLength={8}
+            onChange={setNewPasswordConfirm}
+            placeholder="Repeat password"
+            value={newPasswordConfirm}
+          />
+          {newPasswordConfirm.length > 0 && !passwordMatches && <p role="alert">Passwords do not match.</p>}
+          <button className="button button--primary" disabled={changePassword.isPending || newPassword.length < 8 || !passwordMatches || (Boolean(participant.passwordChangedAt) && currentPassword.length === 0)} type="submit">
             {changePassword.isPending ? "Saving..." : participant.passwordChangedAt ? "Change password" : "Set password"}
           </button>
         </form>

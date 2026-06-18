@@ -41,11 +41,15 @@ server/
 - `.kiro/steering/product.md`: lasting product rules.
 - `.kiro/steering/tech.md`: lasting architecture and cost rules.
 - `.kiro/steering/structure.md`: lasting repo organization rules.
+- `.kiro/steering/ai.md`: lasting AI cost, safety, and provider rules.
 - `.kiro/specs/fantasy-football/requirements.md`: user-facing and system
   requirements for the prediction game.
 - `.kiro/specs/fantasy-football/design.md`: implementation architecture,
   backend shape, data model, and visual direction.
 - `.kiro/specs/fantasy-football/tasks.md`: implementation checklist.
+- `.kiro/specs/fantasy-ai/requirements.md`: AI host requirements.
+- `.kiro/specs/fantasy-ai/design.md`: AI host architecture and cost controls.
+- `.kiro/specs/fantasy-ai/tasks.md`: AI host implementation checklist.
 
 ## Naming Rules
 

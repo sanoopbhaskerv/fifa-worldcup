@@ -32,6 +32,7 @@
 - [x] Build player home with open polls, next deadline, current rank, today
   points, and latest recap.
 - [x] Build upcoming polls screen grouped by match.
+- [x] Add match-level bulk save for changed poll answers.
 - [ ] Build poll answering UI for single choice, multiple choice, score range,
   exact score, player prediction, and time window questions.
 - [x] Build My Predictions screen with open, locked, missed, and scored states.
@@ -80,6 +81,7 @@
 - [x] Implement World Cup squad import/update APIs.
 - [x] Implement player read APIs.
 - [x] Implement prediction submit API with server-owned lock validation.
+- [x] Implement bulk prediction submit API for changed match answers.
 - [ ] Implement admin setup APIs.
 - [x] Implement result entry and score publish APIs.
 - [x] Implement audit records for overrides and republishing.
@@ -123,6 +125,8 @@
   rejection, missed prediction, admin result entry, score review, publish, and
   leaderboard update.
 - [ ] Verify mobile layouts at 320, 375, 390, 412, and 768 px.
+- [x] Add iOS input zoom guard for fantasy forms.
+- [x] Split desktop app scrolling between left navigation and main content.
 - [ ] Verify desktop admin screens.
 - [ ] Document rollback path for disabling prediction writes while keeping
   public browsing online.

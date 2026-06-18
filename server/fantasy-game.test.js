@@ -805,6 +805,32 @@ describe("fantasy game API", () => {
     });
   });
 
+  it("saves changed open predictions in one request", async () => {
+    const response = await handleApiRequest({
+      method: "PUT",
+      url: "/api/fantasy/predictions",
+      body: JSON.stringify({
+        predictions: [
+          { questionId: "q-bra-arg-winner", answer: "Argentina" },
+          { questionId: "q-bra-arg-first-goal-time", answer: "11-45" },
+        ],
+      }),
+      env: {},
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.predictions).toHaveLength(2);
+    expect(response.body.game.predictions).toEqual(expect.arrayContaining([
+      expect.objectContaining({ questionId: "q-bra-arg-winner", answer: "Argentina" }),
+      expect.objectContaining({ questionId: "q-bra-arg-first-goal-time", answer: "11-45" }),
+    ]));
+    expect(response.body.game.auditRecords.at(-1)).toMatchObject({
+      action: "PREDICTION_SUBMITTED",
+      entityId: "bulk-p-sanoop",
+      metadata: { count: 2 },
+    });
+  });
+
   it("rejects writes against scored polls", async () => {
     const response = await handleApiRequest({
       method: "PUT",

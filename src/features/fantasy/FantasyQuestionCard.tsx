@@ -5,6 +5,8 @@ interface FantasyQuestionCardProps {
   question: FantasyQuestion;
   prediction?: FantasyPrediction;
   isSubmitting?: boolean;
+  selectedAnswer?: string;
+  onAnswerChange?: (answer: string) => void;
   onSubmit?: (answer: string) => void;
 }
 
@@ -15,20 +17,29 @@ interface FantasyQuestionCardProps {
  * @param props.question - Question to render.
  * @param props.prediction - Existing prediction for the active participant.
  * @param props.isSubmitting - Whether the selected answer is being saved.
+ * @param props.selectedAnswer - Optional controlled draft answer.
+ * @param props.onAnswerChange - Optional controlled draft-answer handler.
  * @param props.onSubmit - Save handler for an answer selection.
- * @returns Interactive mock poll card.
+ * @returns Interactive poll card.
  */
 export const FantasyQuestionCard = ({
   question,
   prediction,
   isSubmitting = false,
+  selectedAnswer,
+  onAnswerChange,
   onSubmit,
 }: FantasyQuestionCardProps) => {
   const initial = Array.isArray(prediction?.answer) ? prediction.answer[0] : prediction?.answer;
-  const [selected, setSelected] = useState(initial ?? "");
+  const [localSelected, setLocalSelected] = useState(initial ?? "");
+  const selected = selectedAnswer ?? localSelected;
   const locked = question.status !== "OPEN";
   const unchanged = Boolean(selected && selected === initial);
   const isExactScore = question.type === "EXACT_SCORE";
+  const changeSelected = (answer: string) => {
+    setLocalSelected(answer);
+    onAnswerChange?.(answer);
+  };
 
   return (
     <article className={`fantasy-poll-card fantasy-poll-card--${question.status.toLowerCase()}`}>
@@ -43,7 +54,7 @@ export const FantasyQuestionCard = ({
           <input
             disabled={locked}
             inputMode="text"
-            onChange={(event) => setSelected(event.target.value)}
+            onChange={(event) => changeSelected(event.target.value)}
             placeholder="0-0 or Brazil 3 Germany 4"
             value={selected}
           />
@@ -55,7 +66,7 @@ export const FantasyQuestionCard = ({
               className={`fantasy-option ${selected === option ? "fantasy-option--selected" : ""}`}
               disabled={locked}
               key={option}
-              onClick={() => setSelected(option)}
+              onClick={() => changeSelected(option)}
               type="button"
             >
               {option}

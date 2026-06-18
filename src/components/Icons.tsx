@@ -96,6 +96,14 @@ export const StarIcon = ({ fill = "none", ...props }: IconProps) => <Icon fill={
 export const CloseIcon = (props: IconProps) => <Icon {...props}><path d="m6 6 12 12M18 6 6 18"/></Icon>;
 
 /**
+ * Renders the password visibility icon.
+ *
+ * @param props - SVG attributes forwarded to the icon element.
+ * @returns Eye icon SVG.
+ */
+export const EyeIcon = (props: IconProps) => <Icon {...props}><path d="M2.5 12s3.5-6 9.5-6 9.5 6 9.5 6-3.5 6-9.5 6-9.5-6-9.5-6Z"/><circle cx="12" cy="12" r="3"/></Icon>;
+
+/**
  * Renders the forward arrow icon used by calls to action.
  *
  * @param props - SVG attributes forwarded to the icon element.

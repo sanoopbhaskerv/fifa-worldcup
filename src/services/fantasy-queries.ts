@@ -271,6 +271,19 @@ interface SubmitFantasyPredictionResponse {
   game: FantasyGameData;
 }
 
+interface SubmitFantasyPredictionsInput {
+  participantId?: string;
+  predictions: Array<{
+    questionId: string;
+    answer: string | string[];
+  }>;
+}
+
+interface SubmitFantasyPredictionsResponse {
+  predictions: FantasyPrediction[];
+  game: FantasyGameData;
+}
+
 interface SaveFantasyResultInput {
   matchId: string;
   result: Partial<FantasyMatchResult>;
@@ -637,6 +650,23 @@ const submitFantasyPrediction = async ({
     throw new Error(payload?.error?.message ?? "Could not save fantasy prediction.");
   }
   return (await response.json()) as SubmitFantasyPredictionResponse;
+};
+
+const submitFantasyPredictions = async ({
+  participantId,
+  predictions,
+}: SubmitFantasyPredictionsInput): Promise<SubmitFantasyPredictionsResponse> => {
+  if (!participantId) throw new Error("Login is required before submitting picks.");
+  const response = await fetch(fantasyApiUrl("/api/fantasy/predictions"), {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ participantId, predictions }),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error?.message ?? "Could not save fantasy predictions.");
+  }
+  return (await response.json()) as SubmitFantasyPredictionsResponse;
 };
 
 const saveFantasyResult = async ({
@@ -1125,6 +1155,21 @@ export const useSubmitFantasyPrediction = (participantId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: submitFantasyPrediction,
+    onSuccess: ({ game }) => {
+      queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
+    },
+  });
+};
+
+/**
+ * Saves changed predictions in one backend call.
+ *
+ * @returns TanStack mutation for bulk prediction submission.
+ */
+export const useSubmitFantasyPredictions = (participantId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: submitFantasyPredictions,
     onSuccess: ({ game }) => {
       queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
     },
