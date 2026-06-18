@@ -1,7 +1,8 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import { AnimatePresence, motion } from "framer-motion";
 import { FantasyQuestionCard } from "../features/fantasy/FantasyQuestionCard";
-import { ArrowIcon } from "../components/Icons";
+import { ArrowIcon, CloseIcon } from "../components/Icons";
 import { useFantasy } from "../app/fantasy-context";
 import { LabeledSelect } from "../components/FormFields";
 import { useSubmitFantasyPrediction, useSubmitFantasyPredictions } from "../services/fantasy-queries";
@@ -16,6 +17,12 @@ import { MatchDateRangeFilter, matchPassesDateRange, nextSevenDaysMatchRange } f
  *
  * @returns Polls page.
  */
+const FilterIcon = () => (
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+    <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
+  </svg>
+);
+
 export default function FantasyPollsPage() {
   const { data } = useFantasy();
   const submitPrediction = useSubmitFantasyPrediction(data.activeParticipantId);
@@ -23,6 +30,7 @@ export default function FantasyPollsPage() {
   const [groupId, setGroupId] = useState(data.groups[0]?.id ?? "group-main");
   const [matchId, setMatchId] = useState<string>("");
   const [dateRange, setDateRange] = useState(() => nextSevenDaysMatchRange());
+  const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [draftAnswers, setDraftAnswers] = useState<Record<string, string>>({});
   const groupQuestions = fantasyQuestionsForGroup(groupId, data.questions);
   const tournamentQuestions = fantasyPublishedQuestions(groupQuestions).filter((question) => !question.matchId);
@@ -58,30 +66,47 @@ export default function FantasyPollsPage() {
     label: `${fantasyMatchTitle(match, data.teams)} – ${formatDate(match.kickoff, true)}`,
   }));
 
+  const activeFilterCount = (resolvedMatchId ? 1 : 0) +
+    (dateRange.fromDate || dateRange.toDate || dateRange.groupStageOnly ? 1 : 0) +
+    (groupId !== (data.groups[0]?.id ?? "group-main") ? 1 : 0);
+
   return (
     <div className="page fantasy-page">
       <PageHeading eyebrow="Prediction polls" title="Published polls" description="Answer open match polls before lock time. Drafts stay hidden until an admin publishes them." />
       <div className="fantasy-page-actions">
-        {data.groups.length > 1 && (
-          <LabeledSelect
-            label="Group"
-            onChange={(value) => {
-              setGroupId(value);
-              setMatchId("");
-            }}
-            options={groupOptions}
-            value={groupId}
-          />
-        )}
-        {pollMatches.length > 1 && (
-          <LabeledSelect
-            label="Match"
-            onChange={setMatchId}
-            options={[{ value: "", label: "All matches" }, ...matchOptions]}
-            value={resolvedMatchId}
-          />
-        )}
-        <MatchDateRangeFilter onChange={setDateRange} value={dateRange} />
+        <div className="fantasy-page-actions__inline-filters">
+          {data.groups.length > 1 && (
+            <LabeledSelect
+              label="Group"
+              onChange={(value) => {
+                setGroupId(value);
+                setMatchId("");
+              }}
+              options={groupOptions}
+              value={groupId}
+            />
+          )}
+          {pollMatches.length > 1 && (
+            <LabeledSelect
+              label="Match"
+              onChange={setMatchId}
+              options={[{ value: "", label: "All matches" }, ...matchOptions]}
+              value={resolvedMatchId}
+            />
+          )}
+          <MatchDateRangeFilter onChange={setDateRange} value={dateRange} />
+        </div>
+
+        <button
+          className="fantasy-page-actions__filter-trigger"
+          onClick={() => setIsFilterOpen(true)}
+          type="button"
+        >
+          <FilterIcon />
+          <span>Filters</span>
+          {activeFilterCount > 0 && <strong>{activeFilterCount}</strong>}
+        </button>
+
         <Link to="/fantasy/create-poll">Create poll <ArrowIcon /></Link>
       </div>
       <div className="fantasy-poll-groups">
@@ -192,6 +217,74 @@ export default function FantasyPollsPage() {
           </section>
         )}
       </div>
+      <AnimatePresence>
+        {isFilterOpen && (
+          <motion.div
+            className="dialog-backdrop"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            onMouseDown={() => setIsFilterOpen(false)}
+          >
+            <motion.section
+              role="dialog"
+              aria-modal="true"
+              className="fantasy-filter-dialog"
+              initial={{ opacity: 0, y: 30, scale: 0.98 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 20 }}
+              transition={{ duration: 0.2 }}
+              onMouseDown={(event) => event.stopPropagation()}
+            >
+              <header className="picker-header">
+                <div>
+                  <span className="eyebrow">Prediction polls</span>
+                  <h2>Filter polls</h2>
+                </div>
+                <button
+                  className="icon-button"
+                  onClick={() => setIsFilterOpen(false)}
+                  aria-label="Close filters"
+                  type="button"
+                >
+                  <CloseIcon />
+                </button>
+              </header>
+              <div className="fantasy-filter-dialog-body">
+                {data.groups.length > 1 && (
+                  <LabeledSelect
+                    label="Group"
+                    onChange={(value) => {
+                      setGroupId(value);
+                      setMatchId("");
+                    }}
+                    options={groupOptions}
+                    value={groupId}
+                  />
+                )}
+                {pollMatches.length > 1 && (
+                  <LabeledSelect
+                    label="Match"
+                    onChange={setMatchId}
+                    options={[{ value: "", label: "All matches" }, ...matchOptions]}
+                    value={resolvedMatchId}
+                  />
+                )}
+                <MatchDateRangeFilter onChange={setDateRange} value={dateRange} />
+              </div>
+              <footer className="fantasy-filter-dialog-footer">
+                <button
+                  className="button button--primary"
+                  onClick={() => setIsFilterOpen(false)}
+                  type="button"
+                >
+                  Apply Filters
+                </button>
+              </footer>
+            </motion.section>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }

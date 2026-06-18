@@ -473,6 +473,7 @@
 .fantasy-page-actions {
 	display: flex;
 	justify-content: flex-end;
+	align-items: flex-end;
 	margin: -8px 0 14px;
 	gap: 20px
 }
@@ -2015,3 +2016,96 @@
 		display: none;
 	}
 }
+
+/* Mobile Filter Trigger and Dialog Popup Styles */
+.fantasy-page-actions__filter-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 40px;
+  padding: 0 14px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  color: var(--text);
+  background: var(--surface-2);
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+}
+
+.fantasy-page-actions__filter-trigger:hover {
+  background: var(--surface-3);
+  border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
+.fantasy-page-actions__filter-trigger svg {
+  width: 14px;
+  height: 14px;
+}
+
+.fantasy-page-actions__filter-trigger strong {
+  display: grid;
+  place-items: center;
+  min-width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  color: var(--on-accent);
+  background: var(--accent);
+  font-size: 9px;
+  font-weight: 900;
+}
+
+.fantasy-filter-dialog {
+  width: 100%;
+  max-height: min(88vh, 850px);
+  overflow-y: auto;
+  padding: 18px 14px calc(22px + env(safe-area-inset-bottom));
+  border: 1px solid var(--line);
+  border-radius: 24px 24px 0 0;
+  background: var(--canvas);
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.fantasy-filter-dialog-body {
+  display: grid;
+  gap: 16px;
+}
+
+.fantasy-filter-dialog-footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 10px;
+}
+
+@media (max-width: 759px) {
+  .fantasy-page-actions__inline-filters {
+    display: none !important;
+  }
+  .fantasy-page-actions__filter-trigger {
+    display: inline-flex !important;
+  }
+}
+
+@media (min-width: 760px) {
+  .fantasy-page-actions__inline-filters {
+    display: flex !important;
+    align-items: flex-end;
+    gap: 20px;
+  }
+  .fantasy-page-actions__filter-trigger {
+    display: none !important;
+  }
+  .dialog-backdrop {
+    align-items: center;
+    padding: 30px;
+  }
+  .fantasy-filter-dialog {
+    width: min(90vw, 460px);
+    border-radius: 18px;
+    padding: 24px;
+  }
+}
+

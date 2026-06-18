@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
 import { LabeledSelect } from "../components/FormFields";
 import { ErrorMessage, SuccessMessage } from "../components/FeedbackMessages";
@@ -26,13 +26,16 @@ export default function FantasyAdminPollsPage() {
   const dateFilteredMatches = useMemo(() => (
     data.matches.filter((match) => matchPassesDateRange(match, dateRange))
   ), [data.matches, dateRange]);
+  const resolvedMatchFilterId = matchFilterId && dateFilteredMatches.some((match) => match.id === matchFilterId)
+    ? matchFilterId
+    : "";
   const filteredMatches = useMemo(() => (
-    matchFilterId ? dateFilteredMatches.filter((match) => match.id === matchFilterId) : dateFilteredMatches
-  ), [dateFilteredMatches, matchFilterId]);
+    resolvedMatchFilterId ? dateFilteredMatches.filter((match) => match.id === resolvedMatchFilterId) : dateFilteredMatches
+  ), [dateFilteredMatches, resolvedMatchFilterId]);
   const matchNumbers = useMemo(() => new Map(
     [...data.matches]
-      .sort((left, right) => left.kickoff.localeCompare(right.kickoff))
-      .map((match, index) => [match.id, index + 1]),
+       .sort((left, right) => left.kickoff.localeCompare(right.kickoff))
+       .map((match, index) => [match.id, index + 1]),
   ), [data.matches]);
   const matchPollSummaries = useMemo(() => new Map(data.matches.map((match) => {
     const questions = data.questions.filter((question) => question.matchId === match.id && (question.groupId ?? "group-main") === groupId);
@@ -59,12 +62,6 @@ export default function FantasyAdminPollsPage() {
   const bulkMatchIds = upcomingFilteredMatches.map((match) => match.id);
   const bulkPayload = { groupId, limit: bulkMatchIds.length || 1, matchIds: bulkMatchIds, replaceExisting: true, status: "DRAFT" as const };
 
-  useEffect(() => {
-    if (matchFilterId && !dateFilteredMatches.some((match) => match.id === matchFilterId)) {
-      setMatchFilterId("");
-    }
-  }, [dateFilteredMatches, matchFilterId]);
-
   const saveQuestions = (status: "DRAFT" | "OPEN") => {
     if (!activeMatch || !draft || !canCreatePollsForActiveMatch) return;
     saveDrafts.mutate({ groupId, matchId: activeMatch.id, questions: draft.questions, status });
@@ -88,7 +85,7 @@ export default function FantasyAdminPollsPage() {
                   if (value) setActiveMatchId(value);
                 }}
                 options={[{ value: "", label: "All matches in range" }, ...matchOptions]}
-                value={matchFilterId}
+                value={resolvedMatchFilterId}
               />
             )}
             <button disabled={generatePolls.isPending || bulkMatchIds.length === 0} onClick={() => generatePolls.mutate(bulkPayload)} type="button">
