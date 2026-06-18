@@ -68,7 +68,8 @@ export default function FantasyPollsPage() {
   }));
 
   const activeFilterCount = (resolvedMatchId ? 1 : 0) +
-    (dateRange.fromDate || dateRange.toDate || dateRange.groupStageOnly ? 1 : 0);
+    (dateRange.fromDate || dateRange.toDate || dateRange.groupStageOnly ? 1 : 0) +
+    (groupId !== (data.groups[0]?.id ?? "group-main") ? 1 : 0);
 
   return (
     <div className="page fantasy-page">
@@ -77,7 +78,7 @@ export default function FantasyPollsPage() {
         {data.groups.length > 1 && (
           <div className="fantasy-page-actions__group-select">
             <LabeledSelect
-              label="Group"
+              label="League"
               onChange={(value) => {
                 setGroupId(value);
                 setMatchId("");

@@ -1,5 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-import type { FantasyAdminParticipant, FantasyAiSettings, FantasyGameData, FantasyGroup, FantasyGroupMembership, FantasyMatch, FantasyMatchResult, FantasyParticipant, FantasyParticipantInvite, FantasyPrediction, FantasyQuestion, FantasyQuestionTemplate, FantasySquadPlayer, FantasyTeam, FantasyTournament, FantasyUserPollKind } from "../types/fantasy";
+import type { FantasyAdminParticipant, FantasyAiMessage, FantasyAiMessageType, FantasyAiSettings, FantasyGameData, FantasyGroup, FantasyGroupMembership, FantasyMatch, FantasyMatchResult, FantasyParticipant, FantasyParticipantInvite, FantasyPrediction, FantasyQuestion, FantasyQuestionTemplate, FantasySquadPlayer, FantasyTeam, FantasyTournament, FantasyUserPollKind } from "../types/fantasy";
 
 const fantasyTournamentId = "world-cup-friends-2026";
 const fantasyGameQueryKey = (participantId?: string) => ["fantasy-game", fantasyTournamentId, participantId ?? "guest"] as const;
@@ -113,6 +113,35 @@ interface FantasyQuestionTemplatesResponse {
 
 interface FantasyAiSettingsResponse {
   aiSettings: FantasyAiSettings;
+  game: FantasyGameData;
+}
+
+interface FantasyAiMessagesResponse {
+  aiMessages: FantasyAiMessage[];
+  game: FantasyGameData;
+}
+
+interface DraftFantasyAiMessageInput {
+  type: FantasyAiMessageType;
+  matchId?: string;
+  groupId?: string;
+  actorId?: string;
+}
+
+interface UpdateFantasyAiMessageInput {
+  messageId: string;
+  title: string;
+  body: string;
+  actorId?: string;
+}
+
+interface MutateFantasyAiMessageInput {
+  messageId: string;
+  actorId?: string;
+}
+
+interface FantasyAiMessageResponse {
+  message: FantasyAiMessage;
   game: FantasyGameData;
 }
 
@@ -463,6 +492,57 @@ const fetchFantasyAiSettings = async (): Promise<FantasyAiSettingsResponse> => {
   const response = await fetch(fantasyApiUrl("/api/fantasy/admin/ai-settings"));
   if (!response.ok) throw new Error("Could not load AI settings.");
   return (await response.json()) as FantasyAiSettingsResponse;
+};
+
+const fetchFantasyAiMessages = async (): Promise<FantasyAiMessagesResponse> => {
+  const response = await fetch(fantasyApiUrl("/api/fantasy/admin/ai-messages"));
+  if (!response.ok) throw new Error("Could not load AI host messages.");
+  return (await response.json()) as FantasyAiMessagesResponse;
+};
+
+const aiDraftPath: Record<FantasyAiMessageType, string> = {
+  LEADERBOARD_SUMMARY: "/api/fantasy/admin/ai-messages/leaderboard-draft",
+  RECAP: "/api/fantasy/admin/ai-messages/recap-draft",
+  REMINDER: "/api/fantasy/admin/ai-messages/reminder-draft",
+};
+
+const draftFantasyAiMessage = async ({ type, ...input }: DraftFantasyAiMessageInput): Promise<FantasyAiMessageResponse> => {
+  const response = await fetch(fantasyApiUrl(aiDraftPath[type]), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error?.message ?? "Could not create AI host draft.");
+  }
+  return (await response.json()) as FantasyAiMessageResponse;
+};
+
+const updateFantasyAiMessage = async ({ messageId, ...input }: UpdateFantasyAiMessageInput): Promise<FantasyAiMessageResponse> => {
+  const response = await fetch(fantasyApiUrl(`/api/fantasy/admin/ai-messages/${encodeURIComponent(messageId)}`), {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify(input),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error?.message ?? "Could not update AI host message.");
+  }
+  return (await response.json()) as FantasyAiMessageResponse;
+};
+
+const mutateFantasyAiMessage = async ({ action, messageId, actorId }: MutateFantasyAiMessageInput & { action: "discard" | "publish" | "regenerate" }): Promise<FantasyAiMessageResponse> => {
+  const response = await fetch(fantasyApiUrl(`/api/fantasy/admin/ai-messages/${encodeURIComponent(messageId)}/${action}`), {
+    method: "POST",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ actorId }),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error?.message ?? `Could not ${action} AI host message.`);
+  }
+  return (await response.json()) as FantasyAiMessageResponse;
 };
 
 const importFantasySquads = async (input: ImportFantasySquadsInput): Promise<ImportFantasySquadsResponse> => {
@@ -929,6 +1009,18 @@ export const useFantasyAiSettings = () =>
   });
 
 /**
+ * Loads admin-visible AI host messages, including drafts.
+ *
+ * @returns TanStack query result for AI host message administration.
+ */
+export const useFantasyAiMessages = () =>
+  useQuery({
+    queryKey: ["fantasy-ai-messages", fantasyTournamentId],
+    queryFn: fetchFantasyAiMessages,
+    staleTime: 1000 * 10,
+  });
+
+/**
  * Imports team and squad-player data and refreshes fantasy caches.
  *
  * @param participantId - Active participant cache key.
@@ -1075,6 +1167,91 @@ export const useUpdateFantasyAiSettings = (participantId?: string) => {
     mutationFn: updateFantasyAiSettings,
     onSuccess: ({ game }) => {
       queryClient.invalidateQueries({ queryKey: ["fantasy-ai-settings", fantasyTournamentId] });
+      queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
+    },
+  });
+};
+
+/**
+ * Creates a template-grounded AI host message draft.
+ *
+ * @param participantId - Active participant cache key.
+ * @returns TanStack mutation for AI message draft generation.
+ */
+export const useDraftFantasyAiMessage = (participantId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: draftFantasyAiMessage,
+    onSuccess: ({ game }) => {
+      queryClient.invalidateQueries({ queryKey: ["fantasy-ai-messages", fantasyTournamentId] });
+      queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
+    },
+  });
+};
+
+/**
+ * Updates AI host message copy before publishing.
+ *
+ * @param participantId - Active participant cache key.
+ * @returns TanStack mutation for AI message edits.
+ */
+export const useUpdateFantasyAiMessage = (participantId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateFantasyAiMessage,
+    onSuccess: ({ game }) => {
+      queryClient.invalidateQueries({ queryKey: ["fantasy-ai-messages", fantasyTournamentId] });
+      queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
+    },
+  });
+};
+
+/**
+ * Regenerates an AI host message from current structured context.
+ *
+ * @param participantId - Active participant cache key.
+ * @returns TanStack mutation for AI message regeneration.
+ */
+export const useRegenerateFantasyAiMessage = (participantId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: MutateFantasyAiMessageInput) => mutateFantasyAiMessage({ ...input, action: "regenerate" }),
+    onSuccess: ({ game }) => {
+      queryClient.invalidateQueries({ queryKey: ["fantasy-ai-messages", fantasyTournamentId] });
+      queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
+    },
+  });
+};
+
+/**
+ * Publishes an AI host message to player-facing game data.
+ *
+ * @param participantId - Active participant cache key.
+ * @returns TanStack mutation for AI message publishing.
+ */
+export const usePublishFantasyAiMessage = (participantId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: MutateFantasyAiMessageInput) => mutateFantasyAiMessage({ ...input, action: "publish" }),
+    onSuccess: ({ game }) => {
+      queryClient.invalidateQueries({ queryKey: ["fantasy-ai-messages", fantasyTournamentId] });
+      queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
+    },
+  });
+};
+
+/**
+ * Discards an AI host message draft.
+ *
+ * @param participantId - Active participant cache key.
+ * @returns TanStack mutation for AI message discard.
+ */
+export const useDiscardFantasyAiMessage = (participantId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: MutateFantasyAiMessageInput) => mutateFantasyAiMessage({ ...input, action: "discard" }),
+    onSuccess: ({ game }) => {
+      queryClient.invalidateQueries({ queryKey: ["fantasy-ai-messages", fantasyTournamentId] });
       queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
     },
   });

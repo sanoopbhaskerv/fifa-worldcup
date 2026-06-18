@@ -20,6 +20,7 @@ import FantasyAdminFixturesPage from "../../pages/FantasyAdminFixturesPage";
 import FantasyAdminTournamentPage from "../../pages/FantasyAdminTournamentPage";
 import FantasyAdminQuestionTemplatesPage from "../../pages/FantasyAdminQuestionTemplatesPage";
 import FantasyAdminAiSettingsPage from "../../pages/FantasyAdminAiSettingsPage";
+import FantasyAdminAiHostPage from "../../pages/FantasyAdminAiHostPage";
 import FantasyAdminSubmittedPollsPage from "../../pages/FantasyAdminSubmittedPollsPage";
 
 describe("fantasy prediction game", () => {
@@ -151,9 +152,11 @@ describe("fantasy prediction game", () => {
     await user.click(screen.getByRole("button", { name: /Filters/ }));
 
     const dialog = await screen.findByRole("dialog", { name: /Filter polls/ });
+    expect(screen.getByLabelText("League")).toBeInTheDocument();
     expect(within(dialog).getByLabelText("Match")).toBeInTheDocument();
     expect(within(dialog).getByLabelText("From date")).toBeInTheDocument();
     expect(within(dialog).getByLabelText("To date")).toBeInTheDocument();
+    expect(within(dialog).queryByLabelText("League")).not.toBeInTheDocument();
     expect(within(dialog).getByRole("button", { name: "All matches" })).toBeInTheDocument();
   });
 
@@ -360,5 +363,23 @@ describe("fantasy prediction game", () => {
     expect(screen.getByRole("combobox", { name: "Mode" })).toHaveValue("TEMPLATE_ONLY");
     expect(screen.getByRole("combobox", { name: "Banter level" })).toHaveValue("LIGHT");
     expect(screen.getByRole("button", { name: "Save AI settings" })).toBeInTheDocument();
+  });
+
+  it("renders AI host message administration", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({ data: fantasyGameData });
+
+    renderWithQueryClient(<FantasyAdminAiHostPage />);
+
+    expect(screen.getByRole("heading", { name: "AI host" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Message type" })).toHaveValue("REMINDER");
+    expect(screen.getByRole("combobox", { name: "League" })).toBeInTheDocument();
+    expect(screen.getByRole("combobox", { name: "Match" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Generate draft" })).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByRole("combobox", { name: "Message type" }), "LEADERBOARD_SUMMARY");
+
+    expect(screen.queryByRole("combobox", { name: "League" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("combobox", { name: "Match" })).not.toBeInTheDocument();
   });
 });

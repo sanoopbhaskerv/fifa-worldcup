@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { NavLink, Outlet } from "react-router-dom";
+import { NavLink, Outlet, useLocation } from "react-router-dom";
 import { CalendarIcon, HomeIcon, PlayerIcon, TableIcon, TrophyIcon } from "../components/Icons";
 import { AccountMenu } from "../components/AccountMenu";
 import { PasswordField } from "../components/PasswordField";
@@ -22,6 +22,7 @@ const fantasyAdminNav = [
   { label: "Squads", path: "/fantasy/admin/squads", icon: PlayerIcon },
   { label: "Templates", path: "/fantasy/admin/templates", icon: CalendarIcon },
   { label: "AI settings", path: "/fantasy/admin/ai-settings", icon: CalendarIcon },
+  { label: "AI host", path: "/fantasy/admin/ai-host", icon: CalendarIcon },
   { label: "Poll drafts", path: "/fantasy/admin/polls", icon: CalendarIcon },
   { label: "Submitted polls", path: "/fantasy/admin/submitted-polls", icon: CalendarIcon },
   { label: "Result entry", path: "/fantasy/admin/results", icon: TrophyIcon },
@@ -33,19 +34,15 @@ const fantasyAdminNav = [
  * @returns Fantasy route shell with desktop and mobile navigation.
  */
 export const FantasyLayout = () => {
+  const location = useLocation();
   const [identity, setIdentity] = useState(() => storage.getFantasyIdentity());
   const gameQuery = useFantasyGame(identity?.participantId, Boolean(identity));
-  //main container ref to reset scroll
   const containerRef = useRef<HTMLDivElement>(null);
-// Reset scroll position on navigation (delayed to ensure content rendered)
+
   useEffect(() => {
-    console.log("Resetting scroll position", location.pathname);
     const timer = setTimeout(() => {
-      console.log("Scroll position reset", containerRef.current?.scrollTop);
       if (containerRef.current) {
-        console.log("Before reset", containerRef.current);
         containerRef.current.scrollTo(0, 0);
-        console.log("Scroll position after reset", containerRef.current.scrollTop); 
       }
     }, 0);
     return () => clearTimeout(timer);

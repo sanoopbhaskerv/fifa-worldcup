@@ -18,6 +18,10 @@ export default function FantasyHomePage() {
   const nextQuestions = nextMatch ? fantasyQuestionsForMatch(nextMatch.id, data.questions) : [];
   const homeCandidates = nextMatch ? fantasySquadCandidates(nextMatch.homeTeamId, data.squadPlayers).slice(0, 3) : [];
   const awayCandidates = nextMatch ? fantasySquadCandidates(nextMatch.awayTeamId, data.squadPlayers).slice(0, 3) : [];
+  const latestHostMessage = data.aiMessages
+    .filter((message) => message.status === "PUBLISHED")
+    .sort((left, right) => (right.publishedAt ?? right.createdAt).localeCompare(left.publishedAt ?? left.createdAt))[0];
+  const latestRecap = latestHostMessage ?? data.recaps[0];
 
   return (
     <div className="page fantasy-page">
@@ -84,8 +88,8 @@ export default function FantasyHomePage() {
         </section>
         <section className="content-section fantasy-recap">
           <div className="section-heading"><div><span className="eyebrow">AI host</span><h2>Latest recap</h2></div><Link to="/fantasy/results">Results <TrophyIcon /></Link></div>
-          <h3>{data.recaps[0]?.title}</h3>
-          <p>{data.recaps[0]?.body}</p>
+          <h3>{latestRecap?.title ?? "No host message yet"}</h3>
+          <p>{latestRecap?.body ?? "Published AI host messages will appear here after an admin reviews them."}</p>
         </section>
       </div>
 

@@ -32,6 +32,7 @@ const FantasyAdminFixturesPage = lazy(() => import("../pages/FantasyAdminFixture
 const FantasyAdminTournamentPage = lazy(() => import("../pages/FantasyAdminTournamentPage"));
 const FantasyAdminQuestionTemplatesPage = lazy(() => import("../pages/FantasyAdminQuestionTemplatesPage"));
 const FantasyAdminAiSettingsPage = lazy(() => import("../pages/FantasyAdminAiSettingsPage"));
+const FantasyAdminAiHostPage = lazy(() => import("../pages/FantasyAdminAiHostPage"));
 
 const FantasyAdminOnly = ({ children }: { children: ReactElement }) => {
   const { isAdmin } = useFantasy();
@@ -72,6 +73,7 @@ export const App = () => (
         <Route path="admin/squads" element={<FantasyAdminOnly><FantasyAdminSquadsPage /></FantasyAdminOnly>} />
         <Route path="admin/templates" element={<FantasyAdminOnly><FantasyAdminQuestionTemplatesPage /></FantasyAdminOnly>} />
         <Route path="admin/ai-settings" element={<FantasyAdminOnly><FantasyAdminAiSettingsPage /></FantasyAdminOnly>} />
+        <Route path="admin/ai-host" element={<FantasyAdminOnly><FantasyAdminAiHostPage /></FantasyAdminOnly>} />
         <Route path="admin/polls" element={<FantasyAdminOnly><FantasyAdminPollsPage /></FantasyAdminOnly>} />
         <Route path="admin/submitted-polls" element={<FantasyAdminOnly><FantasyAdminSubmittedPollsPage /></FantasyAdminOnly>} />
         <Route path="admin/results" element={<FantasyAdminOnly><FantasyAdminResultsPage /></FantasyAdminOnly>} />
