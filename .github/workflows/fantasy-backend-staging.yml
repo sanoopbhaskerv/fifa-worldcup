@@ -48,15 +48,15 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Enable Corepack
         run: corepack enable
 
       - name: Setup Node
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
-          node-version: "20"
+          node-version: "24"
           cache: yarn
 
       - name: Install dependencies
@@ -68,8 +68,15 @@ jobs:
           yarn typecheck
           yarn test
 
+      - name: Validate deploy secrets
+        env:
+          ROLE_TO_ASSUME: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+        run: |
+          test -n "${ROLE_TO_ASSUME}" || (echo "Missing GitHub secret: AWS_ROLE_TO_ASSUME" >&2 && exit 1)
+          test -n "${ARTIFACT_BUCKET}" || (echo "Missing GitHub secret: FANTASY_ARTIFACT_BUCKET" >&2 && exit 1)
+
       - name: Configure AWS credentials
-        uses: aws-actions/configure-aws-credentials@v4
+        uses: aws-actions/configure-aws-credentials@v5
         with:
           role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
           aws-region: ${{ inputs.aws_region }}
