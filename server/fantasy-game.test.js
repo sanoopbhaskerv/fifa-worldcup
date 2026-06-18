@@ -202,6 +202,42 @@ describe("fantasy game API", () => {
     expect(roleResponse.body.participant).toMatchObject({ id: "p-anoop", role: "ADMIN" });
   });
 
+  it("lets an admin rotate invites and set a temporary password", async () => {
+    const inviteResponse = await handleApiRequest({
+      method: "PUT",
+      url: "/api/fantasy/admin/participants/p-anoop/credentials",
+      body: JSON.stringify({ resetInvite: true }),
+      env: {},
+    });
+    const oldInviteResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/join",
+      body: JSON.stringify({ inviteCode: "ANOOP2026" }),
+      env: {},
+    });
+    const passwordResponse = await handleApiRequest({
+      method: "PUT",
+      url: "/api/fantasy/admin/participants/p-sanoop/credentials",
+      body: JSON.stringify({ temporaryPassword: "temporary123" }),
+      env: {},
+    });
+    const loginResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/login",
+      body: JSON.stringify({ emailOrPhone: "sanoopvellangar@gmail.com", password: "temporary123" }),
+      env: {},
+    });
+
+    expect(inviteResponse.status).toBe(200);
+    expect(inviteResponse.body.invite.inviteCode).not.toBe("ANOOP2026");
+    expect(oldInviteResponse.status).toBe(401);
+    expect(passwordResponse.status).toBe(200);
+    expect(passwordResponse.body.participant.passwordHash).toBeUndefined();
+    expect(passwordResponse.body.participant.temporaryPasswordSetAt).toEqual(expect.any(String));
+    expect(loginResponse.status).toBe(200);
+    expect(loginResponse.body.participant.id).toBe("p-sanoop");
+  });
+
   it("updates a participant display profile", async () => {
     const response = await handleApiRequest({
       method: "PUT",

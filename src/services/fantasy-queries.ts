@@ -48,6 +48,12 @@ interface UpdateFantasyParticipantRoleInput {
   role: "ADMIN" | "PLAYER";
 }
 
+interface UpdateFantasyParticipantCredentialsInput {
+  participantId: string;
+  resetInvite?: boolean;
+  temporaryPassword?: string;
+}
+
 interface FantasyParticipantsResponse {
   participants: FantasyAdminParticipant[];
   game: FantasyGameData;
@@ -75,6 +81,12 @@ interface SaveFantasyGroupResponse {
 interface CreateFantasyParticipantResponse {
   participant: FantasyParticipant;
   invite: FantasyParticipantInvite;
+  game: FantasyGameData;
+}
+
+interface UpdateFantasyParticipantCredentialsResponse {
+  participant: FantasyParticipant;
+  invite?: FantasyParticipantInvite;
   game: FantasyGameData;
 }
 
@@ -401,6 +413,19 @@ const updateFantasyParticipantRole = async ({ participantId, role }: UpdateFanta
     throw new Error(payload?.error?.message ?? "Could not update admin access.");
   }
   return (await response.json()) as UpdateFantasyParticipantResponse;
+};
+
+const updateFantasyParticipantCredentials = async ({ participantId, resetInvite, temporaryPassword }: UpdateFantasyParticipantCredentialsInput): Promise<UpdateFantasyParticipantCredentialsResponse> => {
+  const response = await fetch(fantasyApiUrl(`/api/fantasy/admin/participants/${encodeURIComponent(participantId)}/credentials`), {
+    method: "PUT",
+    headers: { "content-type": "application/json" },
+    body: JSON.stringify({ resetInvite, temporaryPassword }),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error?.message ?? "Could not reset participant credentials.");
+  }
+  return (await response.json()) as UpdateFantasyParticipantCredentialsResponse;
 };
 
 const fetchFantasyFixtures = async (): Promise<FantasyFixturesResponse> => {
@@ -801,6 +826,23 @@ export const useUpdateFantasyParticipantRole = (participantId?: string) => {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: updateFantasyParticipantRole,
+    onSuccess: ({ game }) => {
+      queryClient.invalidateQueries({ queryKey: ["fantasy-participants", fantasyTournamentId] });
+      queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);
+    },
+  });
+};
+
+/**
+ * Lets an admin rotate invites or set temporary passwords.
+ *
+ * @param participantId - Active participant cache key.
+ * @returns TanStack mutation for admin credential resets.
+ */
+export const useUpdateFantasyParticipantCredentials = (participantId?: string) => {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: updateFantasyParticipantCredentials,
     onSuccess: ({ game }) => {
       queryClient.invalidateQueries({ queryKey: ["fantasy-participants", fantasyTournamentId] });
       queryClient.setQueryData(fantasyGameQueryKey(participantId ?? game.activeParticipantId), game);

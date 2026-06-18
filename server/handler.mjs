@@ -27,6 +27,7 @@ import {
   updateFantasyAiSettings,
   updateFantasyFixture,
   updateFantasyGroup,
+  updateFantasyParticipantCredentials,
   updateFantasyParticipant,
   updateFantasyParticipantRole,
   updateFantasyQuestionTemplate,
@@ -175,6 +176,13 @@ export const handleApiRequest = async ({
     const participantRoleMatch = path.match(/^\/api\/fantasy\/admin\/participants\/([^/]+)\/role$/);
     if (requestMethod === "PUT" && participantRoleMatch) {
       return response(200, await updateFantasyParticipantRole(decodeURIComponent(participantRoleMatch[1]), parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
+    const participantCredentialsMatch = path.match(/^\/api\/fantasy\/admin\/participants\/([^/]+)\/credentials$/);
+    if (requestMethod === "PUT" && participantCredentialsMatch) {
+      return response(200, await updateFantasyParticipantCredentials(decodeURIComponent(participantCredentialsMatch[1]), parseJsonBody(body)), {
         "cache-control": "no-store",
       });
     }

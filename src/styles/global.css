@@ -522,6 +522,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .fantasy-participant-actions { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
 .fantasy-participant-actions button { min-height: 32px; padding: 0 10px; border: 0; border-radius: 9px; color: #07130f; background: var(--accent); font-size: 10px; font-weight: 900; cursor: pointer; }
 .fantasy-participant-actions button:disabled { cursor: not-allowed; opacity: .6; }
+.fantasy-temp-password-form { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; min-width: min(100%, 320px); }
+.fantasy-temp-password-form input { flex: 1 1 150px; min-width: 0; min-height: 32px; padding: 0 10px; border: 1px solid var(--line); border-radius: 9px; color: var(--text); background: var(--surface); font-size: 11px; font-weight: 800; }
 .fantasy-squad-table .section-heading > strong, .fantasy-draft-panel .section-heading > strong { display: inline-grid; place-items: center; min-width: 80px; height: 38px; border-radius: 999px; color: #07130f; background: var(--accent); font-size: 12px; }
 .fantasy-squad-table .section-heading p, .fantasy-draft-panel .section-heading p { margin: 5px 0 0; color: var(--muted); font-size: 11px; }
 .fantasy-squad-import { display: grid; gap: 9px; margin-top: 10px; padding-top: 12px; border-top: 1px solid var(--line); }

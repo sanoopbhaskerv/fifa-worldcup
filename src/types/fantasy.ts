@@ -100,6 +100,7 @@ export interface FantasyParticipant {
   role?: "ADMIN" | "PLAYER";
   authProvider?: "INVITE" | "PASSWORD" | "GUEST";
   passwordChangedAt?: string;
+  temporaryPasswordSetAt?: string;
 }
 
 export interface FantasyParticipantInvite {

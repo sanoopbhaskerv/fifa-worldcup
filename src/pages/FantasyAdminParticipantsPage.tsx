@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
-import { useCreateFantasyParticipant, useFantasyGroups, useFantasyParticipants, useSaveFantasyGroup, useUpdateFantasyParticipantRole } from "../services/fantasy-queries";
+import { useCreateFantasyParticipant, useFantasyGroups, useFantasyParticipants, useSaveFantasyGroup, useUpdateFantasyParticipantCredentials, useUpdateFantasyParticipantRole } from "../services/fantasy-queries";
 import type { FantasyAdminParticipant } from "../types/fantasy";
 import { fantasyTeamName } from "../utils/fantasy";
 import { PageHeading } from "./FixturesPage";
@@ -16,10 +16,12 @@ export default function FantasyAdminParticipantsPage() {
   const groupsQuery = useFantasyGroups();
   const createParticipant = useCreateFantasyParticipant(data.activeParticipantId);
   const updateRole = useUpdateFantasyParticipantRole(data.activeParticipantId);
+  const updateCredentials = useUpdateFantasyParticipantCredentials(data.activeParticipantId);
   const saveGroup = useSaveFantasyGroup(data.activeParticipantId);
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
   const [favoriteTeamId, setFavoriteTeamId] = useState(data.teams[0]?.id ?? "");
+  const [temporaryPasswords, setTemporaryPasswords] = useState<Record<string, string>>({});
   const [activeGroupId, setActiveGroupId] = useState(data.groups[0]?.id ?? "");
   const activeGroup = data.groups.find((group) => group.id === activeGroupId);
   const [groupName, setGroupName] = useState(activeGroup?.name ?? "");
@@ -99,9 +101,17 @@ export default function FantasyAdminParticipantsPage() {
                     <strong>{participant.nickname}</strong>
                     <small>{participant.name} · {participant.id} · {participant.role ?? "PLAYER"} · {fantasyTeamName(participant.favoriteTeamId, data.teams)} · {predictionCount} picks</small>
                     {(participant.email || participant.phone) && <small>{participant.email ?? participant.phone}</small>}
+                    {participant.temporaryPasswordSetAt && <small>Temporary password set {new Date(participant.temporaryPasswordSetAt).toLocaleString()}</small>}
                   </div>
                   <div className="fantasy-participant-actions">
                     <code>{participant.invite?.inviteCode ?? "No invite"}</code>
+                    <button
+                      disabled={updateCredentials.isPending && updateCredentials.variables?.participantId === participant.id}
+                      onClick={() => updateCredentials.mutate({ participantId: participant.id, resetInvite: true })}
+                      type="button"
+                    >
+                      Issue new invite
+                    </button>
                     <button
                       disabled={updateRole.isPending && updateRole.variables?.participantId === participant.id}
                       onClick={() => updateRole.mutate({ participantId: participant.id, role: participant.role === "ADMIN" ? "PLAYER" : "ADMIN" })}
@@ -109,12 +119,46 @@ export default function FantasyAdminParticipantsPage() {
                     >
                       {participant.role === "ADMIN" ? "Remove admin" : "Make admin"}
                     </button>
+                    <form
+                      className="fantasy-temp-password-form"
+                      onSubmit={(event) => {
+                        event.preventDefault();
+                        updateCredentials.mutate(
+                          { participantId: participant.id, temporaryPassword: temporaryPasswords[participant.id] ?? "" },
+                          {
+                            onSuccess: () => setTemporaryPasswords((current) => ({ ...current, [participant.id]: "" })),
+                          },
+                        );
+                      }}
+                    >
+                      <input
+                        aria-label={`Temporary password for ${participant.nickname}`}
+                        autoComplete="new-password"
+                        minLength={8}
+                        onChange={(event) => setTemporaryPasswords((current) => ({ ...current, [participant.id]: event.target.value }))}
+                        placeholder="Temporary password"
+                        type="password"
+                        value={temporaryPasswords[participant.id] ?? ""}
+                      />
+                      <button
+                        disabled={
+                          (updateCredentials.isPending && updateCredentials.variables?.participantId === participant.id) ||
+                          (temporaryPasswords[participant.id] ?? "").length < 8
+                        }
+                        type="submit"
+                      >
+                        Set temporary
+                      </button>
+                    </form>
                   </div>
                 </article>
               );
             })}
           </div>
           {updateRole.isError && <p role="alert">{updateRole.error.message}</p>}
+          {updateCredentials.isSuccess && updateCredentials.data.invite && <p className="fantasy-success-note">Invite updated: {updateCredentials.data.invite.inviteCode}</p>}
+          {updateCredentials.isSuccess && !updateCredentials.data.invite && <p className="fantasy-success-note">Temporary password saved.</p>}
+          {updateCredentials.isError && <p role="alert">{updateCredentials.error.message}</p>}
         </section>
         <section className="content-section fantasy-participant-list">
           <div className="section-heading"><div><span className="eyebrow">Poll groups</span><h2>{groupRows.length} groups</h2></div></div>

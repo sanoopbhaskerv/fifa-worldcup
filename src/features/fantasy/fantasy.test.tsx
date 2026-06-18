@@ -203,6 +203,8 @@ describe("fantasy prediction game", () => {
     expect(screen.getAllByText("Brazil Boss").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Create invite" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Remove admin" })).toBeInTheDocument();
+    expect(screen.getAllByRole("button", { name: "Issue new invite" }).length).toBeGreaterThan(0);
+    expect(screen.getAllByRole("button", { name: "Set temporary" }).length).toBeGreaterThan(0);
     expect(screen.getByRole("heading", { name: /groups/i })).toBeInTheDocument();
   });
 

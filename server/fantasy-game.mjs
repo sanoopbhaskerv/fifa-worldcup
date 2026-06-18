@@ -381,6 +381,16 @@ const avatar = (value) =>
 
 const inviteCodeFor = (nickname, seed) => `${slug(nickname).replaceAll("-", "").slice(0, 8).toUpperCase() || "PLAYER"}${seed}`;
 
+const uniqueInviteCodeFor = (game, participant) => {
+  const existing = new Set(game.participantInvites.map((invite) => invite.inviteCode));
+  for (let attempt = 0; attempt < 10; attempt += 1) {
+    const seed = randomBytes(3).toString("hex").toUpperCase();
+    const code = inviteCodeFor(participant.nickname ?? participant.name, seed);
+    if (!existing.has(code)) return code;
+  }
+  return `${inviteCodeFor(participant.nickname ?? participant.name, Date.now())}${randomBytes(2).toString("hex").toUpperCase()}`;
+};
+
 const participantsWithInvites = (game) => game.participants.map((participant) => ({
   ...publicParticipant(participant),
   invite: game.participantInvites.find((invite) => invite.participantId === participant.id),
@@ -1373,6 +1383,67 @@ export const updateFantasyParticipantRole = async (participantId, input = {}) =>
     metadata: { role },
   }));
   return { participant: publicParticipant(updatedParticipant), game: publicGame(updatedGame) };
+};
+
+/**
+ * Lets an admin rotate an invite or set a temporary password for a participant.
+ *
+ * @param participantId - Participant whose credentials are being reset.
+ * @param input - Credential reset payload.
+ * @returns Updated participant, invite, and game payload.
+ */
+export const updateFantasyParticipantCredentials = async (participantId, input = {}) => {
+  const game = await gameState();
+  const participant = game.participants.find((item) => item.id === participantId);
+  if (!participant) throw new ProviderError("Participant not found.", 404, "NOT_FOUND");
+  const shouldResetInvite = Boolean(input.resetInvite);
+  const temporaryPassword = typeof input.temporaryPassword === "string" ? input.temporaryPassword : "";
+  if (!shouldResetInvite && !temporaryPassword) {
+    throw new ProviderError("Choose an invite reset or temporary password.", 400, "INVALID_CREDENTIAL_RESET");
+  }
+  if (temporaryPassword) validatePassword(temporaryPassword);
+  const updatedAt = new Date().toISOString();
+  const updatedParticipant = temporaryPassword ? {
+    ...participant,
+    passwordHash: hashPassword(temporaryPassword),
+    authProvider: "PASSWORD",
+    passwordChangedAt: updatedAt,
+    temporaryPasswordSetAt: updatedAt,
+  } : participant;
+  const existingInvite = game.participantInvites.find((invite) => invite.participantId === participantId);
+  const updatedInvite = shouldResetInvite ? {
+    id: existingInvite?.id ?? `invite-${participantId}`,
+    participantId,
+    inviteCode: uniqueInviteCodeFor(game, participant),
+    status: "ACTIVE",
+    createdAt: existingInvite?.createdAt ?? updatedAt,
+    updatedAt,
+  } : existingInvite;
+  const nextGame = {
+    ...game,
+    participants: game.participants.map((item) => item.id === participantId ? updatedParticipant : item),
+    participantInvites: shouldResetInvite
+      ? [
+        ...game.participantInvites.filter((invite) => invite.participantId !== participantId),
+        updatedInvite,
+      ]
+      : game.participantInvites,
+  };
+  const updatedGame = await saveGame(nextGame, await audit({
+    action: "PARTICIPANT_CREDENTIALS_RESET",
+    actorId: input.actorId ?? "admin",
+    entityId: participantId,
+    entityType: "PARTICIPANT",
+    metadata: {
+      resetInvite: shouldResetInvite,
+      temporaryPassword: Boolean(temporaryPassword),
+    },
+  }));
+  return {
+    participant: publicParticipant(updatedParticipant),
+    invite: updatedInvite,
+    game: publicGame(updatedGame),
+  };
 };
 
 /**
