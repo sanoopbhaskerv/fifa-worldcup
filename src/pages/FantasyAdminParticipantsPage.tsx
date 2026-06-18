@@ -149,10 +149,10 @@ export default function FantasyAdminParticipantsPage() {
               );
             })}
           </div>
-          {updateRole.isError && <p role="alert">{updateRole.error.message}</p>}
-          {updateCredentials.isSuccess && updateCredentials.data.invite && <p className="fantasy-success-note">Invite updated: {updateCredentials.data.invite.inviteCode}</p>}
-          {updateCredentials.isSuccess && !updateCredentials.data.invite && <p className="fantasy-success-note">Temporary password saved.</p>}
-          {updateCredentials.isError && <p role="alert">{updateCredentials.error.message}</p>}
+          {updateRole.isError && <ErrorMessage>{updateRole.error.message}</ErrorMessage>}
+          {updateCredentials.isSuccess && updateCredentials.data.invite && <SuccessMessage>Invite updated: {updateCredentials.data.invite.inviteCode}</SuccessMessage>}
+          {updateCredentials.isSuccess && !updateCredentials.data.invite && <SuccessMessage>Temporary password saved.</SuccessMessage>}
+          {updateCredentials.isError && <ErrorMessage>{updateCredentials.error.message}</ErrorMessage>}
         </section>
         <section className="content-section fantasy-participant-list">
           <div className="section-heading"><div><span className="eyebrow">Poll groups</span><h2>{groupRows.length} groups</h2></div></div>

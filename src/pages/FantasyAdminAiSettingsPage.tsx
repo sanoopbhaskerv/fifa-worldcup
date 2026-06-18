@@ -117,10 +117,15 @@ const AiSettingsEditor = ({ categories, settings }: { categories: FantasyQuestio
         </div>
         <div className="fantasy-ai-number-grid" aria-label="Max questions by importance">
           {importanceOptions.map((importance) => (
-            <label key={importance}>
-              {importance.replace("_", " ")}
-              <input min="1" max="12" onChange={(event) => updateMaxQuestions(importance, event.target.value)} type="number" value={maxQuestions[importance]} />
-            </label>
+            <LabeledInput
+              key={importance}
+              label={importance.replace("_", " ")}
+              max="12"
+              min="1"
+              onChange={(value: string) => updateMaxQuestions(importance, value)}
+              type="number"
+              value={String(maxQuestions[importance])}
+            />
           ))}
         </div>
         <div className="fantasy-ai-category-grid" aria-label="Enabled question categories">
@@ -129,7 +134,7 @@ const AiSettingsEditor = ({ categories, settings }: { categories: FantasyQuestio
               checked={enabledCategories.includes(category)}
               key={category}
               label={category.replaceAll("_", " ")}
-              onChange={(checked) => updateCategory(category, checked)}
+              onChange={(checked: boolean) => updateCategory(category, checked)}
             />
           ))}
         </div>
