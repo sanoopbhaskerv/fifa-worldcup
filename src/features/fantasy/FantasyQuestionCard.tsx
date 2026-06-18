@@ -28,6 +28,7 @@ export const FantasyQuestionCard = ({
   const [selected, setSelected] = useState(initial ?? "");
   const locked = question.status !== "OPEN";
   const unchanged = Boolean(selected && selected === initial);
+  const isExactScore = question.type === "EXACT_SCORE";
 
   return (
     <article className={`fantasy-poll-card fantasy-poll-card--${question.status.toLowerCase()}`}>
@@ -36,19 +37,32 @@ export const FantasyQuestionCard = ({
         <strong>{question.points} pts</strong>
       </header>
       <h3>{question.text}</h3>
-      <div className="fantasy-options" role="group" aria-label={question.text}>
-        {question.options.map((option) => (
-          <button
-            className={`fantasy-option ${selected === option ? "fantasy-option--selected" : ""}`}
+      {isExactScore ? (
+        <label className="fantasy-score-input">
+          Score
+          <input
             disabled={locked}
-            key={option}
-            onClick={() => setSelected(option)}
-            type="button"
-          >
-            {option}
-          </button>
-        ))}
-      </div>
+            inputMode="text"
+            onChange={(event) => setSelected(event.target.value)}
+            placeholder="0-0 or Brazil 3 Germany 4"
+            value={selected}
+          />
+        </label>
+      ) : (
+        <div className="fantasy-options" role="group" aria-label={question.text}>
+          {question.options.map((option) => (
+            <button
+              className={`fantasy-option ${selected === option ? "fantasy-option--selected" : ""}`}
+              disabled={locked}
+              key={option}
+              onClick={() => setSelected(option)}
+              type="button"
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
       <footer>
         <span>{locked ? "Locked" : unchanged ? "Saved pick" : selected ? "Draft selected" : "Open for picks"}</span>
         {onSubmit && !locked && (

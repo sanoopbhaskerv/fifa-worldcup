@@ -41,6 +41,10 @@ const optionsForTemplate = (template: FantasyQuestionTemplate, match: FantasyMat
       return [home, away, "No goal"];
     case "TOTAL_GOALS":
       return ["0-1", "2-3", "4+"];
+    case "EXACT_SCORE":
+      return [];
+    case "FIRST_GOAL_TIME":
+      return ["Before 10", "11-45", "46-60", "60-90", "90+"];
     case "YES_NO":
     case "STAR_PLAYER_SCORE":
       return ["Yes", "No"];
@@ -62,7 +66,7 @@ const questionFromTemplate = (template: FantasyQuestionTemplate, match: FantasyM
   const star = starCandidate(match, data);
   if (template.optionMode === "STAR_PLAYER_SCORE" && !star) return undefined;
   const options = optionsForTemplate(template, match, data);
-  if (options.length < 2) return undefined;
+  if (template.type !== "EXACT_SCORE" && options.length < 2) return undefined;
   const isQualifier = template.optionMode === "MATCH_RESULT" && (match.importance === "KNOCKOUT" || match.importance === "FINAL");
   const text = isQualifier ? "Who qualifies?" : template.text.replace("{player}", star?.name ?? "the star player");
   return {

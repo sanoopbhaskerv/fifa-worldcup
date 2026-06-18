@@ -380,6 +380,7 @@ const results: FantasyMatchResult[] = [
     playersWithTwoPlusGoals: [],
     manOfTheMatch: "Lamine Yamal",
     penaltyAwarded: false,
+    penaltyGoal: false,
     redCard: false,
     bothTeamsScored: true,
     totalGoalsRange: "2-3",

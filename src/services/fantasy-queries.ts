@@ -195,6 +195,7 @@ interface CreateFantasyUserPollInput {
   matchId: string;
   kind: FantasyUserPollKind;
   text?: string;
+  options?: string[];
 }
 
 interface CreateFantasyUserPollResponse {

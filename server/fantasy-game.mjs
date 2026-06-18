@@ -113,6 +113,7 @@ const results = [
     playersWithTwoPlusGoals: [],
     manOfTheMatch: "Lamine Yamal",
     penaltyAwarded: false,
+    penaltyGoal: false,
     redCard: false,
     bothTeamsScored: true,
     totalGoalsRange: "2-3",
@@ -349,15 +350,17 @@ const validMatchStatus = new Set(["SCHEDULED", "LOCKED", "COMPLETED"]);
 const validQuestionStatus = new Set(["DRAFT", "OPEN"]);
 const validTournamentStatus = new Set(["UPCOMING", "LIVE", "COMPLETE"]);
 const validPlayerPosition = new Set(["GK", "DEF", "MID", "FWD"]);
-const validQuestionOptionMode = new Set(["MATCH_RESULT", "FIRST_SCORING_TEAM", "TOTAL_GOALS", "YES_NO", "FIRST_GOAL_SCORER", "STAR_PLAYER_SCORE", "MAN_OF_THE_MATCH"]);
-const validQuestionCategory = new Set(["MATCH_WINNER", "QUALIFIER", "RESULT_90", "FINAL_SCORE_RANGE", "FIRST_SCORING_TEAM", "FIRST_GOAL_TIME", "FIRST_GOAL_SCORER", "ANYTIME_GOAL_SCORER", "STAR_PLAYER_SCORE", "PLAYER_SCORES_2_PLUS", "TOTAL_GOALS", "BOTH_TEAMS_SCORE", "MAN_OF_THE_MATCH", "TOURNAMENT_WINNER", "GOLDEN_BOOT", "GOLDEN_GLOVE"]);
+const validQuestionOptionMode = new Set(["MATCH_RESULT", "FIRST_SCORING_TEAM", "TOTAL_GOALS", "EXACT_SCORE", "YES_NO", "FIRST_GOAL_TIME", "FIRST_GOAL_SCORER", "STAR_PLAYER_SCORE", "MAN_OF_THE_MATCH"]);
+const validQuestionCategory = new Set(["MATCH_WINNER", "QUALIFIER", "RESULT_90", "FINAL_SCORE_RANGE", "EXACT_SCORE", "FIRST_SCORING_TEAM", "FIRST_GOAL_TIME", "FIRST_GOAL_SCORER", "ANYTIME_GOAL_SCORER", "STAR_PLAYER_SCORE", "PLAYER_SCORES_2_PLUS", "TOTAL_GOALS", "BOTH_TEAMS_SCORE", "PENALTY_GOAL", "MAN_OF_THE_MATCH", "TOURNAMENT_WINNER", "GOLDEN_BOOT", "GOLDEN_GLOVE"]);
 const validAiMode = new Set(["DISABLED", "TEMPLATE_ONLY", "ASSISTED"]);
 const validAiBanterLevel = new Set(["NONE", "LIGHT", "PLAYFUL"]);
 const playerFallbackOptions = new Set(["Other", "Own Goal", "No goal"]);
 const userPollTemplates = {
   MATCH_WINNER: { category: "MATCH_WINNER", type: "SINGLE_CHOICE", text: "Who will win the match?", optionMode: "MATCH_RESULT", points: 5 },
   FIRST_SCORING_TEAM: { category: "FIRST_SCORING_TEAM", type: "SINGLE_CHOICE", text: "Which team scores first?", optionMode: "FIRST_SCORING_TEAM", points: 4 },
-  TOTAL_GOALS: { category: "TOTAL_GOALS", type: "SCORE_RANGE", text: "Total goals in the match?", optionMode: "TOTAL_GOALS", points: 3 },
+  TOTAL_GOALS: { category: "EXACT_SCORE", type: "EXACT_SCORE", text: "What will the final score be?", optionMode: "EXACT_SCORE", points: 8 },
+  FIRST_GOAL_TIME: { category: "FIRST_GOAL_TIME", type: "TIME_WINDOW", text: "When will the first goal be scored?", optionMode: "FIRST_GOAL_TIME", points: 5 },
+  PENALTY_GOAL: { category: "PENALTY_GOAL", type: "SINGLE_CHOICE", text: "Will there be a penalty goal today?", optionMode: "YES_NO", points: 4 },
   BOTH_TEAMS_SCORE: { category: "BOTH_TEAMS_SCORE", type: "SINGLE_CHOICE", text: "Will both teams score?", optionMode: "YES_NO", points: 3 },
   FIRST_GOAL_SCORER: { category: "FIRST_GOAL_SCORER", type: "PLAYER", text: "Who scores the first goal?", optionMode: "FIRST_GOAL_SCORER", points: 8, maxOptions: 8 },
   MAN_OF_THE_MATCH: { category: "MAN_OF_THE_MATCH", type: "PLAYER", text: "Who will be Man of the Match?", optionMode: "MAN_OF_THE_MATCH", points: 7, maxOptions: 8 },
@@ -421,6 +424,12 @@ const providerMatchToFantasyMatch = (providerMatch, game, existingMatch) => {
 
 const playerNames = (players) => players.map((player) => player.name);
 
+const parseExactScore = (value) => {
+  const numbers = String(value ?? "").match(/\d+/g)?.map(Number) ?? [];
+  if (numbers.length < 2 || numbers.some((number) => !Number.isInteger(number) || number < 0 || number > 30)) return undefined;
+  return `${numbers[0]}-${numbers[1]}`;
+};
+
 const matchPlayers = (match, game) =>
   game.squadPlayers.filter((player) => [match.homeTeamId, match.awayTeamId].includes(player.teamId));
 
@@ -444,6 +453,10 @@ const optionsForTemplate = (template, match, game) => {
       return [home, away, "No goal"];
     case "TOTAL_GOALS":
       return ["0-1", "2-3", "4+"];
+    case "EXACT_SCORE":
+      return [];
+    case "FIRST_GOAL_TIME":
+      return ["Before 10", "11-45", "46-60", "60-90", "90+"];
     case "YES_NO":
     case "STAR_PLAYER_SCORE":
       return ["Yes", "No"];
@@ -465,7 +478,7 @@ const questionFromTemplate = (template, match, game) => {
   const star = starCandidate(match, game);
   if (template.optionMode === "STAR_PLAYER_SCORE" && !star) return undefined;
   const options = optionsForTemplate(template, match, game);
-  if (options.length < 2) return undefined;
+  if (template.type !== "EXACT_SCORE" && options.length < 2) return undefined;
   const isQualifier = template.optionMode === "MATCH_RESULT" && (match.importance === "KNOCKOUT" || match.importance === "FINAL");
   return {
     id: `draft-${match.id}-${template.id.replace(/^tpl-/, "")}`,
@@ -494,12 +507,11 @@ const generatedQuestionsForMatch = (game, match) => {
 
 const firstGoalWindow = (minute) => {
   if (minute === undefined || minute === null) return "No goal";
-  if (minute <= 15) return "0-15";
-  if (minute <= 30) return "16-30";
-  if (minute <= 45) return "31-45+";
+  if (minute <= 10) return "Before 10";
+  if (minute <= 45) return "11-45";
   if (minute <= 60) return "46-60";
-  if (minute <= 75) return "61-75";
-  return "76-90+";
+  if (minute <= 90) return "60-90";
+  return "90+";
 };
 
 const correctAnswer = (question, result, game) => {
@@ -513,10 +525,14 @@ const correctAnswer = (question, result, game) => {
       return firstGoalWindow(result.firstGoalMinute);
     case "FIRST_GOAL_SCORER":
       return result.firstGoalScorer ?? "No goal";
+    case "EXACT_SCORE":
+      return `${result.homeScore}-${result.awayScore}`;
     case "TOTAL_GOALS":
       return result.totalGoalsRange;
     case "BOTH_TEAMS_SCORE":
       return result.bothTeamsScored ? "Yes" : "No";
+    case "PENALTY_GOAL":
+      return result.penaltyGoal ? "Yes" : "No";
     case "STAR_PLAYER_SCORE": {
       const player = question.text.match(/Will (.+) score\?/i)?.[1];
       if (!player) return undefined;
@@ -535,9 +551,11 @@ const scorePrediction = (question, prediction, result, game) => {
   const correct = correctAnswer(question, result, game);
   if (correct === undefined) return undefined;
   const answer = prediction.answer;
-  const isCorrect = Array.isArray(answer)
-    ? answer.some((item) => normalize(item) === normalize(correct))
-    : normalize(answer) === normalize(correct);
+  const isCorrect = question.type === "EXACT_SCORE"
+    ? parseExactScore(Array.isArray(answer) ? answer[0] : answer) === correct
+    : Array.isArray(answer)
+      ? answer.some((item) => normalize(item) === normalize(correct))
+      : normalize(answer) === normalize(correct);
   return {
     ...prediction,
     pointsAwarded: isCorrect ? question.points : 0,
@@ -618,6 +636,12 @@ const validateAnswer = (question, answer) => {
   if (values.length === 0 || values.some((value) => typeof value !== "string" || value.trim() === "")) {
     throw new ProviderError("Prediction answer is required.", 400, "INVALID_PREDICTION");
   }
+  if (question.type === "EXACT_SCORE") {
+    if (values.length !== 1 || !parseExactScore(values[0])) {
+      throw new ProviderError("Enter a score like 0-0 or Brazil 3 Germany 4.", 400, "INVALID_PREDICTION");
+    }
+    return;
+  }
   const invalid = values.filter((value) => !question.options.includes(value));
   if (invalid.length > 0) {
     throw new ProviderError(`Invalid prediction option: ${invalid.join(", ")}`, 400, "INVALID_PREDICTION");
@@ -634,7 +658,14 @@ const validateQuestionDraft = (game, matchId, question, status) => {
   if (question.tournamentId !== game.tournament.id) {
     throw new ProviderError("Question draft tournament is invalid.", 400, "INVALID_QUESTION_DRAFT");
   }
-  if (!Array.isArray(question.options) || question.options.length < 2) {
+  if (!validQuestionCategory.has(question.category)) {
+    throw new ProviderError("Question draft category is invalid.", 400, "INVALID_QUESTION_DRAFT");
+  }
+  if (question.type === "EXACT_SCORE") {
+    if (question.options !== undefined && !Array.isArray(question.options)) {
+      throw new ProviderError("Question draft options are invalid.", 400, "INVALID_QUESTION_DRAFT");
+    }
+  } else if (!Array.isArray(question.options) || question.options.length < 2) {
     throw new ProviderError("Question draft needs at least two options.", 400, "INVALID_QUESTION_DRAFT");
   }
   if (!validQuestionStatus.has(status)) {
@@ -1432,8 +1463,23 @@ export const createFantasyUserPoll = async (input = {}) => {
   if (!template) {
     throw new ProviderError("Poll type is invalid.", 400, "INVALID_QUESTION_DRAFT");
   }
-  const options = optionsForTemplate(template, match, game);
-  if (options.length < 2) {
+  const generatedOptions = optionsForTemplate(template, match, game);
+  const requestedOptions = Array.isArray(input.options)
+    ? input.options.map((option) => String(option).trim()).filter(Boolean)
+    : [];
+  const allowedOptions = new Set(generatedOptions);
+  const selectedPlayerNames = template.type === "PLAYER" && requestedOptions.length > 0
+    ? [...new Set(requestedOptions.filter((option) => allowedOptions.has(option) && !playerFallbackOptions.has(option)))]
+    : [];
+  const playerSelectedOptions = selectedPlayerNames.length > 0
+    ? [
+      ...selectedPlayerNames,
+      ...(input.kind === "FIRST_GOAL_SCORER" ? ["Own Goal", "No goal", "Other"] : ["Other"]),
+    ].filter((option, index, values) => values.indexOf(option) === index && allowedOptions.has(option))
+    : undefined;
+  const options = playerSelectedOptions ?? generatedOptions;
+  const requiresOptions = template.type !== "EXACT_SCORE";
+  if (requiresOptions && options.length < 2) {
     throw new ProviderError("This poll type has no valid options for the selected match.", 400, "NO_POLLS_GENERATED");
   }
   const nowId = new Date().toISOString().replaceAll(/[^0-9]/g, "");
@@ -1530,6 +1576,7 @@ export const saveFantasyResult = async (matchId, result) => {
     anytimeScorers: [],
     playersWithTwoPlusGoals: [],
     penaltyAwarded: false,
+    penaltyGoal: false,
     redCard: false,
     bothTeamsScored: Boolean((resultFacts.homeScore ?? 0) > 0 && (resultFacts.awayScore ?? 0) > 0),
     totalGoalsRange: (resultFacts.homeScore ?? 0) + (resultFacts.awayScore ?? 0) >= 4 ? "4+" : (resultFacts.homeScore ?? 0) + (resultFacts.awayScore ?? 0) >= 2 ? "2-3" : "0-1",

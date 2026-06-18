@@ -413,6 +413,8 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .fantasy-option:hover:not(:disabled) { border-color: color-mix(in srgb, var(--accent) 36%, transparent); }
 .fantasy-option--selected { color: #07130f; border-color: var(--accent); background: var(--accent); font-weight: 900; }
 .fantasy-option:disabled { cursor: not-allowed; opacity: .72; }
+.fantasy-score-input { display: grid; gap: 6px; color: var(--muted); font-size: 10px; font-weight: 900; letter-spacing: .08em; text-transform: uppercase; }
+.fantasy-score-input input { min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 11px; color: var(--text); background: var(--surface); font-weight: 900; letter-spacing: 0; text-transform: none; }
 .fantasy-leaderboard { overflow: hidden; border: 1px solid var(--line); border-radius: 14px; background: var(--surface-2); }
 .fantasy-leaderboard__head { display: none; }
 .fantasy-leaderboard__row { display: grid; grid-template-columns: 48px minmax(0, 1fr) auto; gap: 10px; align-items: center; padding: 12px; border-top: 1px solid var(--line); }
@@ -494,6 +496,12 @@ button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible
 .fantasy-create-match-summary span { color: var(--muted); font-size: 11px; }
 .fantasy-user-poll-preview .section-heading > strong { display: inline-grid; place-items: center; min-width: 58px; height: 38px; border-radius: 999px; color: #07130f; background: var(--accent); font-size: 12px; }
 .fantasy-user-poll-preview .fantasy-squad-context > span { min-width: 170px; }
+.fantasy-score-preview { min-height: 44px; display: flex; align-items: center; padding: 0 12px; border: 1px dashed color-mix(in srgb, var(--accent) 42%, var(--line)); border-radius: 11px; color: var(--muted); background: var(--surface); font-size: 12px; font-weight: 800; }
+.fantasy-player-option-picker { display: grid; gap: 7px; margin-top: 12px; }
+.fantasy-player-option-picker label { display: grid; grid-template-columns: auto minmax(0, 1fr); gap: 9px; align-items: center; min-height: 48px; padding: 8px 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface-2); cursor: pointer; }
+.fantasy-player-option-picker input { width: 15px; height: 15px; accent-color: var(--accent); }
+.fantasy-player-option-picker span { min-width: 0; font-size: 12px; font-weight: 900; }
+.fantasy-player-option-picker small { display: block; margin-top: 3px; color: var(--muted); font-size: 9px; font-weight: 700; }
 .fantasy-tournament-summary .fantasy-review-summary strong { font-size: 20px; overflow-wrap: anywhere; }
 .fantasy-success-note { color: var(--accent) !important; }
 .fantasy-participant-rows { display: grid; gap: 8px; }

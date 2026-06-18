@@ -22,6 +22,7 @@ export default function FantasyCreatePollPage() {
     .sort((left, right) => left.kickoff.localeCompare(right.kickoff));
   const [matchId, setMatchId] = useState(upcomingMatches[0]?.id ?? "");
   const [kind, setKind] = useState<FantasyUserPollKind>("MATCH_WINNER");
+  const [selectedPlayerOptions, setSelectedPlayerOptions] = useState<string[]>([]);
   const activeMatch = upcomingMatches.find((match) => match.id === matchId) ?? upcomingMatches[0];
   const definition = fantasyUserPollDefinitions.find((item) => item.kind === kind) ?? fantasyUserPollDefinitions[0];
   const options = activeMatch ? fantasyUserPollOptions(activeMatch, kind, data) : [];
@@ -29,6 +30,31 @@ export default function FantasyCreatePollPage() {
     ? data.squadPlayers.filter((player) => [activeMatch.homeTeamId, activeMatch.awayTeamId].includes(player.teamId))
     : [];
   const isPlayerPoll = definition.type === "PLAYER";
+  const selectedOptions = isPlayerPoll && selectedPlayerOptions.length > 0 ? selectedPlayerOptions : undefined;
+  const previewOptions = selectedOptions
+    ? [
+      ...selectedOptions,
+      ...(kind === "FIRST_GOAL_SCORER" ? ["Own Goal", "No goal", "Other"] : ["Other"]),
+    ].filter((option, index, values) => values.indexOf(option) === index)
+    : options;
+
+  const updateKind = (nextKind: FantasyUserPollKind) => {
+    setKind(nextKind);
+    setSelectedPlayerOptions([]);
+  };
+
+  const updateMatchId = (nextMatchId: string) => {
+    setMatchId(nextMatchId);
+    setSelectedPlayerOptions([]);
+  };
+
+  const togglePlayerOption = (playerName: string) => {
+    setSelectedPlayerOptions((current) => (
+      current.includes(playerName)
+        ? current.filter((item) => item !== playerName)
+        : [...current, playerName].slice(0, 12)
+    ));
+  };
 
   return (
     <div className="page fantasy-page">
@@ -46,13 +72,14 @@ export default function FantasyCreatePollPage() {
                 createPoll.mutate({
                   kind,
                   matchId: activeMatch.id,
+                  options: selectedOptions,
                   participantId: data.activeParticipantId,
                 });
               }}
             >
               <label>
                 Match
-                <select onChange={(event) => setMatchId(event.target.value)} value={activeMatch?.id ?? ""}>
+                <select onChange={(event) => updateMatchId(event.target.value)} value={activeMatch?.id ?? ""}>
                   {upcomingMatches.map((match) => (
                     <option key={match.id} value={match.id}>
                       {fantasyMatchTitle(match, data.teams)} · {formatKickoff(match.kickoff)}
@@ -62,7 +89,7 @@ export default function FantasyCreatePollPage() {
               </label>
               <label>
                 Poll
-                <select onChange={(event) => setKind(event.target.value as FantasyUserPollKind)} value={kind}>
+                <select onChange={(event) => updateKind(event.target.value as FantasyUserPollKind)} value={kind}>
                   {fantasyUserPollDefinitions.map((item) => (
                     <option key={item.kind} value={item.kind}>{item.label}</option>
                   ))}
@@ -74,7 +101,7 @@ export default function FantasyCreatePollPage() {
                   <span>{formatDate(activeMatch.kickoff, true)} · locks {fantasyDeadlineLabel(activeMatch.pollCloseAt)}</span>
                 </div>
               )}
-              <button className="button button--primary" disabled={createPoll.isPending || !activeMatch || options.length < 2} type="submit">
+              <button className="button button--primary" disabled={createPoll.isPending || !activeMatch || (definition.type !== "EXACT_SCORE" && options.length < 2)} type="submit">
                 {createPoll.isPending ? "Publishing..." : "Publish poll"}
               </button>
             </form>
@@ -98,15 +125,26 @@ export default function FantasyCreatePollPage() {
               <strong>{definition.type.replaceAll("_", " ")}</strong>
             </header>
             <h3>{definition.text}</h3>
-            <div className="fantasy-draft-options">
-              {options.map((option) => <span key={option}>{option}</span>)}
-              {options.length === 0 && <span>No valid options for this poll type</span>}
-            </div>
+            {definition.type === "EXACT_SCORE" ? (
+              <div className="fantasy-score-preview">Free answer · 0-0 · Brazil 3 Germany 4</div>
+            ) : (
+              <div className="fantasy-draft-options">
+                {previewOptions.map((option) => <span key={option}>{option}</span>)}
+                {options.length === 0 && <span>No valid options for this poll type</span>}
+              </div>
+            )}
           </article>
           {isPlayerPoll && activeMatch && (
-            <div className="fantasy-squad-context fantasy-squad-context--wrap">
-              {matchSquad.slice(0, 16).map((player) => (
-                <span key={player.id}>{player.name}<small>{fantasyTeamName(player.teamId, data.teams)} · {player.position}</small></span>
+            <div className="fantasy-player-option-picker" aria-label="Player options">
+              {matchSquad.filter((player) => kind === "FIRST_GOAL_SCORER" ? player.isScorerCandidate : player.isMotmCandidate).map((player) => (
+                <label key={player.id}>
+                  <input
+                    checked={selectedPlayerOptions.includes(player.name)}
+                    onChange={() => togglePlayerOption(player.name)}
+                    type="checkbox"
+                  />
+                  <span>{player.name}<small>{fantasyTeamName(player.teamId, data.teams)} · {player.position}</small></span>
+                </label>
               ))}
             </div>
           )}

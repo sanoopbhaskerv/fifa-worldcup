@@ -57,6 +57,26 @@ describe("fantasy prediction game", () => {
     expect(onSubmit).toHaveBeenCalledWith("Argentina");
   });
 
+  it("submits an exact score poll answer", async () => {
+    const user = userEvent.setup();
+    const onSubmit = vi.fn();
+    const question = {
+      ...fantasyGameData.questions.find((item) => item.id === "q-bra-arg-winner")!,
+      category: "EXACT_SCORE" as const,
+      type: "EXACT_SCORE" as const,
+      text: "What will the final score be?",
+      options: [],
+      points: 8,
+    };
+
+    render(<FantasyQuestionCard question={question} onSubmit={onSubmit} />);
+
+    await user.type(screen.getByLabelText("Score"), "Brazil 3 Argentina 4");
+    await user.click(screen.getByRole("button", { name: "Save pick" }));
+
+    expect(onSubmit).toHaveBeenCalledWith("Brazil 3 Argentina 4");
+  });
+
   it("highlights the active participant in the leaderboard", () => {
     render(<FantasyLeaderboard rows={fantasyGameData.leaderboard} activeParticipantId={fantasyGameData.activeParticipantId} />);
 
@@ -176,6 +196,24 @@ describe("fantasy prediction game", () => {
     expect(screen.getAllByText("Vinicius Jr").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Lionel Messi").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Publish poll" })).toBeInTheDocument();
+  });
+
+  it("renders exact score and first goal time user poll types", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({ data: fantasyGameData });
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <FantasyCreatePollPage />
+      </MemoryRouter>,
+    );
+
+    await user.selectOptions(screen.getByLabelText("Poll"), "TOTAL_GOALS");
+    expect(screen.getByText("Free answer · 0-0 · Brazil 3 Germany 4")).toBeInTheDocument();
+
+    await user.selectOptions(screen.getByLabelText("Poll"), "FIRST_GOAL_TIME");
+    expect(screen.getByText("Before 10")).toBeInTheDocument();
+    expect(screen.getByText("90+")).toBeInTheDocument();
   });
 
   it("renders fixture administration", () => {

@@ -516,6 +516,95 @@ describe("fantasy game API", () => {
     });
   });
 
+  it("creates a user poll with selected first scorer player options", async () => {
+    const response = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/polls",
+      body: JSON.stringify({
+        participantId: "p-sanoop",
+        matchId: "bra-arg",
+        kind: "FIRST_GOAL_SCORER",
+        options: ["Lionel Messi", "Vinicius Jr"],
+      }),
+      env: {},
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.question.options).toEqual(["Lionel Messi", "Vinicius Jr", "Own Goal", "No goal", "Other"]);
+  });
+
+  it("creates exact score, first goal time, and penalty goal user polls", async () => {
+    const exactScoreResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/polls",
+      body: JSON.stringify({
+        participantId: "p-sanoop",
+        matchId: "bra-arg",
+        kind: "TOTAL_GOALS",
+      }),
+      env: {},
+    });
+    const firstGoalTimeResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/polls",
+      body: JSON.stringify({
+        participantId: "p-sanoop",
+        matchId: "bra-arg",
+        kind: "FIRST_GOAL_TIME",
+      }),
+      env: {},
+    });
+    const penaltyGoalResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/polls",
+      body: JSON.stringify({
+        participantId: "p-sanoop",
+        matchId: "bra-arg",
+        kind: "PENALTY_GOAL",
+      }),
+      env: {},
+    });
+
+    expect(exactScoreResponse.status).toBe(200);
+    expect(exactScoreResponse.body.question).toMatchObject({
+      category: "EXACT_SCORE",
+      type: "EXACT_SCORE",
+      options: [],
+    });
+    expect(firstGoalTimeResponse.status).toBe(200);
+    expect(firstGoalTimeResponse.body.question.options).toEqual(["Before 10", "11-45", "46-60", "60-90", "90+"]);
+    expect(penaltyGoalResponse.status).toBe(200);
+    expect(penaltyGoalResponse.body.question).toMatchObject({
+      category: "PENALTY_GOAL",
+      options: ["Yes", "No"],
+    });
+  });
+
+  it("accepts exact score prediction answers", async () => {
+    const pollResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/polls",
+      body: JSON.stringify({
+        participantId: "p-sanoop",
+        matchId: "bra-arg",
+        kind: "TOTAL_GOALS",
+      }),
+      env: {},
+    });
+    const response = await handleApiRequest({
+      method: "PUT",
+      url: `/api/fantasy/predictions/${pollResponse.body.question.id}`,
+      body: JSON.stringify({ participantId: "p-sanoop", answer: "Brazil 3 Argentina 4" }),
+      env: {},
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.prediction).toMatchObject({
+      questionId: pollResponse.body.question.id,
+      answer: "Brazil 3 Argentina 4",
+    });
+  });
+
   it("rejects user polls for completed matches", async () => {
     const response = await handleApiRequest({
       method: "POST",
@@ -654,7 +743,7 @@ describe("fantasy game API", () => {
       participantId: "p-sanoop",
       rank: 1,
       totalPoints: 16,
-      todayPoints: 16,
+      todayPoints: 13,
       correctWinners: 1,
       streak: 1,
     });

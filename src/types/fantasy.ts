@@ -11,6 +11,7 @@ export type FantasyQuestionCategory =
   | "QUALIFIER"
   | "RESULT_90"
   | "FINAL_SCORE_RANGE"
+  | "EXACT_SCORE"
   | "FIRST_SCORING_TEAM"
   | "FIRST_GOAL_TIME"
   | "FIRST_GOAL_SCORER"
@@ -19,6 +20,7 @@ export type FantasyQuestionCategory =
   | "PLAYER_SCORES_2_PLUS"
   | "TOTAL_GOALS"
   | "BOTH_TEAMS_SCORE"
+  | "PENALTY_GOAL"
   | "MAN_OF_THE_MATCH"
   | "TOURNAMENT_WINNER"
   | "GOLDEN_BOOT"
@@ -32,6 +34,8 @@ export type FantasyUserPollKind =
   | "MATCH_WINNER"
   | "FIRST_SCORING_TEAM"
   | "TOTAL_GOALS"
+  | "FIRST_GOAL_TIME"
+  | "PENALTY_GOAL"
   | "BOTH_TEAMS_SCORE"
   | "FIRST_GOAL_SCORER"
   | "MAN_OF_THE_MATCH";
@@ -39,6 +43,8 @@ export type FantasyQuestionOptionMode =
   | "MATCH_RESULT"
   | "FIRST_SCORING_TEAM"
   | "TOTAL_GOALS"
+  | "EXACT_SCORE"
+  | "FIRST_GOAL_TIME"
   | "YES_NO"
   | "FIRST_GOAL_SCORER"
   | "STAR_PLAYER_SCORE"
@@ -174,6 +180,7 @@ export interface FantasyMatchResult {
   playersWithTwoPlusGoals: string[];
   manOfTheMatch?: string;
   penaltyAwarded: boolean;
+  penaltyGoal?: boolean;
   redCard: boolean;
   bothTeamsScored: boolean;
   totalGoalsRange: "0-1" | "2-3" | "4+";

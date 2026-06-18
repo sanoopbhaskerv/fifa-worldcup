@@ -17,15 +17,21 @@ export interface FantasyParticipantScoreReview {
 
 const firstGoalWindow = (minute?: number) => {
   if (minute === undefined) return "No goal";
-  if (minute <= 15) return "0-15";
-  if (minute <= 30) return "16-30";
-  if (minute <= 45) return "31-45+";
+  if (minute <= 10) return "Before 10";
+  if (minute <= 45) return "11-45";
   if (minute <= 60) return "46-60";
-  if (minute <= 75) return "61-75";
-  return "76-90+";
+  if (minute <= 90) return "60-90";
+  return "90+";
 };
 
 const normalize = (value: string) => value.trim().toLowerCase();
+
+const parseExactScore = (value: string | string[]) => {
+  const raw = Array.isArray(value) ? value[0] : value;
+  const numbers = String(raw ?? "").match(/\d+/g)?.map(Number) ?? [];
+  if (numbers.length < 2) return undefined;
+  return `${numbers[0]}-${numbers[1]}`;
+};
 
 /**
  * Resolves a structured correct answer for one question and result.
@@ -50,10 +56,14 @@ export const resolveFantasyCorrectAnswer = (
       return firstGoalWindow(result.firstGoalMinute);
     case "FIRST_GOAL_SCORER":
       return result.firstGoalScorer ?? "No goal";
+    case "EXACT_SCORE":
+      return `${result.homeScore}-${result.awayScore}`;
     case "TOTAL_GOALS":
       return result.totalGoalsRange;
     case "BOTH_TEAMS_SCORE":
       return result.bothTeamsScored ? "Yes" : "No";
+    case "PENALTY_GOAL":
+      return result.penaltyGoal ? "Yes" : "No";
     case "STAR_PLAYER_SCORE": {
       const player = question.text.match(/Will (.+) score\?/i)?.[1];
       if (!player) return undefined;
@@ -85,9 +95,11 @@ export const scoreFantasyPrediction = (
 ): FantasyScoreBreakdown => {
   const correctAnswer = resolveFantasyCorrectAnswer(question, result, data) ?? "";
   const answer = prediction.answer;
-  const isCorrect = Array.isArray(answer)
-    ? answer.some((item) => normalize(item) === normalize(correctAnswer))
-    : normalize(answer) === normalize(correctAnswer);
+  const isCorrect = question.type === "EXACT_SCORE"
+    ? parseExactScore(answer) === correctAnswer
+    : Array.isArray(answer)
+      ? answer.some((item) => normalize(item) === normalize(correctAnswer))
+      : normalize(answer) === normalize(correctAnswer);
 
   return {
     questionId: question.id,
