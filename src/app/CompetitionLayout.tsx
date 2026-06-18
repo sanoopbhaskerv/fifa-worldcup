@@ -2,7 +2,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useEffect, useMemo, useState } from "react";
 import { NavLink, Navigate, Outlet, useLocation, useNavigate, useParams } from "react-router-dom";
 import { BracketIcon, CalendarIcon, ChevronIcon, HomeIcon, PlayerIcon, SignalIcon, TableIcon, TrophyIcon } from "../components/Icons";
-import { ThemeSwitcher } from "../components/ThemeSwitcher";
+import { AccountMenu } from "../components/AccountMenu";
 import { CompetitionPicker } from "../features/competitions/CompetitionPicker";
 import { PullToRefreshIndicator } from "../components/PullToRefreshIndicator";
 import { useFavorites } from "../hooks/use-favorites";
@@ -32,6 +32,7 @@ export const CompetitionLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [pickerOpen, setPickerOpen] = useState(false);
+  const [accountIdentity] = useState(() => storage.getFantasyIdentity());
   const { favorites, toggleFavorite } = useFavorites();
   const online = useOnline();
   const catalogQuery = useCompetitions();
@@ -73,12 +74,13 @@ export const CompetitionLayout = () => {
     return <Navigate replace to={sectionPath(competition, editionId, "overview")} />;
   }
 
-  const selectCompetition = (next: Competition) => {
+  const selectCompetition = (next: Competition, nextEditionId: string) => {
     const nextSection = availableSections(next).includes(currentSection) ? currentSection : "overview";
-    navigate(sectionPath(next, next.activeEditionId, nextSection));
+    navigate(sectionPath(next, nextEditionId, nextSection));
     setPickerOpen(false);
   };
-  const selectEdition = (nextEdition: string) => navigate(sectionPath(competition, nextEdition, currentSection));
+
+  const accountDisplayName = accountIdentity?.nickname ?? "Guest";
   return (
     <div className="app" style={{ "--competition-accent": competition.accent } as React.CSSProperties}>
       <a className="skip-link" href="#main-content">Skip to content</a>
@@ -99,8 +101,10 @@ export const CompetitionLayout = () => {
               <span><small>Competition</small><strong>{competition.shortName}</strong></span><ChevronIcon />
             </button>
             <div className="topbar__actions">
-              <ThemeSwitcher compact />
-              <label className="edition-select"><span className="sr-only">Edition</span><select value={editionId} onChange={(event) => selectEdition(event.target.value)}>{competition.editions.map((edition) => <option value={edition.id} key={edition.id}>{edition.name}</option>)}</select></label>
+              <AccountMenu
+                displayName={accountDisplayName}
+                subtitle={accountIdentity?.role === "ADMIN" ? "Admin" : "Football fan"}
+              />
             </div>
           </div>
         </header>
@@ -131,7 +135,7 @@ export const CompetitionLayout = () => {
       <nav className="bottom-nav" aria-label="Primary mobile navigation">
         {sections.slice(0, 5).map((section) => <SectionLink key={section} section={section} competition={competition} editionId={editionId} bottom />)}
       </nav>
-      <CompetitionPicker open={pickerOpen} competitions={catalogQuery.data ?? []} currentId={competition.id} favorites={favorites} recents={storage.getRecents()} onClose={() => setPickerOpen(false)} onSelect={selectCompetition} onToggleFavorite={toggleFavorite} />
+      <CompetitionPicker open={pickerOpen} competitions={catalogQuery.data ?? []} currentEditionId={editionId} currentId={competition.id} favorites={favorites} recents={storage.getRecents()} onClose={() => setPickerOpen(false)} onSelect={selectCompetition} onToggleFavorite={toggleFavorite} />
     </div>
   );
 };

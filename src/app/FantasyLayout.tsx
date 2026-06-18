@@ -1,8 +1,8 @@
 import { useState } from "react";
 import { NavLink, Outlet } from "react-router-dom";
-import { ArrowIcon, CalendarIcon, HomeIcon, PlayerIcon, TableIcon, TrophyIcon } from "../components/Icons";
+import { CalendarIcon, HomeIcon, PlayerIcon, TableIcon, TrophyIcon } from "../components/Icons";
+import { AccountMenu } from "../components/AccountMenu";
 import { PasswordField } from "../components/PasswordField";
-import { ThemeSwitcher } from "../components/ThemeSwitcher";
 import { useCreateFantasySignup, useFantasyGame, useJoinFantasyGame, useLoginFantasyParticipant } from "../services/fantasy-queries";
 import { storage, type StoredFantasyIdentity } from "../utils/storage";
 
@@ -61,10 +61,11 @@ export const FantasyLayout = () => {
               <small>Prediction game</small>
               <strong>{tournament.name}</strong>
             </div>
-            <NavLink className="fantasy-player-chip" to="/fantasy/profile"><span>{activeParticipant?.avatar ?? "P"}</span><strong>{activeParticipant?.nickname ?? identity.nickname}</strong></NavLink>
             <div className="fantasy-topbar__actions">
-              <ThemeSwitcher compact />
-              <NavLink className="fantasy-home-link" to="/competitions/world-cup/2026">Scores <ArrowIcon /></NavLink>
+              <AccountMenu
+                displayName={activeParticipant?.nickname ?? identity.nickname}
+                subtitle={activeParticipant?.role === "ADMIN" ? "Admin" : "Player"}
+              />
             </div>
           </div>
         </header>

@@ -118,3 +118,35 @@ export const ArrowIcon = (props: IconProps) => <Icon {...props}><path d="M5 12h1
  * @returns Signal icon SVG.
  */
 export const SignalIcon = (props: IconProps) => <Icon {...props}><path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 20h.01"/></Icon>;
+
+/**
+ * Renders a profile/account icon.
+ *
+ * @param props - SVG attributes forwarded to the icon element.
+ * @returns User icon SVG.
+ */
+export const UserIcon = (props: IconProps) => <Icon {...props}><circle cx="12" cy="8" r="3.5"/><path d="M5 20a7 7 0 0 1 14 0"/></Icon>;
+
+/**
+ * Renders an edit/pencil icon.
+ *
+ * @param props - SVG attributes forwarded to the icon element.
+ * @returns Edit icon SVG.
+ */
+export const EditIcon = (props: IconProps) => <Icon {...props}><path d="M3 21h5l11-11a2 2 0 0 0-5-5L3 16v5Z"/><path d="m13.5 5.5 5 5"/></Icon>;
+
+/**
+ * Renders a settings cog icon.
+ *
+ * @param props - SVG attributes forwarded to the icon element.
+ * @returns Settings icon SVG.
+ */
+export const SettingsIcon = (props: IconProps) => <Icon {...props}><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.12-1.28l2.02-1.56-2-3.46-2.4.83a7.2 7.2 0 0 0-2.22-1.28L13.9 2h-3.8l-.38 2.25a7.2 7.2 0 0 0-2.22 1.28l-2.4-.83-2 3.46 2.02 1.56A7 7 0 0 0 5 12c0 .44.04.87.12 1.28L3.1 14.84l2 3.46 2.4-.83c.67.53 1.42.96 2.22 1.28L10.1 22h3.8l.38-2.25a7.2 7.2 0 0 0 2.22-1.28l2.4.83 2-3.46-2.02-1.56c.08-.41.12-.84.12-1.28Z"/></Icon>;
+
+/**
+ * Renders a logout icon.
+ *
+ * @param props - SVG attributes forwarded to the icon element.
+ * @returns Logout icon SVG.
+ */
+export const LogoutIcon = (props: IconProps) => <Icon {...props}><path d="M14 8V5a2 2 0 0 0-2-2H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h7a2 2 0 0 0 2-2v-3"/><path d="m10 12 11 0"/><path d="m18 9 3 3-3 3"/></Icon>;

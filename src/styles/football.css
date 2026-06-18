@@ -205,6 +205,10 @@
 .competition-option__main strong { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-size: 12px; }
 .competition-option__main small { overflow: hidden; color: var(--muted); font-size: 9px; text-overflow: ellipsis; white-space: nowrap; }
 .competition-option > .icon-button { border: 0; background: transparent; color: var(--competition-accent); }
+.competition-option__footer { grid-column: 1 / -1; display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: 10px; padding: 0 10px 10px; }
+.competition-option__footer label { min-width: 0; }
+.competition-option__footer select { width: 100%; min-height: 34px; padding: 0 28px 0 10px; color: var(--text); border: 1px solid var(--line); border-radius: 9px; background: var(--surface-2); font-size: 12px; }
+.competition-option__open { min-height: 34px; padding: 0 12px; border: 1px solid color-mix(in srgb, var(--accent) 35%, transparent); border-radius: 9px; color: var(--accent); background: transparent; font-size: 12px; font-weight: 800; cursor: pointer; }
 .empty-inline { padding: 22px; color: var(--muted); text-align: center; font-size: 12px; }
 .update-toast { position: fixed; z-index: 90; left: 12px; right: 12px; bottom: calc(82px + env(safe-area-inset-bottom)); display: grid; grid-template-columns: 1fr auto auto; align-items: center; gap: 10px; padding: 12px; border: 1px solid var(--line); border-radius: 15px; background: var(--surface-3); box-shadow: var(--shadow); }
 .update-toast > div { display: flex; flex-direction: column; }.update-toast span { color: var(--muted); font-size: 9px; }

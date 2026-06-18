@@ -1,5 +1,5 @@
 import { AnimatePresence, motion } from "framer-motion";
-import { useMemo, useState } from "react";
+import { useMemo, useState, type Dispatch, type SetStateAction } from "react";
 import type { Competition } from "../../types/domain";
 import { CloseIcon, SearchIcon, StarIcon } from "../../components/Icons";
 
@@ -7,10 +7,11 @@ interface CompetitionPickerProps {
   open: boolean;
   competitions: Competition[];
   currentId: string;
+  currentEditionId: string;
   favorites: string[];
   recents: string[];
   onClose: () => void;
-  onSelect: (competition: Competition) => void;
+  onSelect: (competition: Competition, editionId: string) => void;
   onToggleFavorite: (id: string) => void;
 }
 
@@ -32,6 +33,7 @@ export const CompetitionPicker = ({
   open,
   competitions,
   currentId,
+  currentEditionId,
   favorites,
   recents,
   onClose,
@@ -41,6 +43,11 @@ export const CompetitionPicker = ({
   const [query, setQuery] = useState("");
   const [category, setCategory] = useState<"All" | Competition["category"]>("All");
   const [area, setArea] = useState("All areas");
+  const [selectedEditions, setSelectedEditions] = useState<Record<string, string>>({});
+
+  const selectedEditionFor = (competition: Competition) => selectedEditions[competition.id] ?? (competition.id === currentId ? currentEditionId : competition.activeEditionId);
+
+  const chooseCompetition = (competition: Competition) => onSelect(competition, selectedEditionFor(competition));
   const areas = useMemo(
     () => ["All areas", ...new Set(competitions.flatMap((competition) => [competition.region, competition.confederation, competition.country].filter(Boolean) as string[]))],
     [competitions],
@@ -81,9 +88,9 @@ export const CompetitionPicker = ({
               {(["All", "International", "Club"] as const).map((item) => <button className={`chip ${category === item ? "chip--active" : ""}`} key={item} onClick={() => setCategory(item)}>{item}</button>)}
             </div>
             <label className="picker-area"><span>Region, country or confederation</span><select value={area} onChange={(event) => setArea(event.target.value)}>{areas.map((item) => <option key={item}>{item}</option>)}</select></label>
-            {!query && category === "All" && favoriteCompetitions.length > 0 && <CompetitionGroup title="Favorites" competitions={favoriteCompetitions} {...{ currentId, favorites, onSelect, onToggleFavorite }} />}
-            {!query && category === "All" && recentCompetitions.length > 0 && <CompetitionGroup title="Recently viewed" competitions={recentCompetitions} {...{ currentId, favorites, onSelect, onToggleFavorite }} />}
-            <CompetitionGroup title={query ? `${filtered.length} results` : category === "All" ? "All competitions" : category} competitions={filtered} {...{ currentId, favorites, onSelect, onToggleFavorite }} />
+            {!query && category === "All" && favoriteCompetitions.length > 0 && <CompetitionGroup title="Favorites" competitions={favoriteCompetitions} {...{ chooseCompetition, currentId, favorites, onToggleFavorite, selectedEditionFor, setSelectedEditions }} />}
+            {!query && category === "All" && recentCompetitions.length > 0 && <CompetitionGroup title="Recently viewed" competitions={recentCompetitions} {...{ chooseCompetition, currentId, favorites, onToggleFavorite, selectedEditionFor, setSelectedEditions }} />}
+            <CompetitionGroup title={query ? `${filtered.length} results` : category === "All" ? "All competitions" : category} competitions={filtered} {...{ chooseCompetition, currentId, favorites, onToggleFavorite, selectedEditionFor, setSelectedEditions }} />
           </motion.section>
         </motion.div>
       )}
@@ -108,28 +115,52 @@ const CompetitionGroup = ({
   competitions,
   currentId,
   favorites,
-  onSelect,
+    chooseCompetition,
   onToggleFavorite,
+    selectedEditionFor,
+    setSelectedEditions,
 }: {
   title: string;
   competitions: Competition[];
   currentId: string;
   favorites: string[];
-  onSelect: (competition: Competition) => void;
+    chooseCompetition: (competition: Competition) => void;
   onToggleFavorite: (id: string) => void;
+    selectedEditionFor: (competition: Competition) => string;
+  setSelectedEditions: Dispatch<SetStateAction<Record<string, string>>>;
 }) => (
   <section className="picker-group">
     <h3>{title}</h3>
     <div className="picker-list">
       {competitions.map((competition) => (
         <div className={`competition-option ${competition.id === currentId ? "competition-option--active" : ""}`} key={competition.id}>
-          <button className="competition-option__main" onClick={() => onSelect(competition)}>
+            <button className="competition-option__main" onClick={() => chooseCompetition(competition)}>
             <span className="competition-emblem" style={{ "--competition-accent": competition.accent } as React.CSSProperties}>{competition.emblem}</span>
-            <span><strong>{competition.name}</strong><small>{competition.category} · {competition.confederation} · {competition.activeEditionId}</small></span>
+              <span><strong>{competition.name}</strong><small>{competition.category} · {competition.confederation}</small></span>
           </button>
           <button className="icon-button" onClick={() => onToggleFavorite(competition.id)} aria-label={`${favorites.includes(competition.id) ? "Remove" : "Add"} ${competition.name} ${favorites.includes(competition.id) ? "from" : "to"} favorites`}>
             <StarIcon fill={favorites.includes(competition.id) ? "currentColor" : "none"} />
           </button>
+            <div className="competition-option__footer">
+              <label>
+                <span className="sr-only">Edition for {competition.name}</span>
+                <select
+                  aria-label={`${competition.name} edition`}
+                  onChange={(event) => {
+                    const edition = event.target.value;
+                    setSelectedEditions((current) => ({ ...current, [competition.id]: edition }));
+                  }}
+                  value={selectedEditionFor(competition)}
+                >
+                  {competition.editions.map((edition) => (
+                    <option key={edition.id} value={edition.id}>{edition.name}</option>
+                  ))}
+                </select>
+              </label>
+              <button className="competition-option__open" onClick={() => chooseCompetition(competition)} type="button">
+                Open
+              </button>
+            </div>
         </div>
       ))}
       {competitions.length === 0 && <div className="empty-inline">No competitions match your search.</div>}
