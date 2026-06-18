@@ -43,9 +43,9 @@ export default function FantasyAdminResultsPage() {
         ))}
       </div>
       <section className="content-section fantasy-admin-note">
-        <span className="eyebrow">Next backend step</span>
-        <h2>Persist result drafts</h2>
-        <p>This screen currently reads mock result facts. The API version will save result drafts, run score review, then publish the result version with an audit record.</p>
+        <span className="eyebrow">Result workflow</span>
+        <h2>Backend-backed scoring</h2>
+        <p>Result facts are loaded from the fantasy backend. Use score review to inspect calculated points before publishing.</p>
       </section>
     </div>
   );

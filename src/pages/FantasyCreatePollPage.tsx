@@ -17,6 +17,7 @@ import { PageHeading } from "./FixturesPage";
 export default function FantasyCreatePollPage() {
   const { data } = useFantasy();
   const createPoll = useCreateFantasyUserPoll(data.activeParticipantId);
+  const [groupId, setGroupId] = useState(data.groups[0]?.id ?? "group-main");
   const upcomingMatches = data.matches
     .filter((match) => match.status === "SCHEDULED")
     .sort((left, right) => left.kickoff.localeCompare(right.kickoff));
@@ -70,6 +71,7 @@ export default function FantasyCreatePollPage() {
                 event.preventDefault();
                 if (!activeMatch) return;
                 createPoll.mutate({
+                  groupId,
                   kind,
                   matchId: activeMatch.id,
                   options: selectedOptions,
@@ -77,6 +79,12 @@ export default function FantasyCreatePollPage() {
                 });
               }}
             >
+              <label>
+                Group
+                <select onChange={(event) => setGroupId(event.target.value)} value={groupId}>
+                  {data.groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+                </select>
+              </label>
               <label>
                 Match
                 <select onChange={(event) => updateMatchId(event.target.value)} value={activeMatch?.id ?? ""}>

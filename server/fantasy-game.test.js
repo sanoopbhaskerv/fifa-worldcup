@@ -118,6 +118,37 @@ describe("fantasy game API", () => {
       action: "PARTICIPANT_CREATED",
       actorId: "self-signup",
     });
+    expect(response.body.game.groups).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "group-main" }),
+    ]));
+  });
+
+  it("creates poll groups with overlapping members and generates group-specific polls", async () => {
+    const groupResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/groups",
+      body: JSON.stringify({
+        name: "Office league",
+        description: "Side group",
+        participantIds: ["p-sanoop", "p-anoop"],
+      }),
+      env: {},
+    });
+    const generateResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/polls/generate",
+      body: JSON.stringify({ groupId: "group-office-league", limit: 1, status: "OPEN" }),
+      env: {},
+    });
+
+    expect(groupResponse.status).toBe(200);
+    expect(groupResponse.body.group).toMatchObject({ id: "group-office-league", name: "Office league" });
+    expect(groupResponse.body.groupMemberships).toEqual(expect.arrayContaining([
+      expect.objectContaining({ groupId: "group-office-league", participantId: "p-sanoop" }),
+      expect.objectContaining({ groupId: "group-office-league", participantId: "p-anoop" }),
+    ]));
+    expect(generateResponse.status).toBe(200);
+    expect(generateResponse.body.questions.every((question) => question.groupId === "group-office-league")).toBe(true);
   });
 
   it("signs up and logs in with email and password", async () => {
@@ -405,7 +436,7 @@ describe("fantasy game API", () => {
     expect(generateResponse.body.fixtures).toHaveLength(1);
     expect(generateResponse.body.questions).toEqual(expect.arrayContaining([
       expect.objectContaining({
-        id: "draft-fd-100-match-result",
+        id: "draft-group-main-fd-100-match-result",
         matchId: "fd-100",
         status: "OPEN",
         options: ["Brazil", "Argentina", "Draw"],
@@ -526,10 +557,10 @@ describe("fantasy game API", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.questions).toEqual([
-      expect.objectContaining({ id: "draft-bra-arg-total-goals", status: "OPEN" }),
+      expect.objectContaining({ id: "draft-group-main-bra-arg-total-goals", status: "OPEN" }),
     ]);
     expect(response.body.game.questions).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: "draft-bra-arg-total-goals", status: "OPEN" }),
+      expect.objectContaining({ id: "draft-group-main-bra-arg-total-goals", status: "OPEN" }),
     ]));
     expect(response.body.game.auditRecords.at(-1)).toMatchObject({
       action: "QUESTIONS_PUBLISHED",
@@ -827,11 +858,11 @@ describe("fantasy game API", () => {
       expect.objectContaining({ category: "FIRST_GOAL_SCORER", type: "PLAYER" }),
     ]));
     expect(response.body.game.questions).toEqual(expect.arrayContaining([
-      expect.objectContaining({ id: "tournament-winner", category: "TOURNAMENT_WINNER" }),
-      expect.objectContaining({ id: "tournament-finalists", category: "TOURNAMENT_FINALISTS" }),
-      expect.objectContaining({ id: "tournament-golden-boot", category: "GOLDEN_BOOT" }),
-      expect.objectContaining({ id: "tournament-golden-ball", category: "GOLDEN_BALL" }),
-      expect.objectContaining({ id: "tournament-mvp", category: "TOURNAMENT_MVP" }),
+      expect.objectContaining({ id: "group-main-tournament-winner", category: "TOURNAMENT_WINNER" }),
+      expect.objectContaining({ id: "group-main-tournament-finalists", category: "TOURNAMENT_FINALISTS" }),
+      expect.objectContaining({ id: "group-main-tournament-golden-boot", category: "GOLDEN_BOOT" }),
+      expect.objectContaining({ id: "group-main-tournament-golden-ball", category: "GOLDEN_BALL" }),
+      expect.objectContaining({ id: "group-main-tournament-mvp", category: "TOURNAMENT_MVP" }),
     ]));
     expect(response.body.game.predictions).toHaveLength(0);
   });

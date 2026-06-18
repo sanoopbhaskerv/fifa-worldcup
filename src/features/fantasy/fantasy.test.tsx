@@ -200,9 +200,10 @@ describe("fantasy prediction game", () => {
     renderWithQueryClient(<FantasyAdminParticipantsPage />);
 
     expect(screen.getByRole("heading", { name: "Participants" })).toBeInTheDocument();
-    expect(screen.getByText("Brazil Boss")).toBeInTheDocument();
+    expect(screen.getAllByText("Brazil Boss").length).toBeGreaterThan(0);
     expect(screen.getByRole("button", { name: "Create invite" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Remove admin" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: /groups/i })).toBeInTheDocument();
   });
 
   it("renders the active player profile editor", () => {

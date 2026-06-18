@@ -36,6 +36,8 @@ const hydrateGame = (records, fallbackGame) => {
     aiSettings,
     teams: bySortKey(dataForType(records, "TEAM").map((data) => ({ SK: fantasyRecordKeys.team(tournament.id, data.id).SK, data }))).map((record) => record.data),
     squadPlayers: dataForType(records, "SQUAD_PLAYER"),
+    groups: dataForType(records, "GROUP"),
+    groupMemberships: dataForType(records, "GROUP_MEMBERSHIP"),
     participants: dataForType(records, "PARTICIPANT"),
     participantInvites: dataForType(records, "PARTICIPANT_INVITE"),
     matches: dataForType(records, "MATCH"),
@@ -107,11 +109,15 @@ export const createDynamoFantasyStorage = ({
     const matchIds = tournamentRecords
       .filter((record) => record.type === "MATCH")
       .map((record) => record.data.id);
+    const groupIds = tournamentRecords
+      .filter((record) => record.type === "GROUP")
+      .map((record) => record.data.id);
 
     const relatedRecords = await Promise.all([
       ...teamIds.map((teamId) => queryByPk(`TEAM#${teamId}`)),
       ...questionIds.map((questionId) => queryByPk(`QUESTION#${questionId}`)),
       ...matchIds.map((matchId) => queryByPk(`MATCH#${matchId}`)),
+      ...groupIds.map((groupId) => queryByPk(`GROUP#${groupId}`)),
     ]);
 
     return [...tournamentRecords, ...relatedRecords.flat()];

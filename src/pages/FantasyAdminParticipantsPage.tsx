@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
-import { useCreateFantasyParticipant, useFantasyParticipants, useUpdateFantasyParticipantRole } from "../services/fantasy-queries";
+import { useCreateFantasyParticipant, useFantasyGroups, useFantasyParticipants, useSaveFantasyGroup, useUpdateFantasyParticipantRole } from "../services/fantasy-queries";
 import type { FantasyAdminParticipant } from "../types/fantasy";
 import { fantasyTeamName } from "../utils/fantasy";
 import { PageHeading } from "./FixturesPage";
@@ -13,12 +13,38 @@ import { PageHeading } from "./FixturesPage";
 export default function FantasyAdminParticipantsPage() {
   const { data } = useFantasy();
   const participantsQuery = useFantasyParticipants();
+  const groupsQuery = useFantasyGroups();
   const createParticipant = useCreateFantasyParticipant(data.activeParticipantId);
   const updateRole = useUpdateFantasyParticipantRole(data.activeParticipantId);
+  const saveGroup = useSaveFantasyGroup(data.activeParticipantId);
   const [name, setName] = useState("");
   const [nickname, setNickname] = useState("");
   const [favoriteTeamId, setFavoriteTeamId] = useState(data.teams[0]?.id ?? "");
+  const [activeGroupId, setActiveGroupId] = useState(data.groups[0]?.id ?? "");
+  const activeGroup = data.groups.find((group) => group.id === activeGroupId);
+  const [groupName, setGroupName] = useState(activeGroup?.name ?? "");
+  const [groupDescription, setGroupDescription] = useState(activeGroup?.description ?? "");
+  const [groupParticipantIds, setGroupParticipantIds] = useState<string[]>(() =>
+    data.groupMemberships.filter((membership) => membership.groupId === activeGroupId && membership.status === "ACTIVE").map((membership) => membership.participantId),
+  );
   const rows: FantasyAdminParticipant[] = participantsQuery.data?.participants ?? data.participants.map((participant) => ({ ...participant }));
+  const groupRows = groupsQuery.data?.groups ?? data.groups;
+
+  const selectGroup = (groupId: string) => {
+    const group = data.groups.find((item) => item.id === groupId);
+    setActiveGroupId(groupId);
+    setGroupName(group?.name ?? "");
+    setGroupDescription(group?.description ?? "");
+    setGroupParticipantIds(data.groupMemberships.filter((membership) => membership.groupId === groupId && membership.status === "ACTIVE").map((membership) => membership.participantId));
+  };
+
+  const toggleGroupParticipant = (participantId: string) => {
+    setGroupParticipantIds((current) => (
+      current.includes(participantId)
+        ? current.filter((item) => item !== participantId)
+        : [...current, participantId]
+    ));
+  };
 
   return (
     <div className="page fantasy-page">
@@ -89,6 +115,53 @@ export default function FantasyAdminParticipantsPage() {
             })}
           </div>
           {updateRole.isError && <p role="alert">{updateRole.error.message}</p>}
+        </section>
+        <section className="content-section fantasy-participant-list">
+          <div className="section-heading"><div><span className="eyebrow">Poll groups</span><h2>{groupRows.length} groups</h2></div></div>
+          <form
+            onSubmit={(event) => {
+              event.preventDefault();
+              saveGroup.mutate({
+                groupId: activeGroupId || undefined,
+                name: groupName,
+                description: groupDescription,
+                participantIds: groupParticipantIds,
+              });
+            }}
+          >
+            <label>
+              Existing group
+              <select onChange={(event) => selectGroup(event.target.value)} value={activeGroupId}>
+                <option value="">Create new group</option>
+                {groupRows.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+              </select>
+            </label>
+            <label>
+              Group name
+              <input onChange={(event) => setGroupName(event.target.value)} placeholder="Weekend crew" value={groupName} />
+            </label>
+            <label>
+              Description
+              <input onChange={(event) => setGroupDescription(event.target.value)} placeholder="Optional note" value={groupDescription} />
+            </label>
+            <div className="fantasy-player-option-picker" aria-label="Group members">
+              {rows.map((participant) => (
+                <label key={participant.id}>
+                  <input
+                    checked={groupParticipantIds.includes(participant.id)}
+                    onChange={() => toggleGroupParticipant(participant.id)}
+                    type="checkbox"
+                  />
+                  <span>{participant.nickname}<small>{participant.id}</small></span>
+                </label>
+              ))}
+            </div>
+            <button className="button button--primary" disabled={saveGroup.isPending || !groupName.trim() || groupParticipantIds.length === 0} type="submit">
+              {saveGroup.isPending ? "Saving..." : activeGroupId ? "Update group" : "Create group"}
+            </button>
+          </form>
+          {saveGroup.isSuccess && <p className="fantasy-success-note">Group saved: {saveGroup.data.group.name}</p>}
+          {saveGroup.isError && <p role="alert">{saveGroup.error.message}</p>}
         </section>
       </div>
     </div>

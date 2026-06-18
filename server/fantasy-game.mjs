@@ -7,6 +7,7 @@ import { getLiveCompetitionData } from "./football-data.mjs";
 
 const now = "2026-06-17T12:00:00+05:30";
 const defaultAdminEmail = "sanoopvellangar@gmail.com";
+const defaultGroupId = "group-main";
 
 const tournament = {
   id: "world-cup-friends-2026",
@@ -93,6 +94,20 @@ const participants = [
   { id: "p-anoop", name: "Anoop", nickname: "Messi Monk", favoriteTeamId: "arg", avatar: "AM", role: "PLAYER", authProvider: "INVITE" },
 ];
 
+const groups = [
+  { id: defaultGroupId, tournamentId: tournament.id, name: "Main friends league", description: "Default group for the original friends circle.", createdAt: now, createdByParticipantId: activeParticipantId, status: "ACTIVE" },
+];
+
+const groupMemberships = participants.map((participant) => ({
+  id: `${defaultGroupId}-${participant.id}`,
+  tournamentId: tournament.id,
+  groupId: defaultGroupId,
+  participantId: participant.id,
+  role: participant.id === activeParticipantId ? "OWNER" : "MEMBER",
+  status: "ACTIVE",
+  createdAt: now,
+}));
+
 const participantInvites = [
   { id: "invite-sanoop", participantId: activeParticipantId, inviteCode: "SANOOP2026", status: "ACTIVE", createdAt: now },
   { id: "invite-anoop", participantId: "p-anoop", inviteCode: "ANOOP2026", status: "ACTIVE", createdAt: now },
@@ -134,6 +149,8 @@ const initialGame = {
   squadPlayers,
   participants,
   participantInvites,
+  groups,
+  groupMemberships,
   matches,
   questions,
   questionTemplates,
@@ -228,6 +245,22 @@ const normalizeParticipantRecord = (participant) => ({
   authProvider: participant.authProvider ?? (participant.passwordHash ? "PASSWORD" : "INVITE"),
 });
 
+const normalizeGroupRecord = (group) => ({
+  ...group,
+  tournamentId: group.tournamentId ?? tournament.id,
+  status: group.status ?? "ACTIVE",
+  createdAt: group.createdAt ?? now,
+});
+
+const normalizeGroupMembershipRecord = (membership) => ({
+  ...membership,
+  id: membership.id ?? `${membership.groupId}-${membership.participantId}`,
+  tournamentId: membership.tournamentId ?? tournament.id,
+  role: membership.role ?? "MEMBER",
+  status: membership.status ?? "ACTIVE",
+  createdAt: membership.createdAt ?? now,
+});
+
 const canonicalTemplateById = new Map(questionTemplates.map((template) => [template.id, template]));
 
 const normalizeGame = (game) => {
@@ -242,6 +275,14 @@ const normalizeGame = (game) => {
   return {
     ...game,
     participants: game.participants.map(normalizeParticipantRecord),
+    groups: ((game.groups?.length ? game.groups : groups).map(normalizeGroupRecord)),
+    groupMemberships: (game.groupMemberships?.length ? game.groupMemberships : game.participants.map((participant) => ({
+      groupId: defaultGroupId,
+      participantId: participant.id,
+      role: participant.id === activeParticipantId ? "OWNER" : "MEMBER",
+      status: "ACTIVE",
+    }))).map(normalizeGroupMembershipRecord),
+    questions: game.questions.map((question) => ({ groupId: defaultGroupId, ...question })),
     questionTemplates: normalizedTemplates,
     aiSettings: {
       ...game.aiSettings,
@@ -249,6 +290,22 @@ const normalizeGame = (game) => {
     },
   };
 };
+
+const activeGroupIdsForParticipant = (game, participantId) =>
+  new Set(game.groupMemberships
+    .filter((membership) => membership.participantId === participantId && membership.status === "ACTIVE")
+    .map((membership) => membership.groupId));
+
+const participantCanAccessQuestion = (game, participantId, question) => {
+  const participant = game.participants.find((item) => item.id === participantId);
+  if (participant?.role === "ADMIN") return true;
+  return activeGroupIdsForParticipant(game, participantId).has(question.groupId ?? defaultGroupId);
+};
+
+const participantIdsForGroup = (game, groupId) =>
+  new Set(game.groupMemberships
+    .filter((membership) => membership.groupId === groupId && membership.status === "ACTIVE")
+    .map((membership) => membership.participantId));
 
 const gameState = async () => normalizeGame(await storage.getGame());
 
@@ -284,10 +341,28 @@ const publicGame = (game) => {
   };
 };
 
-const withActiveParticipant = (game, participantId) => ({
-  ...publicGame(game),
-  activeParticipantId: participantId ?? game.activeParticipantId,
-});
+const withActiveParticipant = (game, participantId) => {
+  const activeId = participantId ?? game.activeParticipantId;
+  const participant = game.participants.find((item) => item.id === activeId);
+  const publicPayload = publicGame(game);
+  if (participant?.role === "ADMIN") {
+    return { ...publicPayload, activeParticipantId: activeId };
+  }
+  const groupIds = activeGroupIdsForParticipant(game, activeId);
+  const visibleQuestions = game.questions.filter((question) => groupIds.has(question.groupId ?? defaultGroupId));
+  const visibleQuestionIds = new Set(visibleQuestions.map((question) => question.id));
+  const visibleMemberships = game.groupMemberships.filter((membership) => groupIds.has(membership.groupId));
+  const visibleParticipantIds = new Set(visibleMemberships.map((membership) => membership.participantId));
+  return {
+    ...publicPayload,
+    activeParticipantId: activeId,
+    groups: game.groups.filter((group) => groupIds.has(group.id)),
+    groupMemberships: visibleMemberships,
+    participants: publicPayload.participants.filter((item) => item.id === activeId || visibleParticipantIds.has(item.id)),
+    questions: visibleQuestions,
+    predictions: game.predictions.filter((prediction) => visibleQuestionIds.has(prediction.questionId)),
+  };
+};
 
 const slug = (value) =>
   normalize(value)
@@ -565,7 +640,15 @@ const optionsForTemplate = (template, match, game) => {
   }
 };
 
-const questionFromTemplate = (template, match, game) => {
+const resolveGroupId = (game, groupId = defaultGroupId) => {
+  const resolved = groupId || defaultGroupId;
+  if (!game.groups.some((group) => group.id === resolved && group.status !== "ARCHIVED")) {
+    throw new ProviderError("Poll group is invalid.", 400, "INVALID_GROUP");
+  }
+  return resolved;
+};
+
+const questionFromTemplate = (template, match, game, groupId = defaultGroupId) => {
   if (!template.enabled || !template.importanceLevels.includes(match.importance)) return undefined;
   const star = starCandidate(match, game);
   if (template.optionMode === "STAR_PLAYER_SCORE" && !star) return undefined;
@@ -573,8 +656,9 @@ const questionFromTemplate = (template, match, game) => {
   if (template.type !== "EXACT_SCORE" && options.length < 2) return undefined;
   const isQualifier = template.optionMode === "MATCH_RESULT" && (match.importance === "KNOCKOUT" || match.importance === "FINAL");
   return {
-    id: `draft-${match.id}-${template.id.replace(/^tpl-/, "")}`,
+    id: `draft-${groupId}-${match.id}-${template.id.replace(/^tpl-/, "")}`,
     tournamentId: game.tournament.id,
+    groupId,
     matchId: match.id,
     category: isQualifier ? "QUALIFIER" : template.category,
     type: template.type,
@@ -587,13 +671,13 @@ const questionFromTemplate = (template, match, game) => {
   };
 };
 
-const generatedQuestionsForMatch = (game, match) => {
+const generatedQuestionsForMatch = (game, match, groupId = defaultGroupId) => {
   const templates = [...(game.questionTemplates ?? [])]
     .filter((template) => !game.aiSettings?.enabledCategories || game.aiSettings.enabledCategories.includes(template.category))
     .sort((left, right) => left.sortOrder - right.sortOrder);
   const maxQuestions = game.aiSettings?.maxQuestions?.[match.importance] ?? 5;
   return templates
-    .map((template) => questionFromTemplate(template, match, game))
+    .map((template) => questionFromTemplate(template, match, game, groupId))
     .filter(Boolean)
     .slice(0, maxQuestions);
 };
@@ -628,12 +712,13 @@ const tournamentPlayerOptions = (game, flag, count = 18) => [
   "Other",
 ];
 
-const tournamentQuestionsForGame = (game) => {
+const tournamentQuestionsForGame = (game, groupId = defaultGroupId) => {
   const closeAt = `${game.tournament.startDate}T00:00:00.000Z`;
   return [
     {
-      id: "tournament-winner",
+      id: `${groupId}-tournament-winner`,
       tournamentId: game.tournament.id,
+      groupId,
       category: "TOURNAMENT_WINNER",
       type: "SINGLE_CHOICE",
       text: "Who will win the World Cup?",
@@ -644,8 +729,9 @@ const tournamentQuestionsForGame = (game) => {
       source: "SYSTEM",
     },
     {
-      id: "tournament-finalists",
+      id: `${groupId}-tournament-finalists`,
       tournamentId: game.tournament.id,
+      groupId,
       category: "TOURNAMENT_FINALISTS",
       type: "SINGLE_CHOICE",
       text: "Which two teams will reach the final?",
@@ -656,8 +742,9 @@ const tournamentQuestionsForGame = (game) => {
       source: "SYSTEM",
     },
     {
-      id: "tournament-golden-boot",
+      id: `${groupId}-tournament-golden-boot`,
       tournamentId: game.tournament.id,
+      groupId,
       category: "GOLDEN_BOOT",
       type: "PLAYER",
       text: "Who will win the Golden Boot?",
@@ -668,8 +755,9 @@ const tournamentQuestionsForGame = (game) => {
       source: "SYSTEM",
     },
     {
-      id: "tournament-golden-ball",
+      id: `${groupId}-tournament-golden-ball`,
       tournamentId: game.tournament.id,
+      groupId,
       category: "GOLDEN_BALL",
       type: "PLAYER",
       text: "Who will win the Golden Ball?",
@@ -680,8 +768,9 @@ const tournamentQuestionsForGame = (game) => {
       source: "SYSTEM",
     },
     {
-      id: "tournament-mvp",
+      id: `${groupId}-tournament-mvp`,
       tournamentId: game.tournament.id,
+      groupId,
       category: "TOURNAMENT_MVP",
       type: "PLAYER",
       text: "Who will be your tournament MVP?",
@@ -693,6 +782,8 @@ const tournamentQuestionsForGame = (game) => {
     },
   ];
 };
+
+const tournamentResetCategories = new Set(["TOURNAMENT_WINNER", "TOURNAMENT_FINALISTS", "GOLDEN_BOOT", "GOLDEN_BALL", "TOURNAMENT_MVP"]);
 
 const firstGoalWindow = (minute) => {
   if (minute === undefined || minute === null) return "No goal";
@@ -850,6 +941,9 @@ const validateQuestionDraft = (game, matchId, question, status) => {
   if (!validQuestionCategory.has(question.category)) {
     throw new ProviderError("Question draft category is invalid.", 400, "INVALID_QUESTION_DRAFT");
   }
+  if (question.groupId && !game.groups.some((group) => group.id === question.groupId && group.status !== "ARCHIVED")) {
+    throw new ProviderError("Question draft group is invalid.", 400, "INVALID_QUESTION_DRAFT");
+  }
   if (question.type === "EXACT_SCORE") {
     if (question.options !== undefined && !Array.isArray(question.options)) {
       throw new ProviderError("Question draft options are invalid.", 400, "INVALID_QUESTION_DRAFT");
@@ -954,6 +1048,126 @@ export const listFantasyParticipants = async () => {
   return { participants: participantsWithInvites(game), game: publicGame(game) };
 };
 
+const groupInput = (game, input = {}, existingGroup) => {
+  const name = String(input.name ?? existingGroup?.name ?? "").trim();
+  if (!name) throw new ProviderError("Group name is required.", 400, "INVALID_GROUP");
+  const participantIds = Array.isArray(input.participantIds) ? input.participantIds.map(String) : undefined;
+  if (participantIds?.some((participantId) => !game.participants.some((participant) => participant.id === participantId))) {
+    throw new ProviderError("Group contains an unknown participant.", 400, "INVALID_GROUP");
+  }
+  return {
+    name,
+    description: String(input.description ?? existingGroup?.description ?? "").trim(),
+    participantIds,
+  };
+};
+
+const membershipRowsForGroup = (game, groupId, participantIds, actorId) => {
+  const nowIso = new Date().toISOString();
+  const uniqueIds = [...new Set(participantIds)];
+  return uniqueIds.map((participantId) => {
+    const existing = game.groupMemberships.find((membership) => membership.groupId === groupId && membership.participantId === participantId);
+    return {
+      id: existing?.id ?? `${groupId}-${participantId}`,
+      tournamentId: game.tournament.id,
+      groupId,
+      participantId,
+      role: participantId === actorId ? "OWNER" : existing?.role ?? "MEMBER",
+      status: "ACTIVE",
+      createdAt: existing?.createdAt ?? nowIso,
+    };
+  });
+};
+
+/**
+ * Lists fantasy groups and many-to-many membership rows for admin screens.
+ *
+ * @returns Groups, memberships, and game payload.
+ */
+export const listFantasyGroups = async () => {
+  const game = await gameState();
+  return { groups: game.groups, groupMemberships: game.groupMemberships, game: publicGame(game) };
+};
+
+/**
+ * Creates one fantasy poll group.
+ *
+ * @param input - Group fields and participant ids.
+ * @returns Created group and memberships.
+ */
+export const createFantasyGroup = async (input = {}) => {
+  const game = await gameState();
+  const actorId = input.actorId ?? activeParticipantId;
+  const parsed = groupInput(game, input);
+  const createdAt = new Date().toISOString();
+  const baseId = `group-${slug(parsed.name) || "polls"}`;
+  const duplicateCount = game.groups.filter((group) => group.id === baseId || group.id.startsWith(`${baseId}-`)).length;
+  const group = {
+    id: duplicateCount > 0 ? `${baseId}-${duplicateCount + 1}` : baseId,
+    tournamentId: game.tournament.id,
+    name: parsed.name,
+    description: parsed.description,
+    createdAt,
+    createdByParticipantId: actorId,
+    status: "ACTIVE",
+  };
+  const participantIds = parsed.participantIds?.length ? parsed.participantIds : [actorId];
+  const memberships = membershipRowsForGroup(game, group.id, participantIds, actorId);
+  const nextGame = {
+    ...game,
+    groups: [...game.groups, group],
+    groupMemberships: [...game.groupMemberships, ...memberships],
+  };
+  const updatedGame = await saveGame(nextGame, await audit({
+    action: "GROUP_CREATED",
+    actorId,
+    entityId: group.id,
+    entityType: "GROUP",
+    metadata: { participantCount: memberships.length },
+  }));
+  return { group, groupMemberships: memberships, game: publicGame(updatedGame) };
+};
+
+/**
+ * Updates one fantasy poll group and replaces its active member set.
+ *
+ * @param groupId - Group being updated.
+ * @param input - Group fields and participant ids.
+ * @returns Updated group and memberships.
+ */
+export const updateFantasyGroup = async (groupId, input = {}) => {
+  const game = await gameState();
+  const group = game.groups.find((item) => item.id === groupId);
+  if (!group) throw new ProviderError("Group not found.", 404, "NOT_FOUND");
+  const actorId = input.actorId ?? activeParticipantId;
+  const parsed = groupInput(game, input, group);
+  const participantIds = parsed.participantIds ?? game.groupMemberships
+    .filter((membership) => membership.groupId === groupId && membership.status === "ACTIVE")
+    .map((membership) => membership.participantId);
+  const updatedGroup = {
+    ...group,
+    name: parsed.name,
+    description: parsed.description,
+  };
+  const memberships = membershipRowsForGroup(game, groupId, participantIds, actorId);
+  const nextGame = {
+    ...game,
+    groups: game.groups.map((item) => item.id === groupId ? updatedGroup : item),
+    groupMemberships: [
+      ...game.groupMemberships.filter((membership) => membership.groupId !== groupId),
+      ...memberships,
+    ],
+  };
+  const updatedGame = await saveGame(nextGame, await audit({
+    action: "GROUP_UPDATED",
+    actorId,
+    entityId: groupId,
+    entityType: "GROUP",
+    metadata: { participantCount: memberships.length },
+  }));
+  return { group: updatedGroup, groupMemberships: memberships, game: publicGame(updatedGame) };
+};
+
 /**
  * Creates a participant and active invite code for the friends league.
  *
@@ -995,11 +1209,21 @@ export const createFantasyParticipant = async (input) => {
     status: "ACTIVE",
     createdAt,
   };
+  const defaultMembership = {
+    id: `${defaultGroupId}-${participant.id}`,
+    tournamentId: game.tournament.id,
+    groupId: defaultGroupId,
+    participantId: participant.id,
+    role: "MEMBER",
+    status: "ACTIVE",
+    createdAt,
+  };
   const team = game.teams.find((item) => item.id === favoriteTeamId);
   const nextGame = {
     ...game,
     participants: [...game.participants, participant],
     participantInvites: [...game.participantInvites, invite],
+    groupMemberships: [...game.groupMemberships, defaultMembership],
     leaderboard: [
       ...game.leaderboard,
       {
@@ -1633,6 +1857,7 @@ export const saveFantasyQuestionDrafts = async (matchId, input) => {
   const game = await gameState();
   const match = game.matches.find((item) => item.id === matchId);
   if (!match) throw new ProviderError("Match not found.", 404, "NOT_FOUND");
+  const groupId = resolveGroupId(game, input.groupId);
   const status = input.status ?? "DRAFT";
   const questions = Array.isArray(input.questions) ? input.questions : [];
   if (questions.length === 0) {
@@ -1641,6 +1866,10 @@ export const saveFantasyQuestionDrafts = async (matchId, input) => {
   questions.forEach((question) => validateQuestionDraft(game, matchId, question, status));
   const savedQuestions = questions.map((question) => ({
     ...question,
+    id: question.id.startsWith(`draft-${groupId}-`) || question.id.startsWith(`user-${groupId}-`)
+      ? question.id
+      : `draft-${groupId}-${question.id.replace(/^draft-/, "")}`,
+    groupId,
     closeAt: question.closeAt || match.pollCloseAt,
     status,
   }));
@@ -1657,7 +1886,7 @@ export const saveFantasyQuestionDrafts = async (matchId, input) => {
     actorId: input.actorId ?? "admin",
     entityId: matchId,
     entityType: "MATCH",
-    metadata: { questionCount: savedQuestions.length, status },
+    metadata: { questionCount: savedQuestions.length, status, groupId },
   }));
   return { questions: savedQuestions, game: publicGame(updatedGame) };
 };
@@ -1670,6 +1899,7 @@ export const saveFantasyQuestionDrafts = async (matchId, input) => {
  */
 export const generateFantasyPolls = async (input = {}) => {
   const game = await gameState();
+  const groupId = resolveGroupId(game, input.groupId);
   const status = input.status ?? "DRAFT";
   if (!validQuestionStatus.has(status)) {
     throw new ProviderError("Question status is invalid.", 400, "INVALID_QUESTION_DRAFT");
@@ -1691,8 +1921,9 @@ export const generateFantasyPolls = async (input = {}) => {
   }
 
   const savedQuestions = matchesToGenerate.flatMap((match) =>
-    generatedQuestionsForMatch(game, match).map((question) => ({
+    generatedQuestionsForMatch(game, match, groupId).map((question) => ({
       ...question,
+      groupId,
       status,
       closeAt: question.closeAt || match.pollCloseAt,
     })),
@@ -1707,7 +1938,7 @@ export const generateFantasyPolls = async (input = {}) => {
   const replaceExisting = input.replaceExisting ?? true;
   const nextQuestions = replaceExisting
     ? [
-      ...game.questions.filter((question) => !touchedMatchIds.has(question.matchId) && !savedIds.has(question.id)),
+      ...game.questions.filter((question) => (question.groupId ?? defaultGroupId) !== groupId || (!touchedMatchIds.has(question.matchId) && !savedIds.has(question.id))),
       ...savedQuestions,
     ]
     : [
@@ -1729,6 +1960,7 @@ export const generateFantasyPolls = async (input = {}) => {
       questionCount: savedQuestions.length,
       status,
       replaceExisting,
+      groupId,
     },
   }));
   return { fixtures: matchesToGenerate, questions: savedQuestions, game: publicGame(updatedGame) };
@@ -1742,24 +1974,30 @@ export const generateFantasyPolls = async (input = {}) => {
  */
 export const resetAndGenerateFantasyPolls = async (input = {}) => {
   const game = await gameState();
+  const groupId = resolveGroupId(game, input.groupId);
   const keepTournamentQuestions = input.keepTournamentQuestions ?? true;
   const includeTournamentQuestions = input.includeTournamentQuestions ?? true;
-  const defaultTournamentQuestions = includeTournamentQuestions ? tournamentQuestionsForGame(game) : [];
-  const defaultTournamentQuestionIds = new Set(defaultTournamentQuestions.map((question) => question.id));
+  const defaultTournamentQuestions = includeTournamentQuestions ? tournamentQuestionsForGame(game, groupId) : [];
   const preservedTournamentQuestions = keepTournamentQuestions
-    ? game.questions.filter((question) => !question.matchId && !defaultTournamentQuestionIds.has(question.id))
+    ? game.questions.filter((question) => (
+      (question.groupId ?? defaultGroupId) !== groupId ||
+      (!question.matchId && !tournamentResetCategories.has(question.category))
+    ))
     : [];
   const baseGame = {
     ...game,
     questions: [...preservedTournamentQuestions, ...defaultTournamentQuestions],
-    predictions: [],
+    predictions: game.predictions.filter((prediction) => {
+      const question = game.questions.find((item) => item.id === prediction.questionId);
+      return question && (question.groupId ?? defaultGroupId) !== groupId;
+    }),
   };
   const savedBaseGame = await saveGame(baseGame, await audit({
     action: "POLLS_RESET",
     actorId: input.actorId ?? "admin",
     entityId: game.tournament.id,
     entityType: "MATCH",
-    metadata: { keepTournamentQuestions },
+    metadata: { keepTournamentQuestions, groupId },
   }));
   await storage.setGame(savedBaseGame);
   return generateFantasyPolls({
@@ -1767,6 +2005,7 @@ export const resetAndGenerateFantasyPolls = async (input = {}) => {
     limit: input.limit ?? 16,
     replaceExisting: true,
     matchIds: input.matchIds,
+    groupId,
     actorId: input.actorId ?? "admin",
   });
 };
@@ -1783,6 +2022,10 @@ export const createFantasyUserPoll = async (input = {}) => {
   const participant = game.participants.find((item) => item.id === participantId);
   if (!participant) {
     throw new ProviderError("Participant not found.", 404, "NOT_FOUND");
+  }
+  const groupId = resolveGroupId(game, input.groupId);
+  if (!participantCanAccessQuestion(game, participantId, { groupId })) {
+    throw new ProviderError("You are not a member of this poll group.", 403, "GROUP_ACCESS_DENIED");
   }
   const match = game.matches.find((item) => item.id === input.matchId);
   if (!match) throw new ProviderError("Match not found.", 404, "NOT_FOUND");
@@ -1814,8 +2057,9 @@ export const createFantasyUserPoll = async (input = {}) => {
   }
   const nowId = new Date().toISOString().replaceAll(/[^0-9]/g, "");
   const question = {
-    id: `user-${match.id}-${slug(input.kind)}-${slug(participantId)}-${nowId}`,
+    id: `user-${groupId}-${match.id}-${slug(input.kind)}-${slug(participantId)}-${nowId}`,
     tournamentId: game.tournament.id,
+    groupId,
     matchId: match.id,
     createdByParticipantId: participantId,
     createdAt: new Date().toISOString(),
@@ -1841,7 +2085,7 @@ export const createFantasyUserPoll = async (input = {}) => {
     actorId: participantId,
     entityId: question.id,
     entityType: "MATCH",
-    metadata: { matchId: match.id, kind: input.kind },
+    metadata: { matchId: match.id, kind: input.kind, groupId },
   }));
   return { question, game: withActiveParticipant(updatedGame, participantId) };
 };
@@ -1862,6 +2106,9 @@ export const submitFantasyPrediction = async ({ questionId, participantId, answe
   if (!question) throw new ProviderError("Question not found.", 404, "NOT_FOUND");
   if (!game.participants.some((participant) => participant.id === resolvedParticipantId)) {
     throw new ProviderError("Participant not found.", 404, "NOT_FOUND");
+  }
+  if (!participantCanAccessQuestion(game, resolvedParticipantId, question)) {
+    throw new ProviderError("This poll is not available in your groups.", 403, "GROUP_ACCESS_DENIED");
   }
   if (question.status !== "OPEN") {
     throw new ProviderError("Prediction poll is locked.", 409, "POLL_LOCKED");

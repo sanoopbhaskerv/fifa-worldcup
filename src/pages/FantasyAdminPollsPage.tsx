@@ -14,6 +14,7 @@ import { PageHeading } from "./FixturesPage";
 export default function FantasyAdminPollsPage() {
   const { data } = useFantasy();
   const [activeMatchId, setActiveMatchId] = useState(data.matches[0]?.id ?? "");
+  const [groupId, setGroupId] = useState(data.groups[0]?.id ?? "group-main");
   const saveDrafts = useSaveFantasyQuestionDrafts(data.activeParticipantId);
   const generatePolls = useGenerateFantasyPolls(data.activeParticipantId);
   const resetPolls = useResetFantasyPolls(data.activeParticipantId);
@@ -22,7 +23,7 @@ export default function FantasyAdminPollsPage() {
   const hasUnknownOptions = draft?.questions.some((question) => unknownFantasyPlayerOptions(question, data).length > 0) ?? false;
   const saveQuestions = (status: "DRAFT" | "OPEN") => {
     if (!activeMatch || !draft) return;
-    saveDrafts.mutate({ matchId: activeMatch.id, questions: draft.questions, status });
+    saveDrafts.mutate({ groupId, matchId: activeMatch.id, questions: draft.questions, status });
   };
 
   return (
@@ -33,13 +34,19 @@ export default function FantasyAdminPollsPage() {
           <div className="fantasy-squad-import">
             <strong>Bulk generation</strong>
             <p>Create template-grounded polls for the next synced fixtures using stored squads.</p>
-            <button disabled={generatePolls.isPending} onClick={() => generatePolls.mutate({ limit: 8, replaceExisting: true, status: "DRAFT" })} type="button">
+            <label>
+              Group
+              <select onChange={(event) => setGroupId(event.target.value)} value={groupId}>
+                {data.groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+              </select>
+            </label>
+            <button disabled={generatePolls.isPending} onClick={() => generatePolls.mutate({ groupId, limit: 8, replaceExisting: true, status: "DRAFT" })} type="button">
               {generatePolls.isPending ? "Generating..." : "Draft next 8"}
             </button>
-            <button disabled={generatePolls.isPending} onClick={() => generatePolls.mutate({ limit: 8, replaceExisting: true, status: "OPEN" })} type="button">
+            <button disabled={generatePolls.isPending} onClick={() => generatePolls.mutate({ groupId, limit: 8, replaceExisting: true, status: "OPEN" })} type="button">
               {generatePolls.isPending ? "Publishing..." : "Publish next 8"}
             </button>
-            <button disabled={resetPolls.isPending} onClick={() => resetPolls.mutate({ keepTournamentQuestions: true, limit: 16, replaceExisting: true, status: "OPEN" })} type="button">
+            <button disabled={resetPolls.isPending} onClick={() => resetPolls.mutate({ groupId, keepTournamentQuestions: true, limit: 16, replaceExisting: true, status: "OPEN" })} type="button">
               {resetPolls.isPending ? "Resetting..." : "Clear and publish new"}
             </button>
             {generatePolls.isSuccess && <p className="fantasy-success-note">Saved {generatePolls.data.questions.length} polls for {generatePolls.data.fixtures.length} fixtures.</p>}

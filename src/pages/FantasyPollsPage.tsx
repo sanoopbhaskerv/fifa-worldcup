@@ -1,9 +1,10 @@
 import { Link } from "react-router-dom";
+import { useState } from "react";
 import { FantasyQuestionCard } from "../features/fantasy/FantasyQuestionCard";
 import { ArrowIcon } from "../components/Icons";
 import { useFantasy } from "../app/fantasy-context";
 import { useSubmitFantasyPrediction } from "../services/fantasy-queries";
-import { fantasyDeadlineLabel, fantasyMatchTitle, fantasyPredictionForQuestion, fantasyPublishedQuestions, fantasyQuestionsForMatch } from "../utils/fantasy";
+import { fantasyDeadlineLabel, fantasyMatchTitle, fantasyPredictionForQuestion, fantasyPublishedQuestions, fantasyQuestionsForGroup, fantasyQuestionsForMatch } from "../utils/fantasy";
 import { formatDate, formatKickoff } from "../utils/football";
 import { PageHeading } from "./FixturesPage";
 
@@ -15,15 +16,25 @@ import { PageHeading } from "./FixturesPage";
 export default function FantasyPollsPage() {
   const { data } = useFantasy();
   const submitPrediction = useSubmitFantasyPrediction(data.activeParticipantId);
-  const tournamentQuestions = fantasyPublishedQuestions(data.questions).filter((question) => !question.matchId);
+  const [groupId, setGroupId] = useState(data.groups[0]?.id ?? "group-main");
+  const groupQuestions = fantasyQuestionsForGroup(groupId, data.questions);
+  const tournamentQuestions = fantasyPublishedQuestions(groupQuestions).filter((question) => !question.matchId);
   const pollMatches = data.matches
-    .map((match) => ({ match, questions: fantasyQuestionsForMatch(match.id, data.questions) }))
+    .map((match) => ({ match, questions: fantasyQuestionsForMatch(match.id, groupQuestions) }))
     .filter(({ questions }) => questions.length > 0);
 
   return (
     <div className="page fantasy-page">
       <PageHeading eyebrow="Prediction polls" title="Published polls" description="Answer open match polls before lock time. Drafts stay hidden until an admin publishes them." />
       <div className="fantasy-page-actions">
+        {data.groups.length > 1 && (
+          <label>
+            Group
+            <select onChange={(event) => setGroupId(event.target.value)} value={groupId}>
+              {data.groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+            </select>
+          </label>
+        )}
         <Link to="/fantasy/create-poll">Create poll <ArrowIcon /></Link>
       </div>
       <div className="fantasy-poll-groups">

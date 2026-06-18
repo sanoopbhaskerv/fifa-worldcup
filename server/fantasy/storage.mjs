@@ -20,6 +20,14 @@ export const fantasyRecordKeys = {
     PK: `TOURNAMENT#${tournamentId}`,
     SK: `LEADERBOARD#${String(rank).padStart(4, "0")}#${participantId}`,
   }),
+  group: (tournamentId, groupId) => ({
+    PK: `TOURNAMENT#${tournamentId}`,
+    SK: `GROUP#${groupId}`,
+  }),
+  groupMembership: (groupId, participantId) => ({
+    PK: `GROUP#${groupId}`,
+    SK: `MEMBER#${participantId}`,
+  }),
   match: (tournamentId, matchId) => ({
     PK: `TOURNAMENT#${tournamentId}`,
     SK: `MATCH#${matchId}`,
@@ -82,6 +90,8 @@ export const toFantasyStorageRecords = (game) => {
     record(fantasyRecordKeys.aiSettings(tournamentId), "AI_SETTINGS", game.aiSettings),
     ...game.teams.map((team) => record(fantasyRecordKeys.team(tournamentId, team.id), "TEAM", team)),
     ...game.squadPlayers.map((player) => record(fantasyRecordKeys.player(player.teamId, player.id), "SQUAD_PLAYER", player)),
+    ...(game.groups ?? []).map((group) => record(fantasyRecordKeys.group(tournamentId, group.id), "GROUP", group)),
+    ...(game.groupMemberships ?? []).map((membership) => record(fantasyRecordKeys.groupMembership(membership.groupId, membership.participantId), "GROUP_MEMBERSHIP", membership)),
     ...game.participants.map((participant) => record(fantasyRecordKeys.participant(tournamentId, participant.id), "PARTICIPANT", participant)),
     ...(game.participantInvites ?? []).map((invite) => record(fantasyRecordKeys.participantInvite(tournamentId, invite.participantId), "PARTICIPANT_INVITE", invite)),
     ...game.matches.map((match) => record(fantasyRecordKeys.match(tournamentId, match.id), "MATCH", match)),

@@ -1,5 +1,6 @@
+import { useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
-import { fantasyMatchTitle, fantasyParticipant } from "../utils/fantasy";
+import { fantasyGroupName, fantasyMatchTitle, fantasyParticipant, fantasyParticipantIdsForGroup, fantasyQuestionsForGroup } from "../utils/fantasy";
 import { formatKickoff } from "../utils/football";
 import { PageHeading } from "./FixturesPage";
 
@@ -12,7 +13,10 @@ const answerLabel = (answer: string | string[]) => Array.isArray(answer) ? answe
  */
 export default function FantasyAdminSubmittedPollsPage() {
   const { data } = useFantasy();
-  const visibleQuestions = data.questions
+  const [groupId, setGroupId] = useState(data.groups[0]?.id ?? "group-main");
+  const groupParticipantIds = fantasyParticipantIdsForGroup(groupId, data);
+  const groupParticipants = data.participants.filter((participant) => groupParticipantIds.has(participant.id));
+  const visibleQuestions = fantasyQuestionsForGroup(groupId, data.questions)
     .filter((question) => question.status !== "DRAFT")
     .sort((left, right) => (left.closeAt || "").localeCompare(right.closeAt || ""));
 
@@ -21,16 +25,22 @@ export default function FantasyAdminSubmittedPollsPage() {
       <PageHeading eyebrow="Admin" title="Poll responses" description="See who answered each poll and who is still pending so you can follow up." />
       <section className="content-section fantasy-submitted-polls">
         <div className="section-heading">
-          <div><span className="eyebrow">Coverage</span><h2>{visibleQuestions.length} polls</h2></div>
+          <div><span className="eyebrow">Coverage</span><h2>{visibleQuestions.length} polls</h2><p>{fantasyGroupName(groupId, data)}</p></div>
+          <label>
+            Group
+            <select onChange={(event) => setGroupId(event.target.value)} value={groupId}>
+              {data.groups.map((group) => <option key={group.id} value={group.id}>{group.name}</option>)}
+            </select>
+          </label>
         </div>
         <div className="fantasy-submitted-poll-list">
           {visibleQuestions.map((question) => {
             const match = data.matches.find((item) => item.id === question.matchId);
             const responses = data.predictions
-              .filter((prediction) => prediction.questionId === question.id)
+              .filter((prediction) => question.id === prediction.questionId && groupParticipantIds.has(prediction.participantId))
               .sort((left, right) => left.submittedAt.localeCompare(right.submittedAt));
             const answeredIds = new Set(responses.map((prediction) => prediction.participantId));
-            const pending = data.participants.filter((participant) => !answeredIds.has(participant.id));
+            const pending = groupParticipants.filter((participant) => !answeredIds.has(participant.id));
             return (
               <article className="fantasy-submitted-poll" key={question.id}>
                 <header>
@@ -39,7 +49,7 @@ export default function FantasyAdminSubmittedPollsPage() {
                     <h3>{question.text}</h3>
                     <p>{match ? fantasyMatchTitle(match, data.teams) : "Tournament poll"} · locks {formatKickoff(question.closeAt)}</p>
                   </div>
-                  <strong>{responses.length}/{data.participants.length}</strong>
+                  <strong>{responses.length}/{groupParticipants.length}</strong>
                 </header>
                 <div className="fantasy-response-columns">
                   <section>

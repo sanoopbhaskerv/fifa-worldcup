@@ -446,6 +446,17 @@ const participants: FantasyParticipant[] = [
   { id: "p-maya", name: "Maya", nickname: "Golden Brain", favoriteTeamId: "eng", avatar: "GB", role: "PLAYER", authProvider: "INVITE" },
 ];
 
+const groups = [
+  { id: "group-main", tournamentId: tournament.id, name: "Main friends league", description: "Default group for the original friends circle.", createdAt: "2026-06-17T12:00:00+05:30", createdByParticipantId: activeParticipantId, status: "ACTIVE" as const },
+  { id: "group-office", tournamentId: tournament.id, name: "Office side bets", description: "Second group with overlapping players.", createdAt: "2026-06-17T12:00:00+05:30", createdByParticipantId: activeParticipantId, status: "ACTIVE" as const },
+];
+
+const groupMemberships = [
+  ...participants.map((participant) => ({ id: `group-main-${participant.id}`, tournamentId: tournament.id, groupId: "group-main", participantId: participant.id, role: participant.id === activeParticipantId ? "OWNER" as const : "MEMBER" as const, status: "ACTIVE" as const, createdAt: "2026-06-17T12:00:00+05:30" })),
+  { id: "group-office-p-sanoop", tournamentId: tournament.id, groupId: "group-office", participantId: activeParticipantId, role: "OWNER" as const, status: "ACTIVE" as const, createdAt: "2026-06-17T12:00:00+05:30" },
+  { id: "group-office-p-maya", tournamentId: tournament.id, groupId: "group-office", participantId: "p-maya", role: "MEMBER" as const, status: "ACTIVE" as const, createdAt: "2026-06-17T12:00:00+05:30" },
+];
+
 const predictions: FantasyPrediction[] = [
   { id: "pred-1", questionId: "q-bra-arg-winner", participantId: activeParticipantId, answer: "Brazil", submittedAt: "2026-06-17T18:20:00+05:30" },
   { id: "pred-2", questionId: "q-bra-arg-first-team", participantId: activeParticipantId, answer: "Brazil", submittedAt: "2026-06-17T18:21:00+05:30" },
@@ -500,6 +511,8 @@ export const fantasyGameData: FantasyGameData = {
   teams,
   squadPlayers,
   participants,
+  groups,
+  groupMemberships,
   matches,
   questions,
   questionTemplates,

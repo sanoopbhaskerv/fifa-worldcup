@@ -122,13 +122,13 @@ export const CompetitionLayout = () => {
               <div><strong>{competition.name}</strong><span>{editionId} edition</span></div>
             </div>
             <nav>{sections.map((section) => <SectionLink key={section} section={section} competition={competition} editionId={editionId} />)}</nav>
-            <div className="desktop-nav__footer"><span>{dataQuery.data.source === "live" ? "Live provider" : "Demo fallback"}</span><small>{dataQuery.data.provider}</small><small>Updated {formatUpdated(dataQuery.data.updatedAt)}</small></div>
+            <div className="desktop-nav__footer"><span>{dataQuery.data.source === "live" ? "Live provider" : "Provider data"}</span><small>{dataQuery.data.provider}</small><small>Updated {formatUpdated(dataQuery.data.updatedAt)}</small></div>
           </aside>
           <main id="main-content" className="main-content">
             <div className="mobile-tabs" aria-label="Competition sections">{sections.map((section) => <SectionLink key={section} section={section} competition={competition} editionId={editionId} compact />)}</div>
             <div className="freshness" role="status">
               <span className={dataQuery.isFetching ? "freshness__pulse" : ""} />
-              {dataQuery.isFetching ? "Refreshing data…" : `${dataQuery.data.source === "live" ? "Live" : "Demo"} · ${online ? "Updated" : "Saved"} ${formatUpdated(dataQuery.data.updatedAt)}`}
+              {dataQuery.isFetching ? "Refreshing data…" : `${dataQuery.data.source === "live" ? "Live" : "Provider"} · ${online ? "Updated" : "Saved"} ${formatUpdated(dataQuery.data.updatedAt)}`}
             </div>
             {dataQuery.data.notice && <div className="data-notice" role="status">{dataQuery.data.notice}</div>}
             <AnimatePresence mode="wait">

@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { ArrowIcon, CalendarIcon, TableIcon, TrophyIcon } from "../components/Icons";
-import { fantasyGameData } from "../mocks/fantasy";
+import { useFantasyGame } from "../services/fantasy-queries";
 import { storage } from "../utils/storage";
 import { fantasyDeadlineLabel, fantasyOpenQuestions } from "../utils/fantasy";
 
@@ -16,9 +16,11 @@ const footballDestination = () => {
  */
 export default function HomePage() {
   const fantasyIdentity = storage.getFantasyIdentity();
-  const openQuestions = fantasyOpenQuestions(fantasyGameData);
-  const activeRow = fantasyGameData.leaderboard.find((row) => row.participantId === fantasyGameData.activeParticipantId);
-  const nextMatch = fantasyGameData.matches.find((match) => match.status === "SCHEDULED");
+  const fantasyQuery = useFantasyGame(fantasyIdentity?.participantId);
+  const fantasyData = fantasyQuery.data;
+  const openQuestions = fantasyData ? fantasyOpenQuestions(fantasyData) : [];
+  const activeRow = fantasyData?.leaderboard.find((row) => row.participantId === fantasyData.activeParticipantId);
+  const nextMatch = fantasyData?.matches.find((match) => match.status === "SCHEDULED");
   const footballPath = footballDestination();
 
   return (
@@ -47,11 +49,17 @@ export default function HomePage() {
             <span className="eyebrow">Fantasy prediction game</span>
             <TrophyIcon />
           </div>
-          <h1>{fantasyGameData.tournament.name}</h1>
+          <h1>{fantasyData?.tournament.name ?? "World Cup Friends League"}</h1>
           <p>Answer World Cup polls, track your rank, and let the AI host keep the banter moving.</p>
+          {fantasyQuery.isError && (
+            <button className="fantasy-link-button" onClick={(event) => {
+              event.preventDefault();
+              void fantasyQuery.refetch();
+            }} type="button">Fantasy data unavailable. Retry</button>
+          )}
           <dl className="home-tile__stats">
-            <div><dt>Open polls</dt><dd>{openQuestions.length}</dd></div>
-            <div><dt>Next lock</dt><dd>{nextMatch ? fantasyDeadlineLabel(nextMatch.pollCloseAt).replace(" lock", "") : "None"}</dd></div>
+            <div><dt>Open polls</dt><dd>{fantasyQuery.isPending ? "..." : openQuestions.length}</dd></div>
+            <div><dt>Next lock</dt><dd>{nextMatch ? fantasyDeadlineLabel(nextMatch.pollCloseAt).replace(" lock", "") : fantasyQuery.isError ? "Retry" : "None"}</dd></div>
             <div><dt>Your rank</dt><dd>#{activeRow?.rank ?? "-"}</dd></div>
           </dl>
           <span className="home-tile__cta">Open fantasy <ArrowIcon /></span>
@@ -67,7 +75,7 @@ export default function HomePage() {
           <dl className="home-tile__stats">
             <div><dt>Default</dt><dd>WC 2026</dd></div>
             <div><dt>Sections</dt><dd>6</dd></div>
-            <div><dt>Data</dt><dd>Live/demo</dd></div>
+            <div><dt>Data</dt><dd>Live</dd></div>
           </dl>
           <span className="home-tile__cta">Browse football <ArrowIcon /></span>
         </Link>

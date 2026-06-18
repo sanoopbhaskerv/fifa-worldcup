@@ -13,6 +13,19 @@ export const fantasyTeamName = (teamId: string, teams: FantasyTeam[]) =>
 export const fantasyParticipant = (participantId: string, participants: FantasyParticipant[]) =>
   participants.find((participant) => participant.id === participantId);
 
+export const fantasyGroupName = (groupId: string | undefined, data: FantasyGameData) =>
+  data.groups.find((group) => group.id === groupId)?.name ?? "Main friends league";
+
+export const fantasyParticipantIdsForGroup = (groupId: string | undefined, data: FantasyGameData) => {
+  const resolvedGroupId = groupId ?? data.groups[0]?.id;
+  return new Set(data.groupMemberships
+    .filter((membership) => membership.groupId === resolvedGroupId && membership.status === "ACTIVE")
+    .map((membership) => membership.participantId));
+};
+
+export const fantasyQuestionsForGroup = (groupId: string | undefined, questions: FantasyQuestion[]) =>
+  questions.filter((question) => (question.groupId ?? "group-main") === (groupId ?? "group-main"));
+
 export const fantasyQuestionsForMatch = (matchId: string, questions: FantasyQuestion[]) =>
   questions.filter((question) => question.matchId === matchId && question.status !== "DRAFT");
 

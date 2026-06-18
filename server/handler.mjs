@@ -2,6 +2,7 @@ import { getLiveMatchDetails } from "./api-football.mjs";
 import { jsonError, ProviderError } from "./errors.mjs";
 import {
   createFantasyParticipant,
+  createFantasyGroup,
   createFantasySignup,
   createFantasyUserPoll,
   changeFantasyParticipantPassword,
@@ -10,6 +11,7 @@ import {
   joinFantasyGame,
   listFantasyAiSettings,
   listFantasyFixtures,
+  listFantasyGroups,
   listFantasyParticipants,
   listFantasyQuestionTemplates,
   listFantasySquads,
@@ -24,6 +26,7 @@ import {
   submitFantasyPrediction,
   updateFantasyAiSettings,
   updateFantasyFixture,
+  updateFantasyGroup,
   updateFantasyParticipant,
   updateFantasyParticipantRole,
   updateFantasyQuestionTemplate,
@@ -146,6 +149,25 @@ export const handleApiRequest = async ({
 
     if (requestMethod === "POST" && path === "/api/fantasy/admin/participants") {
       return response(200, await createFantasyParticipant(parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
+    if (requestMethod === "GET" && path === "/api/fantasy/admin/groups") {
+      return response(200, await listFantasyGroups(), {
+        "cache-control": "private, max-age=5, stale-while-revalidate=30",
+      });
+    }
+
+    if (requestMethod === "POST" && path === "/api/fantasy/admin/groups") {
+      return response(200, await createFantasyGroup(parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
+    const groupMatch = path.match(/^\/api\/fantasy\/admin\/groups\/([^/]+)$/);
+    if (requestMethod === "PUT" && groupMatch) {
+      return response(200, await updateFantasyGroup(decodeURIComponent(groupMatch[1]), parseJsonBody(body)), {
         "cache-control": "no-store",
       });
     }

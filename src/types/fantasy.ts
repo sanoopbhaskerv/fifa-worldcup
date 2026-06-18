@@ -115,6 +115,26 @@ export interface FantasyAdminParticipant extends FantasyParticipant {
   invite?: FantasyParticipantInvite;
 }
 
+export interface FantasyGroup {
+  id: string;
+  tournamentId: string;
+  name: string;
+  description?: string;
+  createdAt: string;
+  createdByParticipantId: string;
+  status: "ACTIVE" | "ARCHIVED";
+}
+
+export interface FantasyGroupMembership {
+  id: string;
+  tournamentId: string;
+  groupId: string;
+  participantId: string;
+  role: "OWNER" | "MEMBER";
+  status: "ACTIVE" | "REMOVED";
+  createdAt: string;
+}
+
 export interface FantasyMatch {
   id: string;
   tournamentId: string;
@@ -130,6 +150,7 @@ export interface FantasyMatch {
 export interface FantasyQuestion {
   id: string;
   tournamentId: string;
+  groupId?: string;
   matchId?: string;
   createdByParticipantId?: string;
   createdAt?: string;
@@ -240,8 +261,8 @@ export interface FantasyAuditRecord {
   id: string;
   tournamentId: string;
   actorId: string;
-  action: "AI_SETTINGS_UPDATED" | "FIXTURE_UPDATED" | "FIXTURES_SYNCED" | "PARTICIPANT_CREATED" | "PARTICIPANT_JOINED" | "PARTICIPANT_PASSWORD_CHANGED" | "PARTICIPANT_ROLE_UPDATED" | "PARTICIPANT_UPDATED" | "POLLS_GENERATED" | "POLLS_GENERATED_AND_PUBLISHED" | "POLLS_RESET" | "PREDICTION_SUBMITTED" | "QUESTION_DRAFTS_SAVED" | "QUESTIONS_PUBLISHED" | "QUESTION_TEMPLATE_UPDATED" | "RESULT_SAVED" | "SCORES_PUBLISHED" | "SQUADS_IMPORTED" | "SQUAD_PLAYER_UPDATED" | "TEAM_UPDATED" | "TOURNAMENT_UPDATED" | "USER_POLL_CREATED" | "WORLD_CUP_SQUADS_SEEDED";
-  entityType: "AI_SETTINGS" | "PARTICIPANT" | "PREDICTION" | "QUESTION_TEMPLATE" | "RESULT" | "MATCH" | "SQUAD" | "SQUAD_PLAYER" | "TEAM" | "TOURNAMENT";
+  action: "AI_SETTINGS_UPDATED" | "FIXTURE_UPDATED" | "FIXTURES_SYNCED" | "GROUP_CREATED" | "GROUP_UPDATED" | "PARTICIPANT_CREATED" | "PARTICIPANT_JOINED" | "PARTICIPANT_PASSWORD_CHANGED" | "PARTICIPANT_ROLE_UPDATED" | "PARTICIPANT_UPDATED" | "POLLS_GENERATED" | "POLLS_GENERATED_AND_PUBLISHED" | "POLLS_RESET" | "PREDICTION_SUBMITTED" | "QUESTION_DRAFTS_SAVED" | "QUESTIONS_PUBLISHED" | "QUESTION_TEMPLATE_UPDATED" | "RESULT_SAVED" | "SCORES_PUBLISHED" | "SQUADS_IMPORTED" | "SQUAD_PLAYER_UPDATED" | "TEAM_UPDATED" | "TOURNAMENT_UPDATED" | "USER_POLL_CREATED" | "WORLD_CUP_SQUADS_SEEDED";
+  entityType: "AI_SETTINGS" | "GROUP" | "PARTICIPANT" | "PREDICTION" | "QUESTION_TEMPLATE" | "RESULT" | "MATCH" | "SQUAD" | "SQUAD_PLAYER" | "TEAM" | "TOURNAMENT";
   entityId: string;
   metadata: Record<string, unknown>;
   createdAt: string;
@@ -252,6 +273,8 @@ export interface FantasyGameData {
   teams: FantasyTeam[];
   squadPlayers: FantasySquadPlayer[];
   participants: FantasyParticipant[];
+  groups: FantasyGroup[];
+  groupMemberships: FantasyGroupMembership[];
   matches: FantasyMatch[];
   questions: FantasyQuestion[];
   questionTemplates: FantasyQuestionTemplate[];

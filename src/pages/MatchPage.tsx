@@ -39,6 +39,7 @@ export default function MatchPage() {
       <div className="match-detail-grid">
         <section className="content-section">
           <div className="section-heading"><div><span className="eyebrow">Key moments</span><h2>Match timeline</h2></div>{detailQuery.isFetching && <small className="loading-inline">Refreshing…</small>}</div>
+          {detailQuery.isError && <p className="partial-note" role="alert">Detailed match data could not be loaded. <button className="fantasy-link-button" onClick={() => void detailQuery.refetch()} type="button">Retry</button></p>}
           {events.length > 0 ? <ol className="timeline">{events.map((event) => <li key={event.id}><time>{event.minute}'{event.extraMinute ? `+${event.extraMinute}` : ""}</time><span className={`event-dot event-dot--${event.type}`} /><div><strong>{eventLabels[event.type]} · {event.player}</strong><span>{event.assist ? `Assist: ${event.assist} · ` : ""}{event.detail}</span></div></li>)}</ol> : <p className="partial-note">A detailed event feed is not available for this match.</p>}
           {details?.notice && <p className="partial-note">{details.notice}</p>}
         </section>

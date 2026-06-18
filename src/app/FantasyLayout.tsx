@@ -40,7 +40,7 @@ export const FantasyLayout = () => {
     return <div className="loading-screen" role="status"><span className="loading-mark">F</span><strong>Loading fantasy game…</strong></div>;
   }
   if (gameQuery.isError || !gameQuery.data) {
-    return <div className="error-screen"><span className="eyebrow">Fantasy unavailable</span><h1>We could not load the prediction game.</h1><button className="button button--primary" onClick={() => void gameQuery.refetch()}>Try again</button></div>;
+    return <div className="error-screen"><span className="eyebrow">Fantasy unavailable</span><h1>We could not load the prediction game.</h1><p>{gameQuery.error?.message ?? "Please check the backend connection and retry."}</p><button className="button button--primary" onClick={() => void gameQuery.refetch()}>Try again</button></div>;
   }
 
   const data = { ...gameQuery.data, activeParticipantId: identity.participantId };
@@ -148,6 +148,11 @@ const FantasyJoinScreen = ({ onJoined }: { onJoined: (identity: StoredFantasyIde
           <span className="competition-emblem competition-emblem--large">WC</span>
           <span className="eyebrow">Friends league</span>
           <h1>Login or sign up</h1>
+          {previewGame.isError && (
+            <div className="data-notice" role="alert">
+              Fantasy setup could not be loaded. <button className="fantasy-link-button" onClick={() => void previewGame.refetch()} type="button">Retry</button>
+            </div>
+          )}
           <form
             aria-label="Email or phone login"
             onSubmit={(event) => {
