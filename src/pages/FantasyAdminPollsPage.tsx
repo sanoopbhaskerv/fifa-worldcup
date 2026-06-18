@@ -1,12 +1,13 @@
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
-import { LabeledInput, LabeledSelect } from "../components/FormFields";
+import { LabeledSelect } from "../components/FormFields";
 import { ErrorMessage, SuccessMessage } from "../components/FeedbackMessages";
 import { useGenerateFantasyPolls, useResetFantasyPolls, useSaveFantasyQuestionDrafts } from "../services/fantasy-queries";
 import { generateFantasyQuestionDraft, unknownFantasyPlayerOptions } from "../utils/fantasy-ai";
 import { fantasyDeadlineLabel, fantasyMatchTitle } from "../utils/fantasy";
 import { formatDate, formatKickoff } from "../utils/football";
 import { PageHeading } from "../components/PageSections";
+import { MatchDateRangeFilter, matchPassesDateRange, nextSevenDaysMatchRange } from "../components/MatchDateRangeFilter";
 
 /**
  * Displays local AI-host-style poll drafts generated from templates and squad data.
@@ -17,13 +18,13 @@ export default function FantasyAdminPollsPage() {
   const { data } = useFantasy();
   const [activeMatchId, setActiveMatchId] = useState(data.matches[0]?.id ?? "");
   const [groupId, setGroupId] = useState(data.groups[0]?.id ?? "group-main");
-  const [matchDate, setMatchDate] = useState("");
+  const [dateRange, setDateRange] = useState(() => nextSevenDaysMatchRange());
   const saveDrafts = useSaveFantasyQuestionDrafts(data.activeParticipantId);
   const generatePolls = useGenerateFantasyPolls(data.activeParticipantId);
   const resetPolls = useResetFantasyPolls(data.activeParticipantId);
   const filteredMatches = useMemo(() => (
-    matchDate ? data.matches.filter((match) => match.kickoff.slice(0, 10) === matchDate) : data.matches
-  ), [data.matches, matchDate]);
+    data.matches.filter((match) => matchPassesDateRange(match, dateRange))
+  ), [data.matches, dateRange]);
   const matchNumbers = useMemo(() => new Map(
     [...data.matches]
       .sort((left, right) => left.kickoff.localeCompare(right.kickoff))
@@ -39,23 +40,16 @@ export default function FantasyAdminPollsPage() {
     }];
   })), [data.matches, data.predictions, data.questions, groupId]);
   const upcomingFilteredMatches = filteredMatches.filter((match) => match.status === "SCHEDULED");
-  const activeMatch = filteredMatches.find((match) => match.id === activeMatchId);
+  const resolvedActiveMatchId = filteredMatches.some((match) => match.id === activeMatchId)
+    ? activeMatchId
+    : (filteredMatches[0]?.id ?? "");
+  const activeMatch = filteredMatches.find((match) => match.id === resolvedActiveMatchId);
   const draft = useMemo(() => activeMatch ? generateFantasyQuestionDraft(activeMatch, data) : undefined, [activeMatch, data]);
   const hasUnknownOptions = draft?.questions.some((question) => unknownFantasyPlayerOptions(question, data).length > 0) ?? false;
   const groupOptions = data.groups.map((group) => ({ value: group.id, label: group.name }));
   const canCreatePollsForActiveMatch = activeMatch?.status === "SCHEDULED";
   const bulkMatchIds = upcomingFilteredMatches.map((match) => match.id);
   const bulkPayload = { groupId, limit: bulkMatchIds.length || 1, matchIds: bulkMatchIds, replaceExisting: true, status: "DRAFT" as const };
-
-  useEffect(() => {
-    if (filteredMatches.length === 0) {
-      setActiveMatchId("");
-      return;
-    }
-    if (!filteredMatches.some((match) => match.id === activeMatchId)) {
-      setActiveMatchId(filteredMatches[0].id);
-    }
-  }, [activeMatchId, filteredMatches]);
 
   const saveQuestions = (status: "DRAFT" | "OPEN") => {
     if (!activeMatch || !draft || !canCreatePollsForActiveMatch) return;
@@ -71,8 +65,7 @@ export default function FantasyAdminPollsPage() {
             <strong>Bulk generation</strong>
             <p>Create template-grounded polls for the next synced fixtures using stored squads.</p>
             <LabeledSelect label="Group" onChange={setGroupId} options={groupOptions} value={groupId} />
-            <LabeledInput label="Match date" onChange={setMatchDate} type="date" value={matchDate} />
-            {matchDate && <button onClick={() => setMatchDate("")} type="button">Clear date</button>}
+            <MatchDateRangeFilter onChange={setDateRange} value={dateRange} />
             <button disabled={generatePolls.isPending || bulkMatchIds.length === 0} onClick={() => generatePolls.mutate(bulkPayload)} type="button">
               {generatePolls.isPending ? "Generating..." : "Draft next 8"}
             </button>
@@ -82,7 +75,7 @@ export default function FantasyAdminPollsPage() {
             <button disabled={resetPolls.isPending || bulkMatchIds.length === 0} onClick={() => resetPolls.mutate({ groupId, keepTournamentQuestions: true, limit: bulkMatchIds.length || 1, matchIds: bulkMatchIds, replaceExisting: true, status: "OPEN" })} type="button">
               {resetPolls.isPending ? "Resetting..." : "Clear and publish new"}
             </button>
-            {bulkMatchIds.length === 0 && <ErrorMessage>No upcoming matches found for this date.</ErrorMessage>}
+            {bulkMatchIds.length === 0 && <ErrorMessage>No upcoming matches found for this range.</ErrorMessage>}
             {generatePolls.isSuccess && <SuccessMessage>Saved {generatePolls.data.questions.length} polls for {generatePolls.data.fixtures.length} fixtures.</SuccessMessage>}
             {generatePolls.isError && <ErrorMessage>{generatePolls.error.message}</ErrorMessage>}
             {resetPolls.isSuccess && <SuccessMessage>Reset complete: {resetPolls.data.questions.length} fresh polls published.</SuccessMessage>}
@@ -146,7 +139,7 @@ export default function FantasyAdminPollsPage() {
               <div>
                 <span className="eyebrow">No fixtures</span>
                 <h2>No matches found</h2>
-                <p>Clear the date filter or choose another match date.</p>
+                <p>Choose a wider date range or use All matches.</p>
               </div>
             </div>
           </section>

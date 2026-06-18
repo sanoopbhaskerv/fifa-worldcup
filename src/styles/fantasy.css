@@ -540,6 +540,40 @@
 	opacity: .56;
 }
 
+.match-date-range-filter {
+	display: grid;
+	gap: 8px;
+}
+
+.match-date-range-filter__fields,
+.match-date-range-filter__actions {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: end;
+}
+
+.match-date-range-filter__fields .labeled-input {
+	min-width: 140px;
+	flex: 1 1 140px;
+}
+
+.match-date-range-filter__actions button {
+	min-height: 30px;
+	padding: 0 9px;
+	border: 1px solid var(--line);
+	border-radius: 8px;
+	color: var(--text);
+	background: var(--surface-2);
+	font-size: 10px;
+	font-weight: 900;
+	cursor: pointer;
+}
+
+.match-date-range-filter__actions button:hover {
+	border-color: color-mix(in srgb, var(--accent) 35%, transparent);
+}
+
 .fantasy-poll-list {
 	display: grid;
 	gap: var(--space-4);

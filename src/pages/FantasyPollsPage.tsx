@@ -9,6 +9,7 @@ import { fantasyDeadlineLabel, fantasyMatchTitle, fantasyPredictionForQuestion, 
 import { formatDate, formatKickoff } from "../utils/football";
 import { PageHeading } from "../components/PageSections";
 import type { FantasyQuestion } from "../types/fantasy";
+import { MatchDateRangeFilter, matchPassesDateRange, nextSevenDaysMatchRange } from "../components/MatchDateRangeFilter";
 
 /**
  * Displays match and tournament prediction polls.
@@ -21,15 +22,20 @@ export default function FantasyPollsPage() {
   const submitPredictions = useSubmitFantasyPredictions(data.activeParticipantId);
   const [groupId, setGroupId] = useState(data.groups[0]?.id ?? "group-main");
   const [matchId, setMatchId] = useState<string>("");
+  const [dateRange, setDateRange] = useState(() => nextSevenDaysMatchRange());
   const [draftAnswers, setDraftAnswers] = useState<Record<string, string>>({});
   const groupQuestions = fantasyQuestionsForGroup(groupId, data.questions);
   const tournamentQuestions = fantasyPublishedQuestions(groupQuestions).filter((question) => !question.matchId);
   const pollMatches = data.matches
     .map((match) => ({ match, questions: fantasyQuestionsForMatch(match.id, groupQuestions) }))
     .filter(({ questions }) => questions.length > 0);
-  const filteredPollMatches = matchId
-    ? pollMatches.filter(({ match }) => match.id === matchId)
-    : pollMatches;
+  const dateFilteredPollMatches = pollMatches.filter(({ match }) => matchPassesDateRange(match, dateRange));
+  const resolvedMatchId = matchId && dateFilteredPollMatches.some(({ match }) => match.id === matchId)
+    ? matchId
+    : "";
+  const filteredPollMatches = resolvedMatchId
+    ? dateFilteredPollMatches.filter(({ match }) => match.id === resolvedMatchId)
+    : dateFilteredPollMatches;
   const initialAnswer = (question: FantasyQuestion) => {
     const prediction = fantasyPredictionForQuestion(question.id, data.activeParticipantId, data);
     return Array.isArray(prediction?.answer) ? prediction.answer[0] : prediction?.answer ?? "";
@@ -47,7 +53,7 @@ export default function FantasyPollsPage() {
     setDraftAnswers((current) => Object.fromEntries(Object.entries(current).filter(([questionId]) => !questionIds.includes(questionId))));
   };
   const groupOptions = data.groups.map((group) => ({ value: group.id, label: group.name }));
-  const matchOptions = pollMatches.map(({ match }) => ({
+  const matchOptions = dateFilteredPollMatches.map(({ match }) => ({
     value: match.id,
     label: `${fantasyMatchTitle(match, data.teams)} – ${formatDate(match.kickoff, true)}`,
   }));
@@ -72,9 +78,10 @@ export default function FantasyPollsPage() {
             label="Match"
             onChange={setMatchId}
             options={[{ value: "", label: "All matches" }, ...matchOptions]}
-            value={matchId}
+            value={resolvedMatchId}
           />
         )}
+        <MatchDateRangeFilter onChange={setDateRange} value={dateRange} />
         <Link to="/fantasy/create-poll">Create poll <ArrowIcon /></Link>
       </div>
       <div className="fantasy-poll-groups">
@@ -82,6 +89,13 @@ export default function FantasyPollsPage() {
           <section className="content-section fantasy-poll-group">
             <div className="section-heading">
               <div><span className="eyebrow">Setup pending</span><h2>No published polls yet</h2><p>Sync fixtures, generate drafts, then publish the polls from admin.</p></div>
+            </div>
+          </section>
+        )}
+        {filteredPollMatches.length === 0 && pollMatches.length > 0 && (
+          <section className="content-section fantasy-poll-group">
+            <div className="section-heading">
+              <div><span className="eyebrow">No matches</span><h2>No polls in this range</h2><p>Choose a wider date range or use All matches.</p></div>
             </div>
           </section>
         )}
@@ -133,7 +147,7 @@ export default function FantasyPollsPage() {
             </section>
           );
         })}
-        {tournamentQuestions.length > 0 && !matchId && (
+        {tournamentQuestions.length > 0 && !resolvedMatchId && dateRange.fromDate === "" && dateRange.toDate === "" && !dateRange.groupStageOnly && (
           <section className="content-section fantasy-poll-group">
             <div className="section-heading">
               <div><span className="eyebrow">Tournament-long</span><h2>Big calls</h2><p>These lock before the tournament starts and carry higher points.</p></div>

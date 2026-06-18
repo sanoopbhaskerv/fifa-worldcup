@@ -120,7 +120,8 @@ describe("fantasy prediction game", () => {
     expect(screen.queryByText("Tournament-long")).not.toBeInTheDocument();
   });
 
-  it("renders match-level changed-pick save controls", () => {
+  it("renders match-level changed-pick save controls", async () => {
+    const user = userEvent.setup();
     vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({ data: fantasyGameData });
 
     renderWithQueryClient(
@@ -130,6 +131,10 @@ describe("fantasy prediction game", () => {
     );
 
     expect(screen.getByRole("heading", { name: "Brazil vs Argentina" })).toBeInTheDocument();
+    expect(screen.getByLabelText("From date")).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "England vs Spain" })).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "All matches" }));
+    expect(screen.getByRole("heading", { name: "England vs Spain" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "All saved" }).length).toBeGreaterThan(0);
   });
 
@@ -183,7 +188,10 @@ describe("fantasy prediction game", () => {
 
     renderWithQueryClient(<FantasyAdminPollsPage />);
 
-    await user.type(screen.getByLabelText("Match date"), "2026-06-16");
+    await user.clear(screen.getByLabelText("From date"));
+    await user.type(screen.getByLabelText("From date"), "2026-06-16");
+    await user.clear(screen.getByLabelText("To date"));
+    await user.type(screen.getByLabelText("To date"), "2026-06-16");
 
     expect(screen.queryByRole("heading", { name: "Brazil vs Argentina" })).not.toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "England vs Spain" })).toBeInTheDocument();
