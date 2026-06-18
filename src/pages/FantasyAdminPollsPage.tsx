@@ -24,6 +24,20 @@ export default function FantasyAdminPollsPage() {
   const filteredMatches = useMemo(() => (
     matchDate ? data.matches.filter((match) => match.kickoff.slice(0, 10) === matchDate) : data.matches
   ), [data.matches, matchDate]);
+  const matchNumbers = useMemo(() => new Map(
+    [...data.matches]
+      .sort((left, right) => left.kickoff.localeCompare(right.kickoff))
+      .map((match, index) => [match.id, index + 1]),
+  ), [data.matches]);
+  const matchPollSummaries = useMemo(() => new Map(data.matches.map((match) => {
+    const questions = data.questions.filter((question) => question.matchId === match.id && (question.groupId ?? "group-main") === groupId);
+    const questionIds = new Set(questions.map((question) => question.id));
+    return [match.id, {
+      drafted: questions.filter((question) => question.status === "DRAFT").length,
+      published: questions.filter((question) => question.status === "OPEN").length,
+      submitted: data.predictions.filter((prediction) => questionIds.has(prediction.questionId)).length,
+    }];
+  })), [data.matches, data.predictions, data.questions, groupId]);
   const upcomingFilteredMatches = filteredMatches.filter((match) => match.status === "SCHEDULED");
   const activeMatch = filteredMatches.find((match) => match.id === activeMatchId);
   const draft = useMemo(() => activeMatch ? generateFantasyQuestionDraft(activeMatch, data) : undefined, [activeMatch, data]);
@@ -76,8 +90,13 @@ export default function FantasyAdminPollsPage() {
           </div>
           {filteredMatches.map((match) => (
             <button className={match.id === activeMatch?.id ? "fantasy-match-button fantasy-match-button--active" : "fantasy-match-button"} key={match.id} onClick={() => setActiveMatchId(match.id)} type="button">
-              <strong>{fantasyMatchTitle(match, data.teams)}</strong>
+              <strong><span>Match {matchNumbers.get(match.id) ?? "-"}</span>{fantasyMatchTitle(match, data.teams)}</strong>
               <span>{match.status.toLowerCase()} · {match.importance.replace("_", " ")} · {formatDate(match.kickoff, true)} · {formatKickoff(match.kickoff)}</span>
+              <span className="fantasy-match-button__indicators">
+                <em>{matchPollSummaries.get(match.id)?.drafted ?? 0} drafted</em>
+                <em>{matchPollSummaries.get(match.id)?.published ?? 0} published</em>
+                <em>{matchPollSummaries.get(match.id)?.submitted ?? 0} submitted</em>
+              </span>
             </button>
           ))}
         </aside>

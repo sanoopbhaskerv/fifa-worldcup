@@ -1120,6 +1120,35 @@
 	letter-spacing: .06em;
 }
 
+.fantasy-match-button strong {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+	align-items: center;
+}
+
+.fantasy-match-button strong span,
+.fantasy-match-button__indicators em {
+	width: max-content;
+	padding: 3px 7px;
+	border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+	border-radius: 8px;
+	font-size: 9px;
+	font-style: normal;
+	font-weight: 900;
+	line-height: 1;
+	text-transform: uppercase;
+	letter-spacing: .06em;
+	opacity: .82;
+}
+
+.fantasy-match-button__indicators {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin-top: 3px;
+}
+
 .fantasy-participants-admin {
 	display: grid;
 	gap: 16px;
