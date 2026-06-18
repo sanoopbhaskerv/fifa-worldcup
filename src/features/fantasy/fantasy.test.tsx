@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
@@ -136,6 +136,25 @@ describe("fantasy prediction game", () => {
     await user.click(screen.getByRole("button", { name: "All matches" }));
     expect(screen.getByRole("heading", { name: "England vs Spain" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "All saved" }).length).toBeGreaterThan(0);
+  });
+
+  it("opens poll filters in a dialog with the match filter inside", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({ data: fantasyGameData });
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <FantasyPollsPage />
+      </MemoryRouter>,
+    );
+
+    await user.click(screen.getByRole("button", { name: /Filters/ }));
+
+    const dialog = await screen.findByRole("dialog", { name: /Filter polls/ });
+    expect(within(dialog).getByLabelText("Match")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("From date")).toBeInTheDocument();
+    expect(within(dialog).getByLabelText("To date")).toBeInTheDocument();
+    expect(within(dialog).getByRole("button", { name: "All matches" })).toBeInTheDocument();
   });
 
   it("renders admin score review rows", () => {

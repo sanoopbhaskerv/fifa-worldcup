@@ -495,6 +495,10 @@
 	width: 14px;
 }
 
+.fantasy-page-actions__inline-filters {
+	display: none;
+}
+
 .fantasy-poll-group .section-heading {
 	align-items: start;
 }
@@ -1929,13 +1933,16 @@
 	}
 
 	.fantasy-squad-admin,
-	.fantasy-admin-polls,
 	.fantasy-admin-fixtures,
 	.fantasy-tournament-admin,
 	.fantasy-template-admin,
 	.fantasy-ai-admin {
 		grid-template-columns: 280px minmax(0, 1fr);
 		align-items: start;
+	}
+
+	.fantasy-admin-polls {
+		grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
 	}
 
 	.fantasy-participants-admin {
@@ -2017,7 +2024,6 @@
 	}
 }
 
-/* Mobile Filter Trigger and Dialog Popup Styles */
 .fantasy-page-actions__filter-trigger {
   display: inline-flex;
   align-items: center;
@@ -2055,8 +2061,20 @@
   font-weight: 900;
 }
 
+.fantasy-filter-backdrop {
+  position: fixed;
+  z-index: 120;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  padding-top: env(safe-area-inset-top);
+  background: rgba(0, 0, 0, .72);
+}
+
 .fantasy-filter-dialog {
   width: 100%;
+  max-width: 100vw;
   max-height: min(88vh, 850px);
   overflow-y: auto;
   padding: 18px 14px calc(22px + env(safe-area-inset-bottom));
@@ -2074,6 +2092,24 @@
   gap: 16px;
 }
 
+.fantasy-filter-dialog-body .labeled-select,
+.fantasy-filter-dialog-body .labeled-input,
+.fantasy-filter-dialog-body .labeled-select__control,
+.fantasy-filter-dialog-body .labeled-input__control,
+.fantasy-filter-dialog-body .match-date-range-filter {
+  width: 100%;
+  min-width: 0;
+}
+
+.fantasy-filter-dialog-body .match-date-range-filter__fields,
+.fantasy-filter-dialog-body .match-date-range-filter__actions {
+  width: 100%;
+}
+
+.fantasy-filter-dialog-body .match-date-range-filter__fields .labeled-input {
+  flex-basis: 100%;
+}
+
 .fantasy-filter-dialog-footer {
   display: flex;
   justify-content: flex-end;
@@ -2081,15 +2117,36 @@
 }
 
 @media (max-width: 759px) {
+  .fantasy-page-actions {
+    display: flex !important;
+    flex-wrap: wrap;
+    align-items: flex-end;
+    justify-content: space-between;
+    width: 100%;
+    gap: 12px;
+    margin: 8px 0 16px;
+  }
+  .fantasy-page-actions__group-select {
+    flex: 1 1 140px;
+    min-width: 140px;
+  }
   .fantasy-page-actions__inline-filters {
     display: none !important;
   }
   .fantasy-page-actions__filter-trigger {
     display: inline-flex !important;
+    flex: 0 0 auto;
+  }
+  .fantasy-page-actions a {
+    flex: 0 0 auto;
   }
 }
 
 @media (min-width: 760px) {
+  .fantasy-page-actions__group-select {
+    width: 160px;
+    flex: 0 0 160px;
+  }
   .fantasy-page-actions__inline-filters {
     display: flex !important;
     align-items: flex-end;
@@ -2098,7 +2155,7 @@
   .fantasy-page-actions__filter-trigger {
     display: none !important;
   }
-  .dialog-backdrop {
+  .fantasy-filter-backdrop {
     align-items: center;
     padding: 30px;
   }
@@ -2108,4 +2165,3 @@
     padding: 24px;
   }
 }
-

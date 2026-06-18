@@ -1,7 +1,7 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
 import { createPortal } from "react-dom";
-import { AnimatePresence, motion } from "framer-motion";
+import { motion } from "framer-motion";
 import { FantasyQuestionCard } from "../features/fantasy/FantasyQuestionCard";
 import { ArrowIcon, CloseIcon } from "../components/Icons";
 import { useFantasy } from "../app/fantasy-context";
@@ -19,7 +19,7 @@ import { MatchDateRangeFilter, matchPassesDateRange, nextSevenDaysMatchRange } f
  * @returns Polls page.
  */
 const FilterIcon = () => (
-  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14 }}>
+  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{ width: 14, height: 14, pointerEvents: "none" }}>
     <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3" />
   </svg>
 );
@@ -68,15 +68,14 @@ export default function FantasyPollsPage() {
   }));
 
   const activeFilterCount = (resolvedMatchId ? 1 : 0) +
-    (dateRange.fromDate || dateRange.toDate || dateRange.groupStageOnly ? 1 : 0) +
-    (groupId !== (data.groups[0]?.id ?? "group-main") ? 1 : 0);
+    (dateRange.fromDate || dateRange.toDate || dateRange.groupStageOnly ? 1 : 0);
 
   return (
     <div className="page fantasy-page">
       <PageHeading eyebrow="Prediction polls" title="Published polls" description="Answer open match polls before lock time. Drafts stay hidden until an admin publishes them." />
       <div className="fantasy-page-actions">
-        <div className="fantasy-page-actions__inline-filters">
-          {data.groups.length > 1 && (
+        {data.groups.length > 1 && (
+          <div className="fantasy-page-actions__group-select">
             <LabeledSelect
               label="Group"
               onChange={(value) => {
@@ -86,7 +85,10 @@ export default function FantasyPollsPage() {
               options={groupOptions}
               value={groupId}
             />
-          )}
+          </div>
+        )}
+
+        <div className="fantasy-page-actions__inline-filters">
           {pollMatches.length > 1 && (
             <LabeledSelect
               label="Match"
@@ -218,29 +220,27 @@ export default function FantasyPollsPage() {
           </section>
         )}
       </div>
-      <AnimatePresence>
-        {isFilterOpen && createPortal(
+      {isFilterOpen && createPortal(
           <motion.div
-            className="dialog-backdrop"
+            className="dialog-backdrop fantasy-filter-backdrop"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
             onMouseDown={() => setIsFilterOpen(false)}
           >
             <motion.section
               role="dialog"
               aria-modal="true"
+              aria-labelledby="fantasy-poll-filter-title"
               className="fantasy-filter-dialog"
               initial={{ opacity: 0, y: 30, scale: 0.98 }}
               animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 20 }}
               transition={{ duration: 0.2 }}
               onMouseDown={(event) => event.stopPropagation()}
             >
               <header className="picker-header">
                 <div>
                   <span className="eyebrow">Prediction polls</span>
-                  <h2>Filter polls</h2>
+                  <h2 id="fantasy-poll-filter-title">Filter polls</h2>
                 </div>
                 <button
                   className="icon-button"
@@ -252,17 +252,6 @@ export default function FantasyPollsPage() {
                 </button>
               </header>
               <div className="fantasy-filter-dialog-body">
-                {data.groups.length > 1 && (
-                  <LabeledSelect
-                    label="Group"
-                    onChange={(value) => {
-                      setGroupId(value);
-                      setMatchId("");
-                    }}
-                    options={groupOptions}
-                    value={groupId}
-                  />
-                )}
                 {pollMatches.length > 1 && (
                   <LabeledSelect
                     label="Match"
@@ -286,7 +275,6 @@ export default function FantasyPollsPage() {
           </motion.div>,
           document.body
         )}
-      </AnimatePresence>
     </div>
   );
 }
