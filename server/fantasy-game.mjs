@@ -11,7 +11,7 @@ const defaultGroupId = "group-main";
 
 const tournament = {
   id: "world-cup-friends-2026",
-  name: "World Cup Friends League",
+  name: "Friend Prediction Leaague",
   competitionId: "world-cup",
   editionId: "2026",
   startDate: "2026-06-11",

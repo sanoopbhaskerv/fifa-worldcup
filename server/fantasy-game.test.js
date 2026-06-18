@@ -21,7 +21,7 @@ describe("fantasy game API", () => {
     expect(response.status).toBe(200);
     expect(response.body.tournament).toMatchObject({
       id: "world-cup-friends-2026",
-      name: "World Cup Friends League",
+      name: "Friend Prediction Leaague",
     });
     expect(response.body.teams).toHaveLength(48);
     expect(response.body.squadPlayers).toHaveLength(1248);
@@ -304,7 +304,7 @@ describe("fantasy game API", () => {
       method: "POST",
       url: "/api/fantasy/admin/tournament",
       body: JSON.stringify({
-        name: "World Cup Friends League 2026",
+        name: "Friend Prediction Leaague 2026",
         status: "UPCOMING",
         startDate: "2026-06-11",
         endDate: "2026-07-19",
@@ -316,7 +316,7 @@ describe("fantasy game API", () => {
 
     expect(response.status).toBe(200);
     expect(response.body.tournament).toMatchObject({
-      name: "World Cup Friends League 2026",
+      name: "Friend Prediction Leaague 2026",
       status: "UPCOMING",
       pollCloseMinutesBeforeKickoff: 20,
     });

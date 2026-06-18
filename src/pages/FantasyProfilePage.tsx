@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
-import { LabeledSelect } from "../components/FormFields";
+import { LabeledInput, LabeledSelect } from "../components/FormFields";
 import { PasswordField } from "../components/PasswordField";
 import { useChangeFantasyPassword, useUpdateFantasyParticipant } from "../services/fantasy-queries";
 import { storage } from "../utils/storage";
@@ -57,18 +57,9 @@ export default function FantasyProfilePage() {
             });
           }}
         >
-          <label>
-            Name
-            <input onChange={(event) => setName(event.target.value)} value={name} />
-          </label>
-          <label>
-            Display name
-            <input onChange={(event) => setNickname(event.target.value)} value={nickname} />
-          </label>
-          <label>
-            Email or phone
-            <input autoComplete="username" onChange={(event) => setEmailOrPhone(event.target.value)} placeholder="you@example.com" value={emailOrPhone} />
-          </label>
+          <LabeledInput label="Name" onChange={setName} value={name} />
+          <LabeledInput label="Display name" onChange={setNickname} value={nickname} />
+          <LabeledInput label="Email or phone" autoComplete="username" onChange={setEmailOrPhone} placeholder="you@example.com" value={emailOrPhone} />
           <LabeledSelect label="Favorite team" onChange={setFavoriteTeamId} options={teamOptions} value={favoriteTeamId} />
           <button className="button button--primary" disabled={updateParticipant.isPending || !name.trim() || !nickname.trim()} type="submit">
             {updateParticipant.isPending ? "Saving..." : "Save profile"}

@@ -166,14 +166,8 @@ export default function FantasyAdminParticipantsPage() {
             }}
           >
             <LabeledSelect label="Existing group" onChange={selectGroup} options={existingGroupOptions} value={activeGroupId} />
-            <label>
-              Group name
-              <input onChange={(event) => setGroupName(event.target.value)} placeholder="Weekend crew" value={groupName} />
-            </label>
-            <label>
-              Description
-              <input onChange={(event) => setGroupDescription(event.target.value)} placeholder="Optional note" value={groupDescription} />
-            </label>
+            <LabeledInput label="Group name" onChange={setGroupName} placeholder="Weekend crew" value={groupName} />
+            <LabeledInput label="Description" onChange={setGroupDescription} placeholder="Optional note" value={groupDescription} />
             <div className="fantasy-player-option-picker" aria-label="Group members">
               {rows.map((participant) => (
                 <label key={participant.id}>

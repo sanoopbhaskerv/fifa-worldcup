@@ -351,7 +351,7 @@ Input:
 ```json
 {
   "tournament": {
-    "name": "World Cup Friends League",
+    "name": "Friend Prediction Leaague",
     "pollCloseMinutesBeforeKickoff": 15
   },
   "match": {

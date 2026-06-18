@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
+import { LabeledInput } from "../components/FormFields";
 import { useFantasyQuestionTemplates, useUpdateFantasyQuestionTemplate } from "../services/fantasy-queries";
 import type { FantasyMatchImportance, FantasyQuestionTemplate } from "../types/fantasy";
 import { PageHeading } from "../components/PageSections";
@@ -86,26 +87,11 @@ const QuestionTemplateEditor = ({ template }: { template: FantasyQuestionTemplat
           });
         }}
       >
-        <label>
-          Template name
-          <input onChange={(event) => setName(event.target.value)} value={name} />
-        </label>
-        <label>
-          Question text
-          <input onChange={(event) => setText(event.target.value)} value={text} />
-        </label>
-        <label>
-          Points
-          <input min="1" onChange={(event) => setPoints(event.target.value)} type="number" value={points} />
-        </label>
-        <label>
-          Max player options
-          <input min="1" onChange={(event) => setMaxOptions(event.target.value)} placeholder="Auto" type="number" value={maxOptions} />
-        </label>
-        <label>
-          Sort order
-          <input min="1" onChange={(event) => setSortOrder(event.target.value)} type="number" value={sortOrder} />
-        </label>
+        <LabeledInput label="Template name" onChange={setName} value={name} />
+        <LabeledInput label="Question text" onChange={setText} value={text} />
+        <LabeledInput label="Points" min="1" onChange={setPoints} type="number" value={points} />
+        <LabeledInput label="Max player options" min="1" onChange={setMaxOptions} placeholder="Auto" type="number" value={maxOptions} />
+        <LabeledInput label="Sort order" min="1" onChange={setSortOrder} type="number" value={sortOrder} />
         <div className="fantasy-template-meta">
           <span>Category <strong>{template.category.replaceAll("_", " ")}</strong></span>
           <span>Type <strong>{template.type.replaceAll("_", " ")}</strong></span>

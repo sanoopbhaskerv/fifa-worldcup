@@ -94,7 +94,7 @@ describe("fantasy prediction game", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("heading", { name: "World Cup Friends League" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "Friend Prediction Leaague" })).toBeInTheDocument();
     expect(screen.getByText("Brazil vs Argentina")).toBeInTheDocument();
     expect(screen.getByText("Vinicius Jr")).toBeInTheDocument();
   });
@@ -286,7 +286,7 @@ describe("fantasy prediction game", () => {
     renderWithQueryClient(<FantasyAdminTournamentPage />);
 
     expect(screen.getByRole("heading", { name: "Tournament setup" })).toBeInTheDocument();
-    expect(screen.getByDisplayValue("World Cup Friends League")).toBeInTheDocument();
+    expect(screen.getByDisplayValue("Friend Prediction Leaague")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save tournament" })).toBeInTheDocument();
   });
 

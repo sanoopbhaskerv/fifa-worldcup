@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
-import { LabeledSelect } from "../components/FormFields";
+import { LabeledInput, LabeledSelect } from "../components/FormFields";
 import { useFantasySquads, useImportFantasySquads, useSeedFantasyWorldCupSquads, useUpdateFantasySquadPlayer, useUpdateFantasyTeam } from "../services/fantasy-queries";
 import type { FantasySquadPlayer, FantasyTeam } from "../types/fantasy";
 import { fantasyTeamName } from "../utils/fantasy";
@@ -151,22 +151,10 @@ const TeamEditor = ({ team }: { team: FantasyTeam }) => {
           });
         }}
       >
-        <label>
-          Team name
-          <input onChange={(event) => setName(event.target.value)} value={name} />
-        </label>
-        <label>
-          FIFA code
-          <input maxLength={3} onChange={(event) => setFifaCode(event.target.value.toUpperCase())} value={fifaCode} />
-        </label>
-        <label>
-          Group
-          <input onChange={(event) => setGroup(event.target.value)} value={group} />
-        </label>
-        <label>
-          Ranking seed
-          <input min="1" onChange={(event) => setRankingSeed(event.target.value)} type="number" value={rankingSeed} />
-        </label>
+        <LabeledInput label="Team name" onChange={setName} value={name} />
+        <LabeledInput label="FIFA code" maxLength={3} onChange={(value) => setFifaCode(value.toUpperCase())} value={fifaCode} />
+        <LabeledInput label="Group" onChange={setGroup} value={group} />
+        <LabeledInput label="Ranking seed" min="1" onChange={setRankingSeed} type="number" value={rankingSeed} />
         <button className="button button--primary" disabled={updateTeam.isPending} type="submit">
           {updateTeam.isPending ? "Saving..." : "Save team"}
         </button>
@@ -217,10 +205,7 @@ const PlayerEditor = ({ player, teams }: { player: FantasySquadPlayer; teams: Fa
           });
         }}
       >
-        <label>
-          Player name
-          <input onChange={(event) => setName(event.target.value)} value={name} />
-        </label>
+        <LabeledInput label="Player name" onChange={setName} value={name} />
         <LabeledSelect label="Team" onChange={setTeamId} options={teamOptions} value={teamId} />
         <LabeledSelect
           label="Position"
@@ -228,10 +213,7 @@ const PlayerEditor = ({ player, teams }: { player: FantasySquadPlayer; teams: Fa
           options={positionSelectOptions}
           value={position}
         />
-        <label>
-          Shirt number
-          <input min="1" onChange={(event) => setShirtNumber(event.target.value)} type="number" value={shirtNumber} />
-        </label>
+        <LabeledInput label="Shirt number" min="1" onChange={setShirtNumber} type="number" value={shirtNumber} />
         <div className="fantasy-flag-editor">
           {[
             ["isScorerCandidate", "Scorer"],

@@ -49,8 +49,8 @@ export default function HomePage() {
             <span className="eyebrow">Fantasy prediction game</span>
             <TrophyIcon />
           </div>
-          <h1>{fantasyData?.tournament.name ?? "World Cup Friends League"}</h1>
-          <p>Answer World Cup polls, track your rank, and let the AI host keep the banter moving.</p>
+          <h1>{fantasyData?.tournament.name ?? "Friend Prediction Leaague"}</h1>
+          <p>Lock your predictions before kickoff and battle for bragging rights.</p>
           {fantasyQuery.isError && (
             <button className="fantasy-link-button" onClick={(event) => {
               event.preventDefault();
@@ -70,8 +70,8 @@ export default function HomePage() {
             <span className="eyebrow">Football competitions</span>
             <CalendarIcon />
           </div>
-          <h2>World Cup and live football</h2>
-          <p>Browse fixtures, results, standings, scorers, brackets, and match centres.</p>
+          <h2>World Football Hub</h2>
+          <p>Live scores, fixtures, results, standings, scorers, brackets, stats and match centres.</p>
           <dl className="home-tile__stats">
             <div><dt>Default</dt><dd>WC 2026</dd></div>
             <div><dt>Sections</dt><dd>6</dd></div>

@@ -17,6 +17,6 @@ describe("HomePage", () => {
 
     expect(screen.getByRole("link", { name: /open fantasy/i })).toHaveAttribute("href", "/fantasy");
     expect(screen.getByRole("link", { name: /browse football/i })).toHaveAttribute("href", "/competitions/world-cup/2026");
-    expect(screen.getByText("World Cup Friends League")).toBeInTheDocument();
+    expect(screen.getByText("Friend Prediction Leaague")).toBeInTheDocument();
   });
 });
