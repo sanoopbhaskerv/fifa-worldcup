@@ -5,6 +5,7 @@ import { handler } from "./lambda.mjs";
 describe("fantasy Lambda adapter", () => {
   beforeEach(async () => {
     delete process.env.EMIT_LAMBDA_CORS_HEADERS;
+    delete process.env.CORS_ALLOW_ORIGIN;
     await resetFantasyGame();
   });
 
