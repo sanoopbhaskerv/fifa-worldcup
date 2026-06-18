@@ -52,4 +52,17 @@ describe("fantasy Lambda adapter", () => {
     expect(response.statusCode).toBe(200);
     expect(response.headers["access-control-allow-origin"]).toBe("*");
   });
+
+  it("routes EventBridge schedule events to AI draft generation", async () => {
+    const response = await handler({
+      source: "aws.events",
+    });
+    const body = JSON.parse(response.body);
+
+    expect(response.statusCode).toBe(200);
+    expect(body).toMatchObject({
+      autoPublish: false,
+    });
+    expect(Array.isArray(body.generated)).toBe(true);
+  });
 });

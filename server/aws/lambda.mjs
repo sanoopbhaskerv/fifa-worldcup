@@ -41,6 +41,23 @@ const bodyFromEvent = (event) => {
  * @returns Lambda proxy response.
  */
 export const handler = async (event) => {
+  if (event?.source === "aws.events") {
+    const result = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/ai-messages/scheduled",
+      body: JSON.stringify({
+        actorId: "eventbridge",
+        autoPublish: process.env.FANTASY_AI_SCHEDULE_AUTO_PUBLISH === "true",
+      }),
+      env: process.env,
+    });
+    return {
+      statusCode: result.status,
+      headers: result.headers,
+      body: JSON.stringify(result.body),
+    };
+  }
+
   const method = methodFromEvent(event);
   if (method === "OPTIONS") {
     return {

@@ -2025,6 +2025,122 @@ const templateDraftFromContext = (type, context) => {
   }
 };
 
+const todayKey = () => new Date().toISOString().slice(0, 10);
+
+const aiUsageForToday = (game) => {
+  const today = todayKey();
+  const records = (game.auditRecords ?? []).filter((record) =>
+    record.action === "AI_MESSAGE_DRAFTED" &&
+    record.createdAt?.slice(0, 10) === today &&
+    record.metadata?.source === "EXTERNAL_AI"
+  );
+  return {
+    calls: records.length,
+    estimatedCostCents: records.reduce((sum, record) => sum + Number(record.metadata?.estimatedCostCents ?? 0), 0),
+  };
+};
+
+const numberFromEnv = (value, fallback) => {
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
+};
+
+const aiProviderConfig = (env = {}) => ({
+  apiKey: env.fantasyAiApiKey ?? env.FANTASY_AI_API_KEY ?? "",
+  providerUrl: env.fantasyAiProviderUrl ?? env.FANTASY_AI_PROVIDER_URL ?? "",
+  model: env.fantasyAiModel ?? env.FANTASY_AI_MODEL ?? "",
+  dailyCallLimit: Math.max(0, Math.floor(numberFromEnv(env.fantasyAiDailyCallLimit ?? env.FANTASY_AI_DAILY_CALL_LIMIT, 0))),
+  estimatedCostCents: Math.max(0, Math.floor(numberFromEnv(env.fantasyAiEstimatedCostCents ?? env.FANTASY_AI_ESTIMATED_COST_CENTS, 1))),
+  maxOutputTokens: Math.max(60, Math.floor(numberFromEnv(env.fantasyAiMaxOutputTokens ?? env.FANTASY_AI_MAX_OUTPUT_TOKENS, 180))),
+});
+
+const canUseExternalAi = (game, env = {}) => {
+  const settings = game.aiSettings ?? {};
+  const config = aiProviderConfig(env);
+  if (settings.mode !== "ASSISTED" || !settings.externalProviderEnabled) {
+    return { ok: false, reason: "AI assisted mode is disabled.", config };
+  }
+  if (!config.apiKey || !config.providerUrl || !config.model) {
+    return { ok: false, reason: "AI provider is not configured.", config };
+  }
+  if (config.dailyCallLimit < 1) {
+    return { ok: false, reason: "AI daily call limit is zero.", config };
+  }
+  const usage = aiUsageForToday(game);
+  if (usage.calls >= config.dailyCallLimit) {
+    return { ok: false, reason: "AI daily call limit reached.", config, usage };
+  }
+  const dailyBudgetCents = Number(settings.dailyBudgetCents ?? 0);
+  if (dailyBudgetCents < 1 || usage.estimatedCostCents + config.estimatedCostCents > dailyBudgetCents) {
+    return { ok: false, reason: "AI daily budget reached.", config, usage };
+  }
+  return { ok: true, config, usage };
+};
+
+const aiSystemPrompt = (settings = {}) => [
+  "You write short fantasy football host messages for a private friends league.",
+  "Return only compact JSON with string fields title and body.",
+  "Keep the message factual, playful only when requested, and under 45 body words.",
+  "Do not invent scores, players, injuries, or events outside the provided JSON context.",
+  `Banter level: ${settings.banterLevel ?? "LIGHT"}.`,
+].join(" ");
+
+const parseAiDraftPayload = (payload) => {
+  const content = payload?.choices?.[0]?.message?.content ?? payload?.content ?? "";
+  const jsonText = String(content).match(/\{[\s\S]*\}/)?.[0] ?? content;
+  const parsed = JSON.parse(jsonText);
+  const title = String(parsed.title ?? "").trim();
+  const body = String(parsed.body ?? "").trim();
+  if (!title || !body) throw new Error("AI response missing title/body.");
+  return { title: title.slice(0, 120), body: body.slice(0, 500) };
+};
+
+const externalDraftFromContext = async (type, context, game, env = {}) => {
+  const guard = canUseExternalAi(game, env);
+  if (!guard.ok) {
+    throw new ProviderError(guard.reason, 429, "AI_GUARDRAIL_BLOCKED");
+  }
+  const response = await fetch(guard.config.providerUrl, {
+    method: "POST",
+    headers: {
+      "authorization": `Bearer ${guard.config.apiKey}`,
+      "content-type": "application/json",
+    },
+    body: JSON.stringify({
+      model: guard.config.model,
+      messages: [
+        { role: "system", content: aiSystemPrompt(game.aiSettings) },
+        { role: "user", content: JSON.stringify({ type, context }) },
+      ],
+      max_tokens: guard.config.maxOutputTokens,
+      temperature: game.aiSettings?.banterLevel === "NONE" ? 0.2 : 0.7,
+      response_format: { type: "json_object" },
+    }),
+  });
+  if (!response.ok) {
+    const payload = await response.json().catch(() => ({}));
+    throw new ProviderError(payload?.error?.message ?? "AI provider request failed.", 502, "AI_PROVIDER_FAILED");
+  }
+  return {
+    ...parseAiDraftPayload(await response.json()),
+    estimatedCostCents: guard.config.estimatedCostCents,
+    source: "EXTERNAL_AI",
+  };
+};
+
+const assistedDraftFromContext = async (type, context, game, env = {}) => {
+  try {
+    return await externalDraftFromContext(type, context, game, env);
+  } catch (error) {
+    if (!game.aiSettings?.fallbackToTemplates) throw error;
+    return {
+      ...templateDraftFromContext(type, context),
+      fallbackReason: error.code ?? "AI_PROVIDER_FAILED",
+      source: "TEMPLATE",
+    };
+  }
+};
+
 const aiMessageContextFor = (game, type, input = {}) => {
   if (type === "REMINDER") return openPollReminderContext(game, input);
   if (type === "RECAP") return recapContext(game, input);
@@ -2032,7 +2148,7 @@ const aiMessageContextFor = (game, type, input = {}) => {
   throw new ProviderError("AI message type is invalid.", 400, "INVALID_AI_MESSAGE");
 };
 
-const createAiMessageDraft = async (type, input = {}) => {
+const createAiMessageDraft = async (type, input = {}, env = {}) => {
   if (!validAiMessageType.has(type)) {
     throw new ProviderError("AI message type is invalid.", 400, "INVALID_AI_MESSAGE");
   }
@@ -2043,7 +2159,9 @@ const createAiMessageDraft = async (type, input = {}) => {
   if (existingDraft) {
     return { message: existingDraft, game: publicGame(game) };
   }
-  const generated = templateDraftFromContext(type, context);
+  const generated = game.aiSettings?.mode === "ASSISTED"
+    ? await assistedDraftFromContext(type, context, game, env)
+    : templateDraftFromContext(type, context);
   const createdAt = new Date().toISOString();
   const message = {
     id: `ai-${type.toLowerCase().replaceAll("_", "-")}-${context.matchId ?? context.groupId ?? game.tournament.id}-${contextHash.slice(0, 10)}`,
@@ -2052,7 +2170,7 @@ const createAiMessageDraft = async (type, input = {}) => {
     groupId: context.groupId,
     type,
     status: "DRAFT",
-    source: "TEMPLATE",
+    source: generated.source ?? "TEMPLATE",
     title: generated.title,
     body: generated.body,
     contextHash,
@@ -2077,6 +2195,8 @@ const createAiMessageDraft = async (type, input = {}) => {
       matchId: message.matchId,
       groupId: message.groupId,
       contextHash,
+      estimatedCostCents: generated.estimatedCostCents ?? 0,
+      fallbackReason: generated.fallbackReason,
     },
   }));
   return { message, game: publicGame(updatedGame) };
@@ -2126,7 +2246,7 @@ export const listFantasyAiMessages = async () => {
  * @param input - Draft context fields.
  * @returns Draft AI message and game payload.
  */
-export const createFantasyReminderDraft = async (input = {}) => createAiMessageDraft("REMINDER", input);
+export const createFantasyReminderDraft = async (input = {}, env = {}) => createAiMessageDraft("REMINDER", input, env);
 
 /**
  * Generates a template match recap draft from stored result facts and scoring.
@@ -2134,7 +2254,7 @@ export const createFantasyReminderDraft = async (input = {}) => createAiMessageD
  * @param input - Draft context fields.
  * @returns Draft AI message and game payload.
  */
-export const createFantasyRecapDraft = async (input = {}) => createAiMessageDraft("RECAP", input);
+export const createFantasyRecapDraft = async (input = {}, env = {}) => createAiMessageDraft("RECAP", input, env);
 
 /**
  * Generates a template leaderboard summary draft.
@@ -2142,7 +2262,7 @@ export const createFantasyRecapDraft = async (input = {}) => createAiMessageDraf
  * @param input - Draft context fields.
  * @returns Draft AI message and game payload.
  */
-export const createFantasyLeaderboardDraft = async (input = {}) => createAiMessageDraft("LEADERBOARD_SUMMARY", input);
+export const createFantasyLeaderboardDraft = async (input = {}, env = {}) => createAiMessageDraft("LEADERBOARD_SUMMARY", input, env);
 
 /**
  * Updates admin-editable AI host copy without changing visibility.
@@ -2184,7 +2304,7 @@ export const updateFantasyAiMessage = async (messageId, input = {}) => {
  * @param input - Optional actor metadata.
  * @returns Regenerated AI message and game payload.
  */
-export const regenerateFantasyAiMessage = async (messageId, input = {}) => {
+export const regenerateFantasyAiMessage = async (messageId, input = {}, env = {}) => {
   const game = await gameState();
   const current = aiMessageById(game, messageId);
   if (current.status === "DISCARDED") {
@@ -2195,11 +2315,13 @@ export const regenerateFantasyAiMessage = async (messageId, input = {}) => {
     groupId: current.groupId,
   });
   const contextHash = contextHashFor({ type: current.type, context });
-  const generated = templateDraftFromContext(current.type, context);
+  const generated = game.aiSettings?.mode === "ASSISTED"
+    ? await assistedDraftFromContext(current.type, context, game, env)
+    : templateDraftFromContext(current.type, context);
   const message = {
     ...current,
     status: "DRAFT",
-    source: "TEMPLATE",
+    source: generated.source ?? "TEMPLATE",
     title: generated.title,
     body: generated.body,
     contextHash,
@@ -2211,6 +2333,10 @@ export const regenerateFantasyAiMessage = async (messageId, input = {}) => {
     message,
     action: "AI_MESSAGE_REGENERATED",
     actorId: input.actorId ?? "admin",
+    metadata: {
+      estimatedCostCents: generated.estimatedCostCents ?? 0,
+      fallbackReason: generated.fallbackReason,
+    },
   });
 };
 
@@ -2264,6 +2390,67 @@ export const discardFantasyAiMessage = async (messageId, input = {}) => {
     action: "AI_MESSAGE_DISCARDED",
     actorId: input.actorId ?? "admin",
   });
+};
+
+const publishIfRequested = async (result, shouldPublish, actorId) => {
+  if (!shouldPublish || result.message.status === "PUBLISHED") return result;
+  return publishFantasyAiMessage(result.message.id, { actorId });
+};
+
+/**
+ * Generates scheduled AI host message drafts for current fantasy activity.
+ *
+ * @param input - Scheduling options.
+ * @param env - Provider and schedule environment settings.
+ * @returns Generated message summary and public game payload.
+ */
+export const runScheduledFantasyAiGeneration = async (input = {}, env = {}) => {
+  const initialGame = await gameState();
+  const actorId = input.actorId ?? "scheduler";
+  const autoPublish = Boolean(input.autoPublish ?? env.fantasyAiScheduleAutoPublish ?? env.FANTASY_AI_SCHEDULE_AUTO_PUBLISH === "true");
+  const nowMs = Number.isFinite(Date.parse(input.now)) ? Date.parse(input.now) : Date.now();
+  const lookaheadHours = Math.max(1, Number(input.lookaheadHours ?? 36));
+  const lookaheadMs = lookaheadHours * 60 * 60 * 1000;
+  const activeGroups = (initialGame.groups ?? []).filter((group) => group.status === "ACTIVE");
+  const generated = [];
+  const skipped = [];
+
+  for (const match of initialGame.matches) {
+    const kickoffMs = Date.parse(match.kickoff);
+    if (match.status === "SCHEDULED" && kickoffMs >= nowMs && kickoffMs - nowMs <= lookaheadMs) {
+      for (const group of activeGroups) {
+        try {
+          const result = await createFantasyReminderDraft({ actorId, groupId: group.id, matchId: match.id }, env);
+          generated.push((await publishIfRequested(result, autoPublish, actorId)).message);
+        } catch (error) {
+          skipped.push({ matchId: match.id, groupId: group.id, type: "REMINDER", reason: error.code ?? error.message });
+        }
+      }
+    }
+    if (match.status === "COMPLETED" && initialGame.results.some((result) => result.matchId === match.id)) {
+      try {
+        const result = await createFantasyRecapDraft({ actorId, matchId: match.id }, env);
+        generated.push((await publishIfRequested(result, autoPublish, actorId)).message);
+      } catch (error) {
+        skipped.push({ matchId: match.id, type: "RECAP", reason: error.code ?? error.message });
+      }
+    }
+  }
+
+  try {
+    const result = await createFantasyLeaderboardDraft({ actorId }, env);
+    generated.push((await publishIfRequested(result, autoPublish, actorId)).message);
+  } catch (error) {
+    skipped.push({ type: "LEADERBOARD_SUMMARY", reason: error.code ?? error.message });
+  }
+
+  const game = await gameState();
+  return {
+    generated,
+    skipped,
+    autoPublish,
+    game: publicGame(game),
+  };
 };
 
 /**

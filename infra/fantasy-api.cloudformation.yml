@@ -39,6 +39,51 @@ Parameters:
     MinValue: 0
     MaxValue: 100
     Description: Process-local daily request safety budget for API-Football.
+  FantasyAiProviderUrl:
+    Type: String
+    Default: ""
+    Description: Optional OpenAI-compatible chat completions endpoint for assisted AI host copy.
+  FantasyAiApiKey:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: Optional server-side API key for the assisted AI provider.
+  FantasyAiModel:
+    Type: String
+    Default: ""
+    Description: Optional model name for assisted AI host copy.
+  FantasyAiDailyCallLimit:
+    Type: Number
+    Default: 0
+    MinValue: 0
+    MaxValue: 50
+    Description: Hard daily external AI call cap. Keep zero to disable external calls.
+  FantasyAiEstimatedCostCents:
+    Type: Number
+    Default: 1
+    MinValue: 0
+    MaxValue: 100
+    Description: Estimated cents to charge against the in-app daily AI budget for each external call.
+  FantasyAiMaxOutputTokens:
+    Type: Number
+    Default: 180
+    MinValue: 60
+    MaxValue: 500
+    Description: Max output tokens for assisted AI host copy.
+  FantasyAiScheduleExpression:
+    Type: String
+    Default: rate(30 minutes)
+    Description: EventBridge schedule for automated AI draft generation.
+  FantasyAiScheduleEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Enable EventBridge scheduled AI draft generation.
+  FantasyAiScheduleAutoPublish:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Publish scheduled AI messages automatically. Default keeps them as admin-reviewed drafts.
   BudgetAlertEmail:
     Type: String
     Default: ""
@@ -46,6 +91,7 @@ Parameters:
 
 Conditions:
   HasBudgetAlertEmail: !Not [!Equals [!Ref BudgetAlertEmail, ""]]
+  IsFantasyAiScheduleEnabled: !Equals [!Ref FantasyAiScheduleEnabled, "true"]
 
 Resources:
   PredictionGameTable:
@@ -119,6 +165,13 @@ Resources:
           FOOTBALL_DATA_API_KEY: !Ref FootballDataApiKey
           API_FOOTBALL_API_KEY: !Ref ApiFootballApiKey
           API_FOOTBALL_DAILY_BUDGET: !Ref ApiFootballDailyBudget
+          FANTASY_AI_PROVIDER_URL: !Ref FantasyAiProviderUrl
+          FANTASY_AI_API_KEY: !Ref FantasyAiApiKey
+          FANTASY_AI_MODEL: !Ref FantasyAiModel
+          FANTASY_AI_DAILY_CALL_LIMIT: !Ref FantasyAiDailyCallLimit
+          FANTASY_AI_ESTIMATED_COST_CENTS: !Ref FantasyAiEstimatedCostCents
+          FANTASY_AI_MAX_OUTPUT_TOKENS: !Ref FantasyAiMaxOutputTokens
+          FANTASY_AI_SCHEDULE_AUTO_PUBLISH: !Ref FantasyAiScheduleAutoPublish
           NODE_ENV: production
 
   FantasyApiLogGroup:
@@ -150,6 +203,26 @@ Resources:
       FunctionName: !Ref FantasyApiFunction
       Principal: "*"
       FunctionUrlAuthType: NONE
+
+  FantasyAiScheduleRule:
+    Type: AWS::Events::Rule
+    Condition: IsFantasyAiScheduleEnabled
+    Properties:
+      Description: Scheduled zero-touch AI host draft generation.
+      ScheduleExpression: !Ref FantasyAiScheduleExpression
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt FantasyApiFunction.Arn
+          Id: FantasyAiScheduledGeneration
+
+  FantasyAiScheduleInvokePermission:
+    Type: AWS::Lambda::Permission
+    Condition: IsFantasyAiScheduleEnabled
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref FantasyApiFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt FantasyAiScheduleRule.Arn
 
   MonthlyCostBudget:
     Type: AWS::Budgets::Budget

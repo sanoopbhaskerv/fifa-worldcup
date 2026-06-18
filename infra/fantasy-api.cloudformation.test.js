@@ -16,6 +16,9 @@ describe("fantasy AWS staging template", () => {
     expect(template).toContain("FANTASY_DYNAMODB_TABLE: !Ref PredictionGameTable");
     expect(template).toContain("FOOTBALL_DATA_API_KEY: !Ref FootballDataApiKey");
     expect(template).toContain("API_FOOTBALL_API_KEY: !Ref ApiFootballApiKey");
+    expect(template).toContain("FANTASY_AI_DAILY_CALL_LIMIT: !Ref FantasyAiDailyCallLimit");
+    expect(template).toContain("Type: AWS::Events::Rule");
+    expect(template).toContain("Condition: IsFantasyAiScheduleEnabled");
   });
 
   it("does not put browser-exposed or AI secrets into Lambda environment variables", async () => {
@@ -23,6 +26,8 @@ describe("fantasy AWS staging template", () => {
 
     expect(template).not.toContain("VITE_");
     expect(template).not.toContain("OPENAI_API_KEY");
+    expect(template).toContain("FantasyAiApiKey:");
+    expect(template).toContain("FANTASY_AI_API_KEY: !Ref FantasyAiApiKey");
     expect(template).toContain("NoEcho: true");
   });
 });

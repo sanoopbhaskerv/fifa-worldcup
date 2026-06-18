@@ -698,6 +698,126 @@ describe("fantasy game API", () => {
     ]);
   });
 
+  it("uses an external AI provider in assisted mode when guardrails allow it", async () => {
+    const fetchMock = vi.fn(async () => ({
+      ok: true,
+      json: async () => ({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                title: "AI says polls are closing",
+                body: "Brazil vs Argentina is heating up. Get those final picks in before lock.",
+              }),
+            },
+          },
+        ],
+      }),
+    }));
+    vi.stubGlobal("fetch", fetchMock);
+
+    await handleApiRequest({
+      method: "PUT",
+      url: "/api/fantasy/admin/ai-settings",
+      body: JSON.stringify({
+        mode: "ASSISTED",
+        externalProviderEnabled: true,
+        fallbackToTemplates: true,
+        dailyBudgetCents: 5,
+      }),
+      env: {},
+    });
+    const response = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/ai-messages/reminder-draft",
+      body: JSON.stringify({ matchId: "bra-arg", groupId: "group-main" }),
+      env: {
+        FANTASY_AI_PROVIDER_URL: "https://ai.example/chat/completions",
+        FANTASY_AI_API_KEY: "test-key",
+        FANTASY_AI_MODEL: "free-small",
+        FANTASY_AI_DAILY_CALL_LIMIT: "2",
+        FANTASY_AI_ESTIMATED_COST_CENTS: "1",
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.message).toMatchObject({
+      source: "EXTERNAL_AI",
+      title: "AI says polls are closing",
+    });
+    expect(response.body.game.auditRecords.at(-1)).toMatchObject({
+      action: "AI_MESSAGE_DRAFTED",
+      metadata: expect.objectContaining({
+        estimatedCostCents: 1,
+        source: "EXTERNAL_AI",
+      }),
+    });
+    expect(fetchMock).toHaveBeenCalledWith("https://ai.example/chat/completions", expect.objectContaining({
+      method: "POST",
+    }));
+  });
+
+  it("falls back to templates when assisted AI guardrails block external calls", async () => {
+    const fetchMock = vi.fn();
+    vi.stubGlobal("fetch", fetchMock);
+
+    await handleApiRequest({
+      method: "PUT",
+      url: "/api/fantasy/admin/ai-settings",
+      body: JSON.stringify({
+        mode: "ASSISTED",
+        externalProviderEnabled: true,
+        fallbackToTemplates: true,
+        dailyBudgetCents: 5,
+      }),
+      env: {},
+    });
+    const response = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/ai-messages/reminder-draft",
+      body: JSON.stringify({ matchId: "bra-arg", groupId: "group-main" }),
+      env: {
+        FANTASY_AI_PROVIDER_URL: "https://ai.example/chat/completions",
+        FANTASY_AI_API_KEY: "test-key",
+        FANTASY_AI_MODEL: "free-small",
+        FANTASY_AI_DAILY_CALL_LIMIT: "0",
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.message).toMatchObject({
+      source: "TEMPLATE",
+      title: "Brazil vs Argentina polls close soon",
+    });
+    expect(response.body.game.auditRecords.at(-1).metadata).toMatchObject({
+      fallbackReason: "AI_GUARDRAIL_BLOCKED",
+    });
+    expect(fetchMock).not.toHaveBeenCalled();
+  });
+
+  it("runs scheduled AI generation as reviewed drafts by default", async () => {
+    const response = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/ai-messages/scheduled",
+      body: JSON.stringify({ now: "2026-06-18T10:00:00+05:30" }),
+      env: {},
+    });
+    const gameResponse = await handleApiRequest({
+      method: "GET",
+      url: "/api/fantasy/game",
+      env: {},
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.generated).toEqual(expect.arrayContaining([
+      expect.objectContaining({ type: "REMINDER", status: "DRAFT" }),
+      expect.objectContaining({ type: "RECAP", status: "DRAFT" }),
+      expect.objectContaining({ type: "LEADERBOARD_SUMMARY", status: "DRAFT" }),
+    ]));
+    expect(response.body.autoPublish).toBe(false);
+    expect(gameResponse.body.aiMessages).toEqual([]);
+  });
+
   it("saves generated question drafts as open polls", async () => {
     const response = await handleApiRequest({
       method: "POST",

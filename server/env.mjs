@@ -60,4 +60,11 @@ export const providerEnv = (source = process.env) => ({
   apiFootballBaseUrl:
     source.API_FOOTBALL_BASE_URL ?? "https://v3.football.api-sports.io",
   apiFootballDailyBudget: source.API_FOOTBALL_DAILY_BUDGET ?? "90",
+  fantasyAiProviderUrl: source.FANTASY_AI_PROVIDER_URL ?? "",
+  fantasyAiApiKey: source.FANTASY_AI_API_KEY ?? "",
+  fantasyAiModel: source.FANTASY_AI_MODEL ?? "",
+  fantasyAiDailyCallLimit: source.FANTASY_AI_DAILY_CALL_LIMIT ?? "0",
+  fantasyAiMaxOutputTokens: source.FANTASY_AI_MAX_OUTPUT_TOKENS ?? "180",
+  fantasyAiEstimatedCostCents: source.FANTASY_AI_ESTIMATED_COST_CENTS ?? "1",
+  fantasyAiScheduleAutoPublish: source.FANTASY_AI_SCHEDULE_AUTO_PUBLISH === "true",
 });

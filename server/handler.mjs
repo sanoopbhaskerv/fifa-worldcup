@@ -25,6 +25,7 @@ import {
   publishFantasyAiMessage,
   regenerateFantasyAiMessage,
   resetAndGenerateFantasyPolls,
+  runScheduledFantasyAiGeneration,
   saveFantasyQuestionDrafts,
   saveFantasyResult,
   seedFantasyWorldCupSquads,
@@ -221,19 +222,25 @@ export const handleApiRequest = async ({
     }
 
     if (requestMethod === "POST" && path === "/api/fantasy/admin/ai-messages/reminder-draft") {
-      return response(200, await createFantasyReminderDraft(parseJsonBody(body)), {
+      return response(200, await createFantasyReminderDraft(parseJsonBody(body), env), {
         "cache-control": "no-store",
       });
     }
 
     if (requestMethod === "POST" && path === "/api/fantasy/admin/ai-messages/recap-draft") {
-      return response(200, await createFantasyRecapDraft(parseJsonBody(body)), {
+      return response(200, await createFantasyRecapDraft(parseJsonBody(body), env), {
         "cache-control": "no-store",
       });
     }
 
     if (requestMethod === "POST" && path === "/api/fantasy/admin/ai-messages/leaderboard-draft") {
-      return response(200, await createFantasyLeaderboardDraft(parseJsonBody(body)), {
+      return response(200, await createFantasyLeaderboardDraft(parseJsonBody(body), env), {
+        "cache-control": "no-store",
+      });
+    }
+
+    if (requestMethod === "POST" && path === "/api/fantasy/admin/ai-messages/scheduled") {
+      return response(200, await runScheduledFantasyAiGeneration(parseJsonBody(body), env), {
         "cache-control": "no-store",
       });
     }
@@ -254,7 +261,7 @@ export const handleApiRequest = async ({
 
     const aiMessageRegenerateMatch = path.match(/^\/api\/fantasy\/admin\/ai-messages\/([^/]+)\/regenerate$/);
     if (requestMethod === "POST" && aiMessageRegenerateMatch) {
-      return response(200, await regenerateFantasyAiMessage(decodeURIComponent(aiMessageRegenerateMatch[1]), parseJsonBody(body)), {
+      return response(200, await regenerateFantasyAiMessage(decodeURIComponent(aiMessageRegenerateMatch[1]), parseJsonBody(body), env), {
         "cache-control": "no-store",
       });
     }
