@@ -1,0 +1,78 @@
+name: Deploy Fantasy Backend Staging
+
+on:
+  workflow_dispatch:
+    inputs:
+      aws_region:
+        description: AWS region for the staging backend.
+        required: true
+        default: ap-south-1
+      cors_allow_origin:
+        description: Frontend origin allowed by the Lambda Function URL CORS policy.
+        required: true
+        default: https://develop.d32ngvag2hklf1.amplifyapp.com
+      monthly_budget_usd:
+        description: Optional AWS Budget amount for this stack.
+        required: true
+        default: "5"
+      lambda_reserved_concurrency:
+        description: Hard cap for concurrent Lambda executions.
+        required: true
+        default: "2"
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: fantasy-backend-staging
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    name: Deploy staging Lambda API
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      AWS_REGION: ${{ inputs.aws_region }}
+      ARTIFACT_BUCKET: ${{ secrets.FANTASY_ARTIFACT_BUCKET }}
+      CORS_ALLOW_ORIGIN: ${{ inputs.cors_allow_origin }}
+      MONTHLY_BUDGET_USD: ${{ inputs.monthly_budget_usd }}
+      LAMBDA_RESERVED_CONCURRENCY: ${{ inputs.lambda_reserved_concurrency }}
+      BUDGET_ALERT_EMAIL: ${{ secrets.FANTASY_BUDGET_ALERT_EMAIL }}
+      FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
+      API_FOOTBALL_API_KEY: ${{ secrets.API_FOOTBALL_API_KEY }}
+      API_FOOTBALL_DAILY_BUDGET: "90"
+      STACK_NAME: fantasy-prediction-game-staging
+      APP_NAME: fantasy-prediction-game-staging
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Enable Corepack
+        run: corepack enable
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: yarn
+
+      - name: Install dependencies
+        run: yarn install --frozen-lockfile
+
+      - name: Verify
+        run: |
+          yarn lint
+          yarn typecheck
+          yarn test
+
+      - name: Configure AWS credentials
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: ${{ secrets.AWS_ROLE_TO_ASSUME }}
+          aws-region: ${{ inputs.aws_region }}
+
+      - name: Deploy backend
+        run: yarn deploy:fantasy:staging
