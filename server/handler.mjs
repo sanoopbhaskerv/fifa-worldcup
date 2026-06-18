@@ -3,6 +3,9 @@ import { jsonError, ProviderError } from "./errors.mjs";
 import {
   createFantasyParticipant,
   createFantasyGroup,
+  createFantasyLeaderboardDraft,
+  createFantasyRecapDraft,
+  createFantasyReminderDraft,
   createFantasySignup,
   createFantasyUserPoll,
   changeFantasyParticipantPassword,
@@ -10,6 +13,7 @@ import {
   importFantasySquads,
   joinFantasyGame,
   listFantasyAiSettings,
+  listFantasyAiMessages,
   listFantasyFixtures,
   listFantasyGroups,
   listFantasyParticipants,
@@ -202,6 +206,30 @@ export const handleApiRequest = async ({
 
     if (requestMethod === "PUT" && path === "/api/fantasy/admin/ai-settings") {
       return response(200, await updateFantasyAiSettings(parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
+    if (requestMethod === "GET" && path === "/api/fantasy/admin/ai-messages") {
+      return response(200, await listFantasyAiMessages(), {
+        "cache-control": "private, max-age=5, stale-while-revalidate=30",
+      });
+    }
+
+    if (requestMethod === "POST" && path === "/api/fantasy/admin/ai-messages/reminder-draft") {
+      return response(200, await createFantasyReminderDraft(parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
+    if (requestMethod === "POST" && path === "/api/fantasy/admin/ai-messages/recap-draft") {
+      return response(200, await createFantasyRecapDraft(parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
+    if (requestMethod === "POST" && path === "/api/fantasy/admin/ai-messages/leaderboard-draft") {
+      return response(200, await createFantasyLeaderboardDraft(parseJsonBody(body)), {
         "cache-control": "no-store",
       });
     }

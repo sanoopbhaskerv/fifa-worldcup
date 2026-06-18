@@ -8,6 +8,10 @@ export const fantasyRecordKeys = {
     PK: `TOURNAMENT#${tournamentId}`,
     SK: "AI_SETTINGS",
   }),
+  aiMessage: (tournamentId, createdAt, messageId) => ({
+    PK: `TOURNAMENT#${tournamentId}`,
+    SK: `AI_MESSAGE#${createdAt}#${messageId}`,
+  }),
   audit: (tournamentId, timestamp, id) => ({
     PK: `TOURNAMENT#${tournamentId}`,
     SK: `AUDIT#${timestamp}#${id}`,
@@ -88,6 +92,7 @@ export const toFantasyStorageRecords = (game) => {
   return [
     record(fantasyRecordKeys.tournament(tournamentId), "TOURNAMENT", game.tournament),
     record(fantasyRecordKeys.aiSettings(tournamentId), "AI_SETTINGS", game.aiSettings),
+    ...(game.aiMessages ?? []).map((message) => record(fantasyRecordKeys.aiMessage(tournamentId, message.createdAt, message.id), "AI_MESSAGE", message)),
     ...game.teams.map((team) => record(fantasyRecordKeys.team(tournamentId, team.id), "TEAM", team)),
     ...game.squadPlayers.map((player) => record(fantasyRecordKeys.player(player.teamId, player.id), "SQUAD_PLAYER", player)),
     ...(game.groups ?? []).map((group) => record(fantasyRecordKeys.group(tournamentId, group.id), "GROUP", group)),

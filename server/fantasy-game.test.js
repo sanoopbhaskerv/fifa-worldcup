@@ -567,6 +567,65 @@ describe("fantasy game API", () => {
     });
   });
 
+  it("generates admin AI host drafts from stored game data and hides drafts from players", async () => {
+    const reminderResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/ai-messages/reminder-draft",
+      body: JSON.stringify({ matchId: "bra-arg", groupId: "group-main" }),
+      env: {},
+    });
+    const recapResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/ai-messages/recap-draft",
+      body: JSON.stringify({ matchId: "eng-esp" }),
+      env: {},
+    });
+    const leaderboardResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/ai-messages/leaderboard-draft",
+      env: {},
+    });
+    const listResponse = await handleApiRequest({
+      method: "GET",
+      url: "/api/fantasy/admin/ai-messages",
+      env: {},
+    });
+    const gameResponse = await handleApiRequest({
+      method: "GET",
+      url: "/api/fantasy/game",
+      env: {},
+    });
+
+    expect(reminderResponse.status).toBe(200);
+    expect(reminderResponse.body.message).toMatchObject({
+      type: "REMINDER",
+      status: "DRAFT",
+      source: "TEMPLATE",
+      matchId: "bra-arg",
+      groupId: "group-main",
+    });
+    expect(reminderResponse.body.message.title).toContain("Brazil vs Argentina");
+    expect(reminderResponse.body.message.body).toContain("answers are still pending");
+    expect(recapResponse.status).toBe(200);
+    expect(recapResponse.body.message).toMatchObject({
+      type: "RECAP",
+      matchId: "eng-esp",
+    });
+    expect(recapResponse.body.message.body).toContain("England 1-2 Spain");
+    expect(leaderboardResponse.status).toBe(200);
+    expect(leaderboardResponse.body.message).toMatchObject({
+      type: "LEADERBOARD_SUMMARY",
+      title: "Leaderboard pulse",
+    });
+    expect(listResponse.body.aiMessages).toHaveLength(3);
+    expect(listResponse.body.aiMessages.every((message) => message.contextHash)).toBe(true);
+    expect(gameResponse.body.aiMessages).toEqual([]);
+    expect(listResponse.body.game.auditRecords.at(-1)).toMatchObject({
+      action: "AI_MESSAGE_DRAFTED",
+      entityType: "AI_MESSAGE",
+    });
+  });
+
   it("saves generated question drafts as open polls", async () => {
     const response = await handleApiRequest({
       method: "POST",
@@ -930,11 +989,18 @@ describe("fantasy game API", () => {
   });
 
   it("maps the local game into DynamoDB-style storage records", async () => {
+    await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/ai-messages/leaderboard-draft",
+      env: {},
+    });
+
     const records = await getFantasyStorageRecords();
 
     expect(records).toEqual(expect.arrayContaining([
       expect.objectContaining({ PK: "TOURNAMENT#world-cup-friends-2026", SK: "PROFILE", type: "TOURNAMENT" }),
       expect.objectContaining({ PK: "TOURNAMENT#world-cup-friends-2026", SK: "AI_SETTINGS", type: "AI_SETTINGS" }),
+      expect.objectContaining({ PK: "TOURNAMENT#world-cup-friends-2026", SK: expect.stringMatching(/^AI_MESSAGE#/), type: "AI_MESSAGE" }),
       expect.objectContaining({ PK: "TOURNAMENT#world-cup-friends-2026", SK: "QUESTION#q-bra-arg-winner", type: "QUESTION" }),
       expect.objectContaining({ PK: "TOURNAMENT#world-cup-friends-2026", SK: "QUESTION_TEMPLATE#tpl-match-result", type: "QUESTION_TEMPLATE" }),
       expect.objectContaining({ PK: "TOURNAMENT#world-cup-friends-2026", SK: "INVITE#p-sanoop", type: "PARTICIPANT_INVITE" }),

@@ -31,6 +31,7 @@ const hydrateGame = (records, fallbackGame) => {
   const tournament = dataForType(records, "TOURNAMENT")[0] ?? fallbackGame.tournament;
   const aiSettings = dataForType(records, "AI_SETTINGS")[0] ?? fallbackGame.aiSettings;
   const questionTemplates = dataForType(records, "QUESTION_TEMPLATE");
+  const aiMessages = dataForType(records, "AI_MESSAGE");
   return {
     tournament,
     aiSettings,
@@ -43,6 +44,7 @@ const hydrateGame = (records, fallbackGame) => {
     matches: dataForType(records, "MATCH"),
     questions: dataForType(records, "QUESTION"),
     questionTemplates: questionTemplates.length > 0 ? questionTemplates : fallbackGame.questionTemplates,
+    aiMessages,
     predictions: dataForType(records, "PREDICTION"),
     results: dataForType(records, "RESULT"),
     leaderboard: dataForType(records, "LEADERBOARD"),

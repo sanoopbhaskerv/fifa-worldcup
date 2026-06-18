@@ -33,6 +33,9 @@ export type FantasyMatchImportance = "NORMAL" | "BIG_MATCH" | "KNOCKOUT" | "FINA
 export type FantasyQuestionStatus = "DRAFT" | "OPEN" | "LOCKED" | "SCORED" | "VOID";
 export type FantasyAiMode = "DISABLED" | "TEMPLATE_ONLY" | "ASSISTED";
 export type FantasyAiBanterLevel = "NONE" | "LIGHT" | "PLAYFUL";
+export type FantasyAiMessageType = "REMINDER" | "RECAP" | "LEADERBOARD_SUMMARY";
+export type FantasyAiMessageStatus = "DRAFT" | "PUBLISHED" | "DISCARDED";
+export type FantasyAiMessageSource = "TEMPLATE" | "EXTERNAL_AI" | "MANUAL";
 export type FantasyUserPollKind =
   | "MATCH_WINNER"
   | "FIRST_SCORING_TEAM"
@@ -192,6 +195,23 @@ export interface FantasyAiSettings {
   enabledCategories: FantasyQuestionCategory[];
 }
 
+export interface FantasyAiMessage {
+  id: string;
+  tournamentId: string;
+  matchId?: string;
+  groupId?: string;
+  type: FantasyAiMessageType;
+  status: FantasyAiMessageStatus;
+  source: FantasyAiMessageSource;
+  title: string;
+  body: string;
+  contextHash: string;
+  createdAt: string;
+  createdByParticipantId: string;
+  publishedAt?: string;
+  discardedAt?: string;
+}
+
 export interface FantasyPrediction {
   id: string;
   questionId: string;
@@ -262,8 +282,8 @@ export interface FantasyAuditRecord {
   id: string;
   tournamentId: string;
   actorId: string;
-  action: "AI_SETTINGS_UPDATED" | "FIXTURE_UPDATED" | "FIXTURES_SYNCED" | "GROUP_CREATED" | "GROUP_UPDATED" | "PARTICIPANT_CREATED" | "PARTICIPANT_CREDENTIALS_RESET" | "PARTICIPANT_JOINED" | "PARTICIPANT_PASSWORD_CHANGED" | "PARTICIPANT_ROLE_UPDATED" | "PARTICIPANT_UPDATED" | "POLLS_GENERATED" | "POLLS_GENERATED_AND_PUBLISHED" | "POLLS_RESET" | "PREDICTION_SUBMITTED" | "QUESTION_DRAFTS_SAVED" | "QUESTIONS_PUBLISHED" | "QUESTION_TEMPLATE_UPDATED" | "RESULT_SAVED" | "SCORES_PUBLISHED" | "SQUADS_IMPORTED" | "SQUAD_PLAYER_UPDATED" | "TEAM_UPDATED" | "TOURNAMENT_UPDATED" | "USER_POLL_CREATED" | "WORLD_CUP_SQUADS_SEEDED";
-  entityType: "AI_SETTINGS" | "GROUP" | "PARTICIPANT" | "PREDICTION" | "QUESTION_TEMPLATE" | "RESULT" | "MATCH" | "SQUAD" | "SQUAD_PLAYER" | "TEAM" | "TOURNAMENT";
+  action: "AI_MESSAGE_DRAFTED" | "AI_MESSAGE_DISCARDED" | "AI_MESSAGE_PUBLISHED" | "AI_MESSAGE_REGENERATED" | "AI_SETTINGS_UPDATED" | "FIXTURE_UPDATED" | "FIXTURES_SYNCED" | "GROUP_CREATED" | "GROUP_UPDATED" | "PARTICIPANT_CREATED" | "PARTICIPANT_CREDENTIALS_RESET" | "PARTICIPANT_JOINED" | "PARTICIPANT_PASSWORD_CHANGED" | "PARTICIPANT_ROLE_UPDATED" | "PARTICIPANT_UPDATED" | "POLLS_GENERATED" | "POLLS_GENERATED_AND_PUBLISHED" | "POLLS_RESET" | "PREDICTION_SUBMITTED" | "QUESTION_DRAFTS_SAVED" | "QUESTIONS_PUBLISHED" | "QUESTION_TEMPLATE_UPDATED" | "RESULT_SAVED" | "SCORES_PUBLISHED" | "SQUADS_IMPORTED" | "SQUAD_PLAYER_UPDATED" | "TEAM_UPDATED" | "TOURNAMENT_UPDATED" | "USER_POLL_CREATED" | "WORLD_CUP_SQUADS_SEEDED";
+  entityType: "AI_MESSAGE" | "AI_SETTINGS" | "GROUP" | "PARTICIPANT" | "PREDICTION" | "QUESTION_TEMPLATE" | "RESULT" | "MATCH" | "SQUAD" | "SQUAD_PLAYER" | "TEAM" | "TOURNAMENT";
   entityId: string;
   metadata: Record<string, unknown>;
   createdAt: string;
@@ -280,6 +300,7 @@ export interface FantasyGameData {
   questions: FantasyQuestion[];
   questionTemplates: FantasyQuestionTemplate[];
   aiSettings: FantasyAiSettings;
+  aiMessages: FantasyAiMessage[];
   predictions: FantasyPrediction[];
   results: FantasyMatchResult[];
   leaderboard: FantasyLeaderboardRow[];

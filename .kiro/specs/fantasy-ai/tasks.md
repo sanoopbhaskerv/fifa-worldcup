@@ -6,22 +6,22 @@
 - [x] Generate match question drafts from templates and squad candidates.
 - [x] Validate generated player options against squad data.
 - [x] Fall back to templates when external AI is disabled.
-- [ ] Add `FantasyAiMessage` types and game payload fields.
-- [ ] Add storage support for `AI_MESSAGE` records in memory and DynamoDB
+- [x] Add `FantasyAiMessage` types and game payload fields.
+- [x] Add storage support for `AI_MESSAGE` records in memory and DynamoDB
   adapters.
-- [ ] Implement context hash helper for generated message idempotency.
-- [ ] Implement template reminder generation from open polls and lock times.
-- [ ] Implement template recap generation from result facts and score changes.
-- [ ] Implement daily leaderboard summary generation from rank and points
+- [x] Implement context hash helper for generated message idempotency.
+- [x] Implement template reminder generation from open polls and lock times.
+- [x] Implement template recap generation from result facts and score changes.
+- [x] Implement daily leaderboard summary generation from rank and points
   changes.
-- [ ] Add backend tests for each template generator.
+- [x] Add backend tests for each template generator.
 
 ## Phase 2. Admin Workflow
 
 - [x] Add admin AI settings screen.
 - [x] Add admin poll draft generation and publish flow.
-- [ ] Add admin AI message list API.
-- [ ] Add admin APIs to generate reminder, recap, and leaderboard drafts.
+- [x] Add admin AI message list API.
+- [x] Add admin APIs to generate reminder, recap, and leaderboard drafts.
 - [ ] Add admin APIs to publish, regenerate, and discard AI messages.
 - [ ] Add audit records for draft, publish, regenerate, and discard actions.
 - [ ] Add admin preview UI for recap/reminder/leaderboard copy.

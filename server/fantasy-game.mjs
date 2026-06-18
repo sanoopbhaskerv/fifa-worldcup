@@ -168,6 +168,7 @@ const initialGame = {
   recaps: [
     { id: "recap-eng-esp", matchId: "eng-esp", title: "Spain nicked it late", body: "England 1 - 2 Spain. The structured result facts are ready for score review.", createdAt: "2026-06-17T01:45:00+05:30" },
   ],
+  aiMessages: [],
   auditRecords: [],
   updatedAt: now,
 };
@@ -284,6 +285,7 @@ const normalizeGame = (game) => {
     }))).map(normalizeGroupMembershipRecord),
     questions: game.questions.map((question) => ({ groupId: defaultGroupId, ...question })),
     questionTemplates: normalizedTemplates,
+    aiMessages: game.aiMessages ?? [],
     aiSettings: {
       ...game.aiSettings,
       enabledCategories: normalizedTemplates.map((template) => template.category),
@@ -338,6 +340,7 @@ const publicGame = (game) => {
   return {
     ...safeGame,
     participants: safeGame.participants.map(publicParticipant),
+    aiMessages: (safeGame.aiMessages ?? []).filter((message) => message.status === "PUBLISHED"),
   };
 };
 
@@ -531,6 +534,7 @@ const validQuestionOptionMode = new Set(["MATCH_RESULT", "FIRST_SCORING_TEAM", "
 const validQuestionCategory = new Set(["MATCH_WINNER", "QUALIFIER", "RESULT_90", "FINAL_SCORE_RANGE", "EXACT_SCORE", "FIRST_SCORING_TEAM", "FIRST_GOAL_TIME", "FIRST_GOAL_SCORER", "ANYTIME_GOAL_SCORER", "STAR_PLAYER_SCORE", "PLAYER_SCORES_2_PLUS", "TOTAL_GOALS", "BOTH_TEAMS_SCORE", "PENALTY_GOAL", "MAN_OF_THE_MATCH", "TOURNAMENT_WINNER", "TOURNAMENT_FINALISTS", "GOLDEN_BOOT", "GOLDEN_BALL", "GOLDEN_GLOVE", "TOURNAMENT_MVP"]);
 const validAiMode = new Set(["DISABLED", "TEMPLATE_ONLY", "ASSISTED"]);
 const validAiBanterLevel = new Set(["NONE", "LIGHT", "PLAYFUL"]);
+const validAiMessageType = new Set(["REMINDER", "RECAP", "LEADERBOARD_SUMMARY"]);
 const playerFallbackOptions = new Set(["Other", "Own Goal", "No goal"]);
 const userPollTemplates = {
   MATCH_WINNER: { category: "MATCH_WINNER", type: "SINGLE_CHOICE", text: "Who will win the match?", optionMode: "MATCH_RESULT", points: 5 },
@@ -544,6 +548,34 @@ const userPollTemplates = {
 };
 
 const teamName = (game, teamId) => game.teams.find((team) => team.id === teamId)?.name ?? "Unknown";
+
+const stableJson = (value) => {
+  if (Array.isArray(value)) return `[${value.map(stableJson).join(",")}]`;
+  if (value && typeof value === "object") {
+    return `{${Object.keys(value).sort().map((key) => `${JSON.stringify(key)}:${stableJson(value[key])}`).join(",")}}`;
+  }
+  return JSON.stringify(value);
+};
+
+const contextHashFor = (value) => createHash("sha256").update(stableJson(value)).digest("hex");
+
+const shortDateTime = (value) => {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return value;
+  return date.toLocaleString("en-IN", {
+    day: "2-digit",
+    hour: "2-digit",
+    hour12: true,
+    minute: "2-digit",
+    month: "short",
+    timeZone: "Asia/Kolkata",
+  });
+};
+
+const matchLabel = (game, match) => `${teamName(game, match.homeTeamId)} vs ${teamName(game, match.awayTeamId)}`;
+
+const scoreLabel = (game, match, result) =>
+  `${teamName(game, match.homeTeamId)} ${result.homeScore}-${result.awayScore} ${teamName(game, match.awayTeamId)}`;
 
 const pollCloseAtFor = (kickoff, closeMinutes) => {
   const timestamp = Date.parse(kickoff);
@@ -1862,6 +1894,227 @@ export const updateFantasyAiSettings = async (input) => {
   }));
   return { aiSettings: updatedSettings, game: publicGame(updatedGame) };
 };
+
+const aiMessageBaseContext = (game, input = {}) => ({
+  tournamentId: game.tournament.id,
+  groupId: input.groupId ?? defaultGroupId,
+});
+
+const matchForAiMessage = (game, matchId) => {
+  const match = game.matches.find((item) => item.id === matchId);
+  if (!match) throw new ProviderError("Match not found.", 404, "NOT_FOUND");
+  return match;
+};
+
+const openPollReminderContext = (game, input = {}) => {
+  const groupId = resolveGroupId(game, input.groupId);
+  const match = matchForAiMessage(game, input.matchId);
+  const questions = game.questions.filter((question) =>
+    question.matchId === match.id &&
+    (question.groupId ?? defaultGroupId) === groupId &&
+    question.status === "OPEN"
+  );
+  if (questions.length === 0) {
+    throw new ProviderError("No open polls found for this match and group.", 404, "NO_OPEN_POLLS");
+  }
+  const participantIds = participantIdsForGroup(game, groupId);
+  const predictionKeys = new Set(game.predictions.map((prediction) => `${prediction.participantId}:${prediction.questionId}`));
+  const unansweredPollCount = [...participantIds].reduce((sum, participantId) => (
+    sum + questions.filter((question) => !predictionKeys.has(`${participantId}:${question.id}`)).length
+  ), 0);
+  return {
+    ...aiMessageBaseContext(game, { groupId }),
+    matchId: match.id,
+    matchLabel: matchLabel(game, match),
+    kickoff: match.kickoff,
+    pollCloseAt: match.pollCloseAt,
+    openQuestionCount: questions.length,
+    participantCount: participantIds.size,
+    unansweredPollCount,
+  };
+};
+
+const recapContext = (game, input = {}) => {
+  const match = matchForAiMessage(game, input.matchId);
+  const result = game.results.find((item) => item.matchId === match.id);
+  if (!result) throw new ProviderError("Result not found.", 404, "NOT_FOUND");
+  const questionIds = new Set(game.questions.filter((question) => question.matchId === match.id).map((question) => question.id));
+  const pointsByParticipant = new Map();
+  game.predictions
+    .filter((prediction) => questionIds.has(prediction.questionId))
+    .forEach((prediction) => {
+      pointsByParticipant.set(prediction.participantId, (pointsByParticipant.get(prediction.participantId) ?? 0) + (prediction.pointsAwarded ?? 0));
+    });
+  const topPointWinners = [...pointsByParticipant.entries()]
+    .map(([participantId, points]) => ({
+      nickname: game.participants.find((participant) => participant.id === participantId)?.nickname ?? participantId,
+      points,
+    }))
+    .filter((row) => row.points > 0)
+    .sort((left, right) => right.points - left.points || left.nickname.localeCompare(right.nickname))
+    .slice(0, 3);
+  return {
+    ...aiMessageBaseContext(game, input),
+    matchId: match.id,
+    matchLabel: matchLabel(game, match),
+    score: scoreLabel(game, match, result),
+    firstGoalScorer: result.firstGoalScorer,
+    firstGoalMinute: result.firstGoalMinute,
+    manOfTheMatch: result.manOfTheMatch,
+    penaltyGoal: Boolean(result.penaltyGoal),
+    bothTeamsScored: result.bothTeamsScored,
+    topPointWinners,
+  };
+};
+
+const leaderboardContext = (game, input = {}) => {
+  const rows = [...game.leaderboard].sort((left, right) => left.rank - right.rank);
+  const leader = rows[0];
+  const rankChanges = rows
+    .filter((row) => row.previousRank && row.previousRank !== row.rank)
+    .map((row) => ({
+      nickname: row.nickname,
+      from: row.previousRank,
+      to: row.rank,
+    }))
+    .slice(0, 3);
+  const todayTopScorer = [...rows].sort((left, right) => right.todayPoints - left.todayPoints || left.rank - right.rank)[0];
+  return {
+    ...aiMessageBaseContext(game, input),
+    leader: leader ? { nickname: leader.nickname, points: leader.totalPoints } : undefined,
+    rankChanges,
+    todayTopScorer: todayTopScorer ? { nickname: todayTopScorer.nickname, points: todayTopScorer.todayPoints } : undefined,
+    rowCount: rows.length,
+  };
+};
+
+const templateDraftFromContext = (type, context) => {
+  switch (type) {
+    case "REMINDER":
+      return {
+        title: `${context.matchLabel} polls close soon`,
+        body: `${context.openQuestionCount} polls lock at ${shortDateTime(context.pollCloseAt)}. ${context.unansweredPollCount} answers are still pending across ${context.participantCount} players.`,
+      };
+    case "RECAP": {
+      const topWinners = context.topPointWinners.length > 0
+        ? context.topPointWinners.map((row) => `${row.nickname} +${row.points}`).join(", ")
+        : "No points swings yet";
+      const insight = context.firstGoalScorer
+        ? `${context.firstGoalScorer} opened the scoring${context.firstGoalMinute ? ` in minute ${context.firstGoalMinute}` : ""}.`
+        : context.bothTeamsScored ? "Both teams found a way onto the sheet." : "The clean-sheet calls mattered here.";
+      return {
+        title: `${context.matchLabel} recap`,
+        body: `${context.score}. Top points: ${topWinners}. ${insight}`,
+      };
+    }
+    case "LEADERBOARD_SUMMARY": {
+      const leaderText = context.leader ? `${context.leader.nickname} leads on ${context.leader.points} points` : "Leaderboard is waiting for points";
+      const moverText = context.rankChanges.length > 0
+        ? `Movers: ${context.rankChanges.map((row) => `${row.nickname} ${row.from}->${row.to}`).join(", ")}.`
+        : "No rank changes after the latest scoring.";
+      const todayText = context.todayTopScorer?.points > 0
+        ? `${context.todayTopScorer.nickname} is today's top scorer with ${context.todayTopScorer.points}.`
+        : "Today's top scorer is still open.";
+      return {
+        title: "Leaderboard pulse",
+        body: `${leaderText}. ${moverText} ${todayText}`,
+      };
+    }
+    default:
+      throw new ProviderError("AI message type is invalid.", 400, "INVALID_AI_MESSAGE");
+  }
+};
+
+const aiMessageContextFor = (game, type, input = {}) => {
+  if (type === "REMINDER") return openPollReminderContext(game, input);
+  if (type === "RECAP") return recapContext(game, input);
+  if (type === "LEADERBOARD_SUMMARY") return leaderboardContext(game, input);
+  throw new ProviderError("AI message type is invalid.", 400, "INVALID_AI_MESSAGE");
+};
+
+const createAiMessageDraft = async (type, input = {}) => {
+  if (!validAiMessageType.has(type)) {
+    throw new ProviderError("AI message type is invalid.", 400, "INVALID_AI_MESSAGE");
+  }
+  const game = await gameState();
+  const context = aiMessageContextFor(game, type, input);
+  const contextHash = contextHashFor({ type, context });
+  const existingDraft = (game.aiMessages ?? []).find((message) => message.contextHash === contextHash && message.status === "DRAFT");
+  if (existingDraft) {
+    return { message: existingDraft, game: publicGame(game) };
+  }
+  const generated = templateDraftFromContext(type, context);
+  const createdAt = new Date().toISOString();
+  const message = {
+    id: `ai-${type.toLowerCase().replaceAll("_", "-")}-${context.matchId ?? context.groupId ?? game.tournament.id}-${contextHash.slice(0, 10)}`,
+    tournamentId: game.tournament.id,
+    matchId: context.matchId,
+    groupId: context.groupId,
+    type,
+    status: "DRAFT",
+    source: "TEMPLATE",
+    title: generated.title,
+    body: generated.body,
+    contextHash,
+    createdAt,
+    createdByParticipantId: input.actorId ?? "admin",
+  };
+  const nextGame = {
+    ...game,
+    aiMessages: [
+      ...(game.aiMessages ?? []).filter((item) => item.id !== message.id),
+      message,
+    ],
+  };
+  const updatedGame = await saveGame(nextGame, await audit({
+    action: "AI_MESSAGE_DRAFTED",
+    actorId: input.actorId ?? "admin",
+    entityId: message.id,
+    entityType: "AI_MESSAGE",
+    metadata: {
+      type,
+      source: message.source,
+      matchId: message.matchId,
+      groupId: message.groupId,
+      contextHash,
+    },
+  }));
+  return { message, game: publicGame(updatedGame) };
+};
+
+/**
+ * Returns admin-visible AI host messages, including drafts.
+ *
+ * @returns AI messages and game payload.
+ */
+export const listFantasyAiMessages = async () => {
+  const game = await gameState();
+  return { aiMessages: game.aiMessages ?? [], game: publicGame(game) };
+};
+
+/**
+ * Generates a template reminder draft for one upcoming match and group.
+ *
+ * @param input - Draft context fields.
+ * @returns Draft AI message and game payload.
+ */
+export const createFantasyReminderDraft = async (input = {}) => createAiMessageDraft("REMINDER", input);
+
+/**
+ * Generates a template match recap draft from stored result facts and scoring.
+ *
+ * @param input - Draft context fields.
+ * @returns Draft AI message and game payload.
+ */
+export const createFantasyRecapDraft = async (input = {}) => createAiMessageDraft("RECAP", input);
+
+/**
+ * Generates a template leaderboard summary draft.
+ *
+ * @param input - Draft context fields.
+ * @returns Draft AI message and game payload.
+ */
+export const createFantasyLeaderboardDraft = async (input = {}) => createAiMessageDraft("LEADERBOARD_SUMMARY", input);
 
 /**
  * Returns admin fixture rows.
