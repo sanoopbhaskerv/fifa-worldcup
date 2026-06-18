@@ -20,12 +20,16 @@ export default function FantasyPollsPage() {
   const submitPrediction = useSubmitFantasyPrediction(data.activeParticipantId);
   const submitPredictions = useSubmitFantasyPredictions(data.activeParticipantId);
   const [groupId, setGroupId] = useState(data.groups[0]?.id ?? "group-main");
+  const [matchId, setMatchId] = useState<string>("");
   const [draftAnswers, setDraftAnswers] = useState<Record<string, string>>({});
   const groupQuestions = fantasyQuestionsForGroup(groupId, data.questions);
   const tournamentQuestions = fantasyPublishedQuestions(groupQuestions).filter((question) => !question.matchId);
   const pollMatches = data.matches
     .map((match) => ({ match, questions: fantasyQuestionsForMatch(match.id, groupQuestions) }))
     .filter(({ questions }) => questions.length > 0);
+  const filteredPollMatches = matchId
+    ? pollMatches.filter(({ match }) => match.id === matchId)
+    : pollMatches;
   const initialAnswer = (question: FantasyQuestion) => {
     const prediction = fantasyPredictionForQuestion(question.id, data.activeParticipantId, data);
     return Array.isArray(prediction?.answer) ? prediction.answer[0] : prediction?.answer ?? "";
@@ -43,13 +47,33 @@ export default function FantasyPollsPage() {
     setDraftAnswers((current) => Object.fromEntries(Object.entries(current).filter(([questionId]) => !questionIds.includes(questionId))));
   };
   const groupOptions = data.groups.map((group) => ({ value: group.id, label: group.name }));
+  const matchOptions = pollMatches.map(({ match }) => ({
+    value: match.id,
+    label: `${fantasyMatchTitle(match, data.teams)} – ${formatDate(match.kickoff, true)}`,
+  }));
 
   return (
     <div className="page fantasy-page">
       <PageHeading eyebrow="Prediction polls" title="Published polls" description="Answer open match polls before lock time. Drafts stay hidden until an admin publishes them." />
       <div className="fantasy-page-actions">
         {data.groups.length > 1 && (
-          <LabeledSelect label="Group" onChange={setGroupId} options={groupOptions} value={groupId} />
+          <LabeledSelect
+            label="Group"
+            onChange={(value) => {
+              setGroupId(value);
+              setMatchId("");
+            }}
+            options={groupOptions}
+            value={groupId}
+          />
+        )}
+        {pollMatches.length > 1 && (
+          <LabeledSelect
+            label="Match"
+            onChange={setMatchId}
+            options={[{ value: "", label: "All matches" }, ...matchOptions]}
+            value={matchId}
+          />
         )}
         <Link to="/fantasy/create-poll">Create poll <ArrowIcon /></Link>
       </div>
@@ -61,7 +85,7 @@ export default function FantasyPollsPage() {
             </div>
           </section>
         )}
-        {pollMatches.map(({ match, questions }) => {
+        {filteredPollMatches.map(({ match, questions }) => {
           const changed = changedAnswers(questions);
           return (
             <section className="content-section fantasy-poll-group" key={match.id}>
@@ -109,7 +133,7 @@ export default function FantasyPollsPage() {
             </section>
           );
         })}
-        {tournamentQuestions.length > 0 && (
+        {tournamentQuestions.length > 0 && !matchId && (
           <section className="content-section fantasy-poll-group">
             <div className="section-heading">
               <div><span className="eyebrow">Tournament-long</span><h2>Big calls</h2><p>These lock before the tournament starts and carry higher points.</p></div>

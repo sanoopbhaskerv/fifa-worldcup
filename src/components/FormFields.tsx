@@ -11,6 +11,7 @@ type LabeledSelectProps = {
   onChange: (value: string) => void;
   options: SelectOption[];
   ariaLabel?: string;
+  className?: string;
 };
 
 type LabeledInputProps = {
@@ -25,6 +26,7 @@ type LabeledInputProps = {
   ariaLabel?: string;
   autoComplete?: string;
   minLength?: number;
+  className?: string;
 };
 
 type LabeledCheckboxProps = {
@@ -41,11 +43,13 @@ export const LabeledSelect = ({
   onChange,
   options,
   ariaLabel,
+  className,
 }: LabeledSelectProps) => (
-  <label>
-    {label}
+  <label className={`labeled-select ${className ?? ""}`}>
+    <span className="labeled-select__text">{label}</span>
     <select
       aria-label={ariaLabel}
+      className="labeled-select__control"
       value={value}
       onChange={(event) => onChange(event.target.value)}
     >
@@ -70,12 +74,14 @@ export const LabeledInput = ({
   ariaLabel,
   autoComplete,
   minLength,
+  className,
 }: LabeledInputProps) => (
-  <label>
-    {label}
+  <label className={`labeled-input ${className ?? ""}`}>
+    <span className="labeled-input__text">{label}</span>
     <input
       aria-label={ariaLabel}
       autoComplete={autoComplete}
+      className="labeled-input__control"
       max={max}
       maxLength={maxLength}
       min={min}
@@ -95,13 +101,14 @@ export const LabeledCheckbox = ({
   className,
   ariaLabel,
 }: LabeledCheckboxProps) => (
-  <label className={className}>
+  <label className={`labeled-checkbox ${className ?? ""}`}>
     <input
       aria-label={ariaLabel}
       checked={checked}
+      className="labeled-checkbox__control"
       onChange={(event) => onChange(event.target.checked)}
       type="checkbox"
     />
-    {label}
+    <span className="labeled-checkbox__text">{label}</span>
   </label>
 );
