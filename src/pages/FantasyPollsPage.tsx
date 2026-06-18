@@ -1,5 +1,6 @@
 import { Link } from "react-router-dom";
 import { useState } from "react";
+import { createPortal } from "react-dom";
 import { AnimatePresence, motion } from "framer-motion";
 import { FantasyQuestionCard } from "../features/fantasy/FantasyQuestionCard";
 import { ArrowIcon, CloseIcon } from "../components/Icons";
@@ -218,7 +219,7 @@ export default function FantasyPollsPage() {
         )}
       </div>
       <AnimatePresence>
-        {isFilterOpen && (
+        {isFilterOpen && createPortal(
           <motion.div
             className="dialog-backdrop"
             initial={{ opacity: 0 }}
@@ -282,7 +283,8 @@ export default function FantasyPollsPage() {
                 </button>
               </footer>
             </motion.section>
-          </motion.div>
+          </motion.div>,
+          document.body
         )}
       </AnimatePresence>
     </div>
