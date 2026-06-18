@@ -22,8 +22,8 @@
 - [x] Add admin poll draft generation and publish flow.
 - [x] Add admin AI message list API.
 - [x] Add admin APIs to generate reminder, recap, and leaderboard drafts.
-- [ ] Add admin APIs to publish, regenerate, and discard AI messages.
-- [ ] Add audit records for draft, publish, regenerate, and discard actions.
+- [x] Add admin APIs to publish, regenerate, and discard AI messages.
+- [x] Add audit records for draft, publish, regenerate, and discard actions.
 - [ ] Add admin preview UI for recap/reminder/leaderboard copy.
 - [ ] Add tests for admin message publishing and player visibility.
 - [ ] Add one-click disable for external AI mode.

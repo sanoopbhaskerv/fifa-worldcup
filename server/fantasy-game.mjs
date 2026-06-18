@@ -2082,6 +2082,34 @@ const createAiMessageDraft = async (type, input = {}) => {
   return { message, game: publicGame(updatedGame) };
 };
 
+const aiMessageById = (game, messageId) => {
+  const message = (game.aiMessages ?? []).find((item) => item.id === messageId);
+  if (!message) throw new ProviderError("AI message not found.", 404, "NOT_FOUND");
+  return message;
+};
+
+const saveAiMessageMutation = async ({ game, message, action, actorId = "admin", metadata = {} }) => {
+  const nextGame = {
+    ...game,
+    aiMessages: (game.aiMessages ?? []).map((item) => item.id === message.id ? message : item),
+  };
+  const updatedGame = await saveGame(nextGame, await audit({
+    action,
+    actorId,
+    entityId: message.id,
+    entityType: "AI_MESSAGE",
+    metadata: {
+      type: message.type,
+      source: message.source,
+      matchId: message.matchId,
+      groupId: message.groupId,
+      contextHash: message.contextHash,
+      ...metadata,
+    },
+  }));
+  return { message, game: publicGame(updatedGame) };
+};
+
 /**
  * Returns admin-visible AI host messages, including drafts.
  *
@@ -2115,6 +2143,128 @@ export const createFantasyRecapDraft = async (input = {}) => createAiMessageDraf
  * @returns Draft AI message and game payload.
  */
 export const createFantasyLeaderboardDraft = async (input = {}) => createAiMessageDraft("LEADERBOARD_SUMMARY", input);
+
+/**
+ * Updates admin-editable AI host copy without changing visibility.
+ *
+ * @param messageId - Message being edited.
+ * @param input - Editable copy fields.
+ * @returns Updated AI message and game payload.
+ */
+export const updateFantasyAiMessage = async (messageId, input = {}) => {
+  const game = await gameState();
+  const current = aiMessageById(game, messageId);
+  const title = input.title !== undefined ? String(input.title).trim() : current.title;
+  const body = input.body !== undefined ? String(input.body).trim() : current.body;
+  if (!title || !body) {
+    throw new ProviderError("AI message title and body are required.", 400, "INVALID_AI_MESSAGE");
+  }
+  if (current.status === "DISCARDED") {
+    throw new ProviderError("Discarded AI messages cannot be edited.", 409, "AI_MESSAGE_DISCARDED");
+  }
+  const message = {
+    ...current,
+    title,
+    body,
+    source: title !== current.title || body !== current.body ? "MANUAL" : current.source,
+  };
+  return saveAiMessageMutation({
+    game,
+    message,
+    action: "AI_MESSAGE_REGENERATED",
+    actorId: input.actorId ?? "admin",
+    metadata: { manualEdit: message.source === "MANUAL" },
+  });
+};
+
+/**
+ * Regenerates a draft AI host message from current stored context.
+ *
+ * @param messageId - Message being regenerated.
+ * @param input - Optional actor metadata.
+ * @returns Regenerated AI message and game payload.
+ */
+export const regenerateFantasyAiMessage = async (messageId, input = {}) => {
+  const game = await gameState();
+  const current = aiMessageById(game, messageId);
+  if (current.status === "DISCARDED") {
+    throw new ProviderError("Discarded AI messages cannot be regenerated.", 409, "AI_MESSAGE_DISCARDED");
+  }
+  const context = aiMessageContextFor(game, current.type, {
+    matchId: current.matchId,
+    groupId: current.groupId,
+  });
+  const contextHash = contextHashFor({ type: current.type, context });
+  const generated = templateDraftFromContext(current.type, context);
+  const message = {
+    ...current,
+    status: "DRAFT",
+    source: "TEMPLATE",
+    title: generated.title,
+    body: generated.body,
+    contextHash,
+    publishedAt: undefined,
+    discardedAt: undefined,
+  };
+  return saveAiMessageMutation({
+    game,
+    message,
+    action: "AI_MESSAGE_REGENERATED",
+    actorId: input.actorId ?? "admin",
+  });
+};
+
+/**
+ * Publishes an AI host message to player payloads.
+ *
+ * @param messageId - Message being published.
+ * @param input - Optional actor metadata.
+ * @returns Published AI message and game payload.
+ */
+export const publishFantasyAiMessage = async (messageId, input = {}) => {
+  const game = await gameState();
+  const current = aiMessageById(game, messageId);
+  if (current.status === "DISCARDED") {
+    throw new ProviderError("Discarded AI messages cannot be published.", 409, "AI_MESSAGE_DISCARDED");
+  }
+  const publishedAt = new Date().toISOString();
+  const message = {
+    ...current,
+    status: "PUBLISHED",
+    publishedAt,
+    discardedAt: undefined,
+  };
+  return saveAiMessageMutation({
+    game,
+    message,
+    action: "AI_MESSAGE_PUBLISHED",
+    actorId: input.actorId ?? "admin",
+  });
+};
+
+/**
+ * Discards an AI host message so it stays hidden from players.
+ *
+ * @param messageId - Message being discarded.
+ * @param input - Optional actor metadata.
+ * @returns Discarded AI message and game payload.
+ */
+export const discardFantasyAiMessage = async (messageId, input = {}) => {
+  const game = await gameState();
+  const current = aiMessageById(game, messageId);
+  const message = {
+    ...current,
+    status: "DISCARDED",
+    discardedAt: new Date().toISOString(),
+    publishedAt: undefined,
+  };
+  return saveAiMessageMutation({
+    game,
+    message,
+    action: "AI_MESSAGE_DISCARDED",
+    actorId: input.actorId ?? "admin",
+  });
+};
 
 /**
  * Returns admin fixture rows.

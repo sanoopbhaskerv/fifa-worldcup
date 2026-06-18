@@ -9,6 +9,7 @@ import {
   createFantasySignup,
   createFantasyUserPoll,
   changeFantasyParticipantPassword,
+  discardFantasyAiMessage,
   getFantasyGame,
   importFantasySquads,
   joinFantasyGame,
@@ -21,6 +22,8 @@ import {
   listFantasySquads,
   loginFantasyParticipant,
   publishFantasyScores,
+  publishFantasyAiMessage,
+  regenerateFantasyAiMessage,
   resetAndGenerateFantasyPolls,
   saveFantasyQuestionDrafts,
   saveFantasyResult,
@@ -30,6 +33,7 @@ import {
   submitFantasyPrediction,
   submitFantasyPredictions,
   updateFantasyAiSettings,
+  updateFantasyAiMessage,
   updateFantasyFixture,
   updateFantasyGroup,
   updateFantasyParticipantCredentials,
@@ -230,6 +234,34 @@ export const handleApiRequest = async ({
 
     if (requestMethod === "POST" && path === "/api/fantasy/admin/ai-messages/leaderboard-draft") {
       return response(200, await createFantasyLeaderboardDraft(parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
+    const aiMessagePublishMatch = path.match(/^\/api\/fantasy\/admin\/ai-messages\/([^/]+)\/publish$/);
+    if (requestMethod === "POST" && aiMessagePublishMatch) {
+      return response(200, await publishFantasyAiMessage(decodeURIComponent(aiMessagePublishMatch[1]), parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
+    const aiMessageDiscardMatch = path.match(/^\/api\/fantasy\/admin\/ai-messages\/([^/]+)\/discard$/);
+    if (requestMethod === "POST" && aiMessageDiscardMatch) {
+      return response(200, await discardFantasyAiMessage(decodeURIComponent(aiMessageDiscardMatch[1]), parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
+    const aiMessageRegenerateMatch = path.match(/^\/api\/fantasy\/admin\/ai-messages\/([^/]+)\/regenerate$/);
+    if (requestMethod === "POST" && aiMessageRegenerateMatch) {
+      return response(200, await regenerateFantasyAiMessage(decodeURIComponent(aiMessageRegenerateMatch[1]), parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
+    const aiMessageMatch = path.match(/^\/api\/fantasy\/admin\/ai-messages\/([^/]+)$/);
+    if (requestMethod === "PUT" && aiMessageMatch) {
+      return response(200, await updateFantasyAiMessage(decodeURIComponent(aiMessageMatch[1]), parseJsonBody(body)), {
         "cache-control": "no-store",
       });
     }

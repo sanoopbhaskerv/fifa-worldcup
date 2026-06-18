@@ -626,6 +626,78 @@ describe("fantasy game API", () => {
     });
   });
 
+  it("edits, regenerates, publishes, and discards AI host messages", async () => {
+    const draftResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/ai-messages/leaderboard-draft",
+      env: {},
+    });
+    const messageId = draftResponse.body.message.id;
+    const editResponse = await handleApiRequest({
+      method: "PUT",
+      url: `/api/fantasy/admin/ai-messages/${messageId}`,
+      body: JSON.stringify({ title: "Manual pulse", body: "Admin edited the leaderboard note." }),
+      env: {},
+    });
+    const regenerateResponse = await handleApiRequest({
+      method: "POST",
+      url: `/api/fantasy/admin/ai-messages/${messageId}/regenerate`,
+      env: {},
+    });
+    const publishResponse = await handleApiRequest({
+      method: "POST",
+      url: `/api/fantasy/admin/ai-messages/${messageId}/publish`,
+      env: {},
+    });
+    const playerGameResponse = await handleApiRequest({
+      method: "GET",
+      url: "/api/fantasy/game",
+      env: {},
+    });
+    const discardDraftResponse = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/ai-messages/recap-draft",
+      body: JSON.stringify({ matchId: "eng-esp" }),
+      env: {},
+    });
+    const discardResponse = await handleApiRequest({
+      method: "POST",
+      url: `/api/fantasy/admin/ai-messages/${discardDraftResponse.body.message.id}/discard`,
+      env: {},
+    });
+
+    expect(editResponse.status).toBe(200);
+    expect(editResponse.body.message).toMatchObject({
+      id: messageId,
+      source: "MANUAL",
+      title: "Manual pulse",
+    });
+    expect(regenerateResponse.status).toBe(200);
+    expect(regenerateResponse.body.message).toMatchObject({
+      id: messageId,
+      source: "TEMPLATE",
+      status: "DRAFT",
+      title: "Leaderboard pulse",
+    });
+    expect(publishResponse.status).toBe(200);
+    expect(publishResponse.body.message).toMatchObject({
+      id: messageId,
+      status: "PUBLISHED",
+    });
+    expect(publishResponse.body.message.publishedAt).toEqual(expect.any(String));
+    expect(playerGameResponse.body.aiMessages).toEqual([
+      expect.objectContaining({ id: messageId, status: "PUBLISHED" }),
+    ]);
+    expect(discardResponse.status).toBe(200);
+    expect(discardResponse.body.message).toMatchObject({
+      status: "DISCARDED",
+    });
+    expect(discardResponse.body.message.discardedAt).toEqual(expect.any(String));
+    expect(discardResponse.body.game.aiMessages).toEqual([
+      expect.objectContaining({ id: messageId, status: "PUBLISHED" }),
+    ]);
+  });
+
   it("saves generated question drafts as open polls", async () => {
     const response = await handleApiRequest({
       method: "POST",
