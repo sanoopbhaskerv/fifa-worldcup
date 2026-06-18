@@ -5,6 +5,7 @@ interface FantasyQuestionCardProps {
   question: FantasyQuestion;
   prediction?: FantasyPrediction;
   isSubmitting?: boolean;
+  isLocked?: boolean;
   selectedAnswer?: string;
   onAnswerChange?: (answer: string) => void;
   onSubmit?: (answer: string) => void;
@@ -26,6 +27,7 @@ export const FantasyQuestionCard = ({
   question,
   prediction,
   isSubmitting = false,
+  isLocked,
   selectedAnswer,
   onAnswerChange,
   onSubmit,
@@ -33,7 +35,7 @@ export const FantasyQuestionCard = ({
   const initial = Array.isArray(prediction?.answer) ? prediction.answer[0] : prediction?.answer;
   const [localSelected, setLocalSelected] = useState(initial ?? "");
   const selected = selectedAnswer ?? localSelected;
-  const locked = question.status !== "OPEN";
+  const locked = isLocked ?? question.status !== "OPEN";
   const unchanged = Boolean(selected && selected === initial);
   const isExactScore = question.type === "EXACT_SCORE";
   const changeSelected = (answer: string) => {

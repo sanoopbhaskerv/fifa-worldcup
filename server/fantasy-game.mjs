@@ -333,6 +333,25 @@ const saveGame = async (nextGame, auditRecord) => {
 
 const normalize = (value) => String(value).trim().toLowerCase();
 
+const validTimestamp = (value) => {
+  const timestamp = Date.parse(value ?? "");
+  return Number.isFinite(timestamp) ? timestamp : undefined;
+};
+
+const questionLockTimestamp = (question, game) => {
+  const closeAt = validTimestamp(question.closeAt);
+  const match = question.matchId ? game.matches.find((item) => item.id === question.matchId) : undefined;
+  const kickoff = validTimestamp(match?.kickoff);
+  const timestamps = [closeAt, kickoff].filter((timestamp) => timestamp !== undefined);
+  return timestamps.length > 0 ? Math.min(...timestamps) : undefined;
+};
+
+const questionIsAnswerable = (question, game, now = new Date()) => {
+  if (question.status !== "OPEN") return false;
+  const lockTimestamp = questionLockTimestamp(question, game);
+  return lockTimestamp === undefined || now.getTime() < lockTimestamp;
+};
+
 const inviteKey = (value) => String(value).trim().toUpperCase().replaceAll(/\s+/g, "");
 
 const publicGame = (game) => {
@@ -2790,7 +2809,7 @@ const buildPrediction = (game, { questionId, participantId, answer }) => {
   if (!participantCanAccessQuestion(game, resolvedParticipantId, question)) {
     throw new ProviderError("This poll is not available in your groups.", 403, "GROUP_ACCESS_DENIED");
   }
-  if (question.status !== "OPEN") {
+  if (!questionIsAnswerable(question, game)) {
     throw new ProviderError("Prediction poll is locked.", 409, "POLL_LOCKED");
   }
   validateAnswer(question, answer);

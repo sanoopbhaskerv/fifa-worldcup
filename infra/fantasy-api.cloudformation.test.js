@@ -9,6 +9,8 @@ describe("fantasy AWS staging template", () => {
     const template = await readFile(templatePath, "utf8");
 
     expect(template).toContain("BillingMode: PAY_PER_REQUEST");
+    expect(template).toContain("DeletionPolicy: Retain");
+    expect(template).toContain("UpdateReplacePolicy: Retain");
     expect(template).toContain("RetentionInDays: 7");
     expect(template).toContain("ReservedConcurrentExecutions: !Ref LambdaReservedConcurrency");
     expect(template).toContain("Timeout: 30");

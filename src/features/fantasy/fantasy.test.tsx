@@ -3,7 +3,7 @@ import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { ReactNode } from "react";
 import { MemoryRouter, Route, Routes } from "react-router-dom";
-import { describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import * as fantasyContext from "../../app/fantasy-context";
 import { fantasyGameData } from "../../mocks/fantasy";
 import { FantasyLeaderboard } from "./FantasyLeaderboard";
@@ -24,6 +24,15 @@ import FantasyAdminAiHostPage from "../../pages/FantasyAdminAiHostPage";
 import FantasyAdminSubmittedPollsPage from "../../pages/FantasyAdminSubmittedPollsPage";
 
 describe("fantasy prediction game", () => {
+  beforeEach(() => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-06-17T12:00:00+05:30"));
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   const renderWithQueryClient = (children: ReactNode) => {
     const queryClient = new QueryClient({
       defaultOptions: {
@@ -77,6 +86,17 @@ describe("fantasy prediction game", () => {
     await user.click(screen.getByRole("button", { name: "Save pick" }));
 
     expect(onSubmit).toHaveBeenCalledWith("Brazil 3 Argentina 4");
+  });
+
+  it("locks poll controls after kickoff", async () => {
+    const onSubmit = vi.fn();
+    const question = fantasyGameData.questions.find((item) => item.id === "q-bra-arg-winner")!;
+
+    render(<FantasyQuestionCard question={question} isLocked onSubmit={onSubmit} />);
+
+    expect(screen.getByRole("button", { name: "Brazil" })).toBeDisabled();
+    expect(screen.queryByRole("button", { name: "Save pick" })).not.toBeInTheDocument();
+    expect(screen.getByText("Locked")).toBeInTheDocument();
   });
 
   it("highlights the active participant in the leaderboard", () => {

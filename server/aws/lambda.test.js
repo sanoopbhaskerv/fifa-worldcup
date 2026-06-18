@@ -1,12 +1,18 @@
-import { beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { resetFantasyGame } from "../fantasy-game.mjs";
 import { handler } from "./lambda.mjs";
 
 describe("fantasy Lambda adapter", () => {
   beforeEach(async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-06-17T12:00:00+05:30"));
     delete process.env.EMIT_LAMBDA_CORS_HEADERS;
     delete process.env.CORS_ALLOW_ORIGIN;
     await resetFantasyGame();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
   });
 
   it("handles CORS preflight without touching the API router", async () => {

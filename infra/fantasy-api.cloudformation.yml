@@ -96,6 +96,8 @@ Conditions:
 Resources:
   PredictionGameTable:
     Type: AWS::DynamoDB::Table
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
     Properties:
       TableName: !Sub "${AppName}-table"
       BillingMode: PAY_PER_REQUEST

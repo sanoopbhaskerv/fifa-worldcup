@@ -4,10 +4,13 @@ import { getFantasyStorageRecords, resetFantasyGame } from "./fantasy-game.mjs";
 
 describe("fantasy game API", () => {
   beforeEach(async () => {
+    vi.useFakeTimers({ toFake: ["Date"] });
+    vi.setSystemTime(new Date("2026-06-17T12:00:00+05:30"));
     await resetFantasyGame();
   });
 
   afterEach(() => {
+    vi.useRealTimers();
     vi.unstubAllGlobals();
   });
 
@@ -1082,6 +1085,20 @@ describe("fantasy game API", () => {
     });
   });
 
+  it("rejects open poll submissions after lock time or kickoff", async () => {
+    vi.setSystemTime(new Date("2026-06-18T20:31:00+05:30"));
+
+    const response = await handleApiRequest({
+      method: "PUT",
+      url: "/api/fantasy/predictions/q-bra-arg-winner",
+      body: JSON.stringify({ answer: "Argentina" }),
+      env: {},
+    });
+
+    expect(response.status).toBe(409);
+    expect(response.body.error.code).toBe("POLL_LOCKED");
+  });
+
   it("rejects writes against scored polls", async () => {
     const response = await handleApiRequest({
       method: "PUT",
@@ -1141,7 +1158,7 @@ describe("fantasy game API", () => {
       participantId: "p-sanoop",
       rank: 1,
       totalPoints: 21,
-      todayPoints: 13,
+      todayPoints: 21,
       correctWinners: 1,
       streak: 1,
     });

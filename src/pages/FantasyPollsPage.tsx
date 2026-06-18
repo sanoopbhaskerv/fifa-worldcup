@@ -7,7 +7,7 @@ import { ArrowIcon, CloseIcon } from "../components/Icons";
 import { useFantasy } from "../app/fantasy-context";
 import { LabeledSelect } from "../components/FormFields";
 import { useSubmitFantasyPrediction, useSubmitFantasyPredictions } from "../services/fantasy-queries";
-import { fantasyDeadlineLabel, fantasyMatchTitle, fantasyPredictionForQuestion, fantasyPublishedQuestions, fantasyQuestionsForGroup, fantasyQuestionsForMatch } from "../utils/fantasy";
+import { fantasyDeadlineLabel, fantasyMatchTitle, fantasyPredictionForQuestion, fantasyPublishedQuestions, fantasyQuestionIsLocked, fantasyQuestionsForGroup, fantasyQuestionsForMatch } from "../utils/fantasy";
 import { formatDate, formatKickoff } from "../utils/football";
 import { PageHeading } from "../components/PageSections";
 import type { FantasyQuestion } from "../types/fantasy";
@@ -51,7 +51,7 @@ export default function FantasyPollsPage() {
   };
   const selectedAnswer = (question: FantasyQuestion) => draftAnswers[question.id] ?? initialAnswer(question);
   const changedAnswers = (questions: FantasyQuestion[]) => questions
-    .filter((question) => question.status === "OPEN")
+    .filter((question) => !fantasyQuestionIsLocked(question, data))
     .map((question) => ({
       answer: selectedAnswer(question).trim(),
       initial: initialAnswer(question),
@@ -158,6 +158,7 @@ export default function FantasyPollsPage() {
                 {questions.map((question) => (
                   <FantasyQuestionCard
                     isSubmitting={submitPrediction.isPending && submitPrediction.variables?.questionId === question.id}
+                    isLocked={fantasyQuestionIsLocked(question, data)}
                     key={question.id}
                     onAnswerChange={(answer) => setDraftAnswers((current) => ({ ...current, [question.id]: answer }))}
                     onSubmit={(answer) => submitPrediction.mutate({
@@ -203,6 +204,7 @@ export default function FantasyPollsPage() {
               {tournamentQuestions.map((question) => (
                 <FantasyQuestionCard
                   isSubmitting={submitPrediction.isPending && submitPrediction.variables?.questionId === question.id}
+                  isLocked={fantasyQuestionIsLocked(question, data)}
                   key={question.id}
                   onAnswerChange={(answer) => setDraftAnswers((current) => ({ ...current, [question.id]: answer }))}
                   onSubmit={(answer) => submitPrediction.mutate({
