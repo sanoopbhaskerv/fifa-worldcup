@@ -4,11 +4,20 @@ import { useFantasyFixtures, useSyncFantasyFixtures, useUpdateFantasyFixture } f
 import type { FantasyMatch } from "../types/fantasy";
 import { fantasyDeadlineLabel, fantasyMatchTitle } from "../utils/fantasy";
 import { formatDate, formatKickoff } from "../utils/football";
+import { LabeledInput, LabeledSelect } from "../components/FormFields";
 import { PageHeading } from "../components/PageSections";
 import { SectionHeading } from "../components/SectionHeading";
 
 const importanceOptions: FantasyMatch["importance"][] = ["NORMAL", "BIG_MATCH", "KNOCKOUT", "FINAL"];
 const statusOptions: FantasyMatch["status"][] = ["SCHEDULED", "LOCKED", "COMPLETED"];
+const importanceSelectOptions = importanceOptions.map((option) => ({
+  value: option,
+  label: option.replace("_", " "),
+}));
+const statusSelectOptions = statusOptions.map((option) => ({
+  value: option,
+  label: option,
+}));
 
 /**
  * Displays admin fixture controls for match importance and poll lock timing.
@@ -72,30 +81,21 @@ const FixtureEditor = ({ match }: { match: FantasyMatch }) => {
           updateFixture.mutate({ importance, kickoff, matchId: match.id, pollCloseAt, stage, status });
         }}
       >
-        <label>
-          Stage
-          <input onChange={(event) => setStage(event.target.value)} value={stage} />
-        </label>
-        <label>
-          Kickoff ISO
-          <input onChange={(event) => setKickoff(event.target.value)} value={kickoff} />
-        </label>
-        <label>
-          Poll close ISO
-          <input onChange={(event) => setPollCloseAt(event.target.value)} value={pollCloseAt} />
-        </label>
-        <label>
-          Importance
-          <select onChange={(event) => setImportance(event.target.value as FantasyMatch["importance"])} value={importance}>
-            {importanceOptions.map((option) => <option key={option} value={option}>{option.replace("_", " ")}</option>)}
-          </select>
-        </label>
-        <label>
-          Status
-          <select onChange={(event) => setStatus(event.target.value as FantasyMatch["status"])} value={status}>
-            {statusOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-          </select>
-        </label>
+        <LabeledInput label="Stage" value={stage} onChange={setStage} />
+        <LabeledInput label="Kickoff ISO" value={kickoff} onChange={setKickoff} />
+        <LabeledInput label="Poll close ISO" value={pollCloseAt} onChange={setPollCloseAt} />
+        <LabeledSelect
+          label="Importance"
+          value={importance}
+          onChange={(value: string) => setImportance(value as FantasyMatch["importance"])}
+          options={importanceSelectOptions}
+        />
+        <LabeledSelect
+          label="Status"
+          value={status}
+          onChange={(value: string) => setStatus(value as FantasyMatch["status"])}
+          options={statusSelectOptions}
+        />
         <button className="button button--primary" disabled={updateFixture.isPending} type="submit">
           {updateFixture.isPending ? "Saving..." : "Save fixture"}
         </button>

@@ -3,10 +3,12 @@ import { useFantasy } from "../app/fantasy-context";
 import { useUpdateFantasyTournament } from "../services/fantasy-queries";
 import type { FantasyTournament } from "../types/fantasy";
 import { formatDate } from "../utils/football";
+import { LabeledInput, LabeledSelect } from "../components/FormFields";
 import { PageHeading } from "../components/PageSections";
 import { SectionHeading } from "../components/SectionHeading";
 
 const statusOptions: FantasyTournament["status"][] = ["UPCOMING", "LIVE", "COMPLETE"];
+const statusSelectOptions = statusOptions.map((option) => ({ value: option, label: option }));
 
 /**
  * Displays tournament-level admin setup for the private friends league.
@@ -62,32 +64,28 @@ export default function FantasyAdminTournamentPage() {
               });
             }}
           >
-            <label>
-              League name
-              <input onChange={(event) => setName(event.target.value)} value={name} />
-            </label>
-            <label>
-              Status
-              <select onChange={(event) => setStatus(event.target.value as FantasyTournament["status"])} value={status}>
-                {statusOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-              </select>
-            </label>
-            <label>
-              Start date
-              <input onChange={(event) => setStartDate(event.target.value)} type="date" value={startDate} />
-            </label>
-            <label>
-              End date
-              <input onChange={(event) => setEndDate(event.target.value)} type="date" value={endDate} />
-            </label>
-            <label>
-              Poll close minutes
-              <input min="0" max="180" onChange={(event) => setPollCloseMinutesBeforeKickoff(event.target.value)} type="number" value={pollCloseMinutesBeforeKickoff} />
-            </label>
-            <label>
-              Scoring rules version
-              <input onChange={(event) => setScoringRulesVersion(event.target.value)} value={scoringRulesVersion} />
-            </label>
+              <LabeledInput label="League name" value={name} onChange={setName} />
+              <LabeledSelect
+                label="Status"
+                value={status}
+                onChange={(value: string) => setStatus(value as FantasyTournament["status"])}
+                options={statusSelectOptions}
+              />
+              <LabeledInput label="Start date" value={startDate} onChange={setStartDate} type="date" />
+              <LabeledInput label="End date" value={endDate} onChange={setEndDate} type="date" />
+              <LabeledInput
+                label="Poll close minutes"
+                value={pollCloseMinutesBeforeKickoff}
+                onChange={setPollCloseMinutesBeforeKickoff}
+                type="number"
+                min="0"
+                max="180"
+              />
+              <LabeledInput
+                label="Scoring rules version"
+                value={scoringRulesVersion}
+                onChange={setScoringRulesVersion}
+              />
             <button className="button button--primary" disabled={updateTournament.isPending} type="submit">
               {updateTournament.isPending ? "Saving..." : "Save tournament"}
             </button>

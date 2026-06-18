@@ -2,12 +2,21 @@ import { useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
 import { useFantasyAiSettings, useUpdateFantasyAiSettings } from "../services/fantasy-queries";
 import type { FantasyAiBanterLevel, FantasyAiMode, FantasyAiSettings, FantasyMatchImportance, FantasyQuestionCategory } from "../types/fantasy";
+import { LabeledInput, LabeledSelect } from "../components/FormFields";
 import { PageHeading } from "../components/PageSections";
 import { SectionHeading } from "../components/SectionHeading";
 
 const importanceOptions: FantasyMatchImportance[] = ["NORMAL", "BIG_MATCH", "KNOCKOUT", "FINAL"];
 const modeOptions: FantasyAiMode[] = ["TEMPLATE_ONLY", "ASSISTED", "DISABLED"];
 const banterOptions: FantasyAiBanterLevel[] = ["NONE", "LIGHT", "PLAYFUL"];
+const modeSelectOptions = modeOptions.map((option) => ({
+  value: option,
+  label: option.replace("_", " "),
+}));
+const banterSelectOptions = banterOptions.map((option) => ({
+  value: option,
+  label: option,
+}));
 
 /**
  * Displays admin settings for AI-assisted fantasy poll generation.
@@ -82,22 +91,25 @@ const AiSettingsEditor = ({ categories, settings }: { categories: FantasyQuestio
           });
         }}
       >
-        <label>
-          Mode
-          <select onChange={(event) => setMode(event.target.value as FantasyAiMode)} value={mode}>
-            {modeOptions.map((option) => <option key={option} value={option}>{option.replace("_", " ")}</option>)}
-          </select>
-        </label>
-        <label>
-          Banter level
-          <select onChange={(event) => setBanterLevel(event.target.value as FantasyAiBanterLevel)} value={banterLevel}>
-            {banterOptions.map((option) => <option key={option} value={option}>{option}</option>)}
-          </select>
-        </label>
-        <label>
-          Daily AI budget cents
-          <input min="0" onChange={(event) => setDailyBudgetCents(event.target.value)} type="number" value={dailyBudgetCents} />
-        </label>
+        <LabeledSelect
+          label="Mode"
+          value={mode}
+          onChange={(value: string) => setMode(value as FantasyAiMode)}
+          options={modeSelectOptions}
+        />
+        <LabeledSelect
+          label="Banter level"
+          value={banterLevel}
+          onChange={(value: string) => setBanterLevel(value as FantasyAiBanterLevel)}
+          options={banterSelectOptions}
+        />
+        <LabeledInput
+          label="Daily AI budget cents"
+          value={dailyBudgetCents}
+          onChange={setDailyBudgetCents}
+          type="number"
+          min="0"
+        />
         <div className="fantasy-ai-toggle-grid">
           <label>
             <input checked={externalProviderEnabled} onChange={(event) => setExternalProviderEnabled(event.target.checked)} type="checkbox" />
