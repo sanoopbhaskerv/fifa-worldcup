@@ -32,6 +32,9 @@ export const FantasyQuestionCard = ({
   onAnswerChange,
   onSubmit,
 }: FantasyQuestionCardProps) => {
+  const {
+    pointsAwarded
+  } = prediction ?? {};
   const initial = Array.isArray(prediction?.answer) ? prediction.answer[0] : prediction?.answer;
   const [localSelected, setLocalSelected] = useState(initial ?? "");
   const selected = selectedAnswer ?? localSelected;
@@ -39,7 +42,7 @@ export const FantasyQuestionCard = ({
   const unchanged = Boolean(selected && selected === initial);
   const isExactScore = question.type === "EXACT_SCORE";
   const isScored = prediction?.pointsAwarded !== undefined;
-  const gotItRight = isScored && prediction.pointsAwarded > 0;
+  const gotItRight = isScored && (typeof pointsAwarded === "number" ? pointsAwarded > 0 : false);
 
   const changeSelected = (answer: string) => {
     setLocalSelected(answer);
