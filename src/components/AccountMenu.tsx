@@ -1,6 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from "react";
 import { Link } from "react-router-dom";
-import { ChevronIcon, SettingsIcon, UserIcon } from "./Icons";
+import { clearAppCacheAndReload } from "../utils/pwa-cache";
+import { ChevronIcon, RefreshIcon, SettingsIcon, UserIcon } from "./Icons";
 import { ThemeSwitcher } from "./ThemeSwitcher";
 
 type AccountMenuProps = {
@@ -27,6 +28,7 @@ const initialsFrom = (value: string) => {
  */
 export const AccountMenu = ({ displayName, subtitle, profilePath = "/fantasy/profile" }: AccountMenuProps) => {
   const [open, setOpen] = useState(false);
+  const [isClearingCache, setIsClearingCache] = useState(false);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const triggerRef = useRef<HTMLButtonElement | null>(null);
   const firstItemRef = useRef<HTMLAnchorElement | null>(null);
@@ -55,6 +57,10 @@ export const AccountMenu = ({ displayName, subtitle, profilePath = "/fantasy/pro
   }, [open]);
 
   const closeMenu = () => setOpen(false);
+  const refreshAppCache = async () => {
+    setIsClearingCache(true);
+    await clearAppCacheAndReload();
+  };
 
   return (
     <div className={`account-menu ${open ? "account-menu--open" : ""}`.trim()} ref={rootRef}>
@@ -90,6 +96,10 @@ export const AccountMenu = ({ displayName, subtitle, profilePath = "/fantasy/pro
               <UserIcon />
               <span>View profile</span>
             </Link>
+            <button className="account-menu__item" disabled={isClearingCache} onClick={refreshAppCache} role="menuitem" type="button">
+              <RefreshIcon />
+              <span>{isClearingCache ? "Refreshing..." : "Clear cache and reload"}</span>
+            </button>
             <div className="account-menu__theme-row" role="menuitem">
               <span className="account-menu__theme-label"><SettingsIcon />Theme</span>
               <ThemeSwitcher compact className="account-menu__theme-switcher" />

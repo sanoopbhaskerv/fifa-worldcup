@@ -1,7 +1,8 @@
 import { fireEvent, render, screen } from "@testing-library/react";
 import { MemoryRouter } from "react-router-dom";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { ThemeProvider } from "../app/theme-context";
+import * as pwaCache from "../utils/pwa-cache";
 import { AccountMenu } from "./AccountMenu";
 
 describe("AccountMenu", () => {
@@ -20,6 +21,7 @@ describe("AccountMenu", () => {
     fireEvent.click(trigger);
     expect(screen.getByRole("menu")).toBeInTheDocument();
     expect(screen.getByRole("menuitem", { name: "View profile" })).toBeInTheDocument();
+    expect(screen.getByRole("menuitem", { name: "Clear cache and reload" })).toBeInTheDocument();
 
     fireEvent.keyDown(window, { key: "Escape" });
     expect(screen.queryByRole("menu")).not.toBeInTheDocument();
@@ -39,5 +41,21 @@ describe("AccountMenu", () => {
     expect(screen.queryByRole("menuitem", { name: "Settings" })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Edit display name" })).not.toBeInTheDocument();
     expect(screen.queryByRole("menuitem", { name: "Sign out" })).not.toBeInTheDocument();
+  });
+
+  it("clears app cache from the account menu", () => {
+    const clearCache = vi.spyOn(pwaCache, "clearAppCacheAndReload").mockResolvedValue();
+    render(
+      <ThemeProvider>
+        <MemoryRouter>
+          <AccountMenu displayName="Sanoop Bhasker" subtitle="Admin" />
+        </MemoryRouter>
+      </ThemeProvider>,
+    );
+
+    fireEvent.click(screen.getByRole("button", { name: "Account menu" }));
+    fireEvent.click(screen.getByRole("menuitem", { name: "Clear cache and reload" }));
+
+    expect(clearCache).toHaveBeenCalledTimes(1);
   });
 });

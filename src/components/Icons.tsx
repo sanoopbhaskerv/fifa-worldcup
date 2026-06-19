@@ -144,6 +144,14 @@ export const EditIcon = (props: IconProps) => <Icon {...props}><path d="M3 21h5l
 export const SettingsIcon = (props: IconProps) => <Icon {...props}><circle cx="12" cy="12" r="3"/><path d="M19 12a7 7 0 0 0-.12-1.28l2.02-1.56-2-3.46-2.4.83a7.2 7.2 0 0 0-2.22-1.28L13.9 2h-3.8l-.38 2.25a7.2 7.2 0 0 0-2.22 1.28l-2.4-.83-2 3.46 2.02 1.56A7 7 0 0 0 5 12c0 .44.04.87.12 1.28L3.1 14.84l2 3.46 2.4-.83c.67.53 1.42.96 2.22 1.28L10.1 22h3.8l.38-2.25a7.2 7.2 0 0 0 2.22-1.28l2.4.83 2-3.46-2.02-1.56c.08-.41.12-.84.12-1.28Z"/></Icon>;
 
 /**
+ * Renders a refresh/reload icon.
+ *
+ * @param props - SVG attributes forwarded to the icon element.
+ * @returns Refresh icon SVG.
+ */
+export const RefreshIcon = (props: IconProps) => <Icon {...props}><path d="M20 12a8 8 0 1 1-2.34-5.66"/><path d="M20 4v6h-6"/></Icon>;
+
+/**
  * Renders a logout icon.
  *
  * @param props - SVG attributes forwarded to the icon element.

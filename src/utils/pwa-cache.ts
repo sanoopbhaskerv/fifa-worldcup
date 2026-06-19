@@ -25,3 +25,24 @@ export const clearLegacyPwaCaches = async () => {
   const cacheNames = await window.caches.keys();
   await Promise.all(cacheNames.filter(isLegacyPwaCache).map((cacheName) => window.caches.delete(cacheName)));
 };
+
+/**
+ * Clears browser-side app caches and forces a network reload.
+ *
+ * @returns Promise that resolves just before the page reload is requested.
+ */
+export const clearAppCacheAndReload = async () => {
+  if ("serviceWorker" in navigator) {
+    const registrations = await navigator.serviceWorker.getRegistrations();
+    await Promise.all(registrations.map((registration) => registration.unregister()));
+  }
+
+  if ("caches" in window) {
+    const cacheNames = await window.caches.keys();
+    await Promise.all(cacheNames.map((cacheName) => window.caches.delete(cacheName)));
+  }
+
+  window.localStorage.clear();
+  window.sessionStorage.clear();
+  window.location.reload();
+};
