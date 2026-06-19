@@ -27,7 +27,8 @@ export const clearLegacyPwaCaches = async () => {
 };
 
 /**
- * Clears browser-side app caches and forces a network reload.
+ * Clears browser-side app caches and forces a network reload without removing
+ * persisted user state such as login details.
  *
  * @returns Promise that resolves just before the page reload is requested.
  */
@@ -42,7 +43,5 @@ export const clearAppCacheAndReload = async () => {
     await Promise.all(cacheNames.map((cacheName) => window.caches.delete(cacheName)));
   }
 
-  window.localStorage.clear();
-  window.sessionStorage.clear();
   window.location.reload();
 };
