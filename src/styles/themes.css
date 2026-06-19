@@ -57,3 +57,153 @@
   --on-accent: #07240f;
   --football-tile-accent: #86b8ff;
 }
+
+:root[data-theme="champions"] {
+  --theme-canvas: #080d1f;
+  --theme-surface: #101832;
+  --theme-surface-2: #182348;
+  --theme-surface-3: #22305f;
+  --theme-text: #f5f7ff;
+  --theme-muted: #a9b4d6;
+  --theme-line: rgba(217, 225, 255, 0.14);
+  --theme-accent: #f6c453;
+  --theme-danger: #ff6b7a;
+  --theme-warning: #ffd166;
+  --on-accent: #1d1300;
+  --football-tile-accent: #6ea8ff;
+}
+
+:root[data-theme="derby"] {
+  --theme-canvas: #120b0b;
+  --theme-surface: #211111;
+  --theme-surface-2: #301818;
+  --theme-surface-3: #432020;
+  --theme-text: #fff7f3;
+  --theme-muted: #c7aaa3;
+  --theme-line: rgba(255, 224, 214, 0.13);
+  --theme-accent: #ff3d4f;
+  --theme-danger: #ff7a59;
+  --theme-warning: #ffc857;
+  --on-accent: #250306;
+  --football-tile-accent: #ffb35c;
+}
+
+:root[data-theme="trophy"] {
+  --theme-canvas: #121006;
+  --theme-surface: #211d0d;
+  --theme-surface-2: #2f2912;
+  --theme-surface-3: #403719;
+  --theme-text: #fff9e7;
+  --theme-muted: #c7ba91;
+  --theme-line: rgba(255, 232, 160, 0.15);
+  --theme-accent: #ffd84d;
+  --theme-danger: #ff6f61;
+  --theme-warning: #ffb347;
+  --on-accent: #2a2100;
+  --football-tile-accent: #8ee6a8;
+}
+
+:root[data-theme="night-match"] {
+  --theme-canvas: #050914;
+  --theme-surface: #0c1322;
+  --theme-surface-2: #121c31;
+  --theme-surface-3: #1b2945;
+  --theme-text: #f2f7ff;
+  --theme-muted: #9baac0;
+  --theme-line: rgba(214, 231, 255, 0.12);
+  --theme-accent: #4df2ff;
+  --theme-danger: #ff5c8a;
+  --theme-warning: #ffd166;
+  --on-accent: #001f24;
+  --football-tile-accent: #9d7cff;
+}
+
+:root[data-theme="brazil"] {
+  --theme-canvas: #07140b;
+  --theme-surface: #0f2415;
+  --theme-surface-2: #17331f;
+  --theme-surface-3: #20472b;
+  --theme-text: #f8fff2;
+  --theme-muted: #a8bea4;
+  --theme-line: rgba(230, 255, 211, 0.14);
+  --theme-accent: #ffe14d;
+  --theme-danger: #ff6b62;
+  --theme-warning: #ffc857;
+  --on-accent: #243000;
+  --football-tile-accent: #36a3ff;
+}
+
+:root[data-theme="argentina"] {
+  --theme-canvas: #06121d;
+  --theme-surface: #0d2235;
+  --theme-surface-2: #14324d;
+  --theme-surface-3: #1d4669;
+  --theme-text: #f0fbff;
+  --theme-muted: #a4bfd0;
+  --theme-line: rgba(212, 243, 255, 0.16);
+  --theme-accent: #8be8ff;
+  --theme-danger: #ff7d8d;
+  --theme-warning: #ffd166;
+  --on-accent: #052331;
+  --football-tile-accent: #ffffff;
+}
+
+:root[data-theme="royal"] {
+  --theme-canvas: #0b0618;
+  --theme-surface: #17102a;
+  --theme-surface-2: #21183d;
+  --theme-surface-3: #2d2253;
+  --theme-text: #faf6ff;
+  --theme-muted: #b8a9d0;
+  --theme-line: rgba(240, 225, 255, 0.14);
+  --theme-accent: #c79cff;
+  --theme-danger: #ff6fae;
+  --theme-warning: #ffd86b;
+  --on-accent: #1c0830;
+  --football-tile-accent: #70f2c4;
+}
+
+:root[data-theme="street"] {
+  --theme-canvas: #0d0e10;
+  --theme-surface: #181a1d;
+  --theme-surface-2: #23262a;
+  --theme-surface-3: #30343a;
+  --theme-text: #f5f5f2;
+  --theme-muted: #a8adb0;
+  --theme-line: rgba(255, 255, 255, 0.11);
+  --theme-accent: #f5ff3d;
+  --theme-danger: #ff5757;
+  --theme-warning: #ffb84d;
+  --on-accent: #202300;
+  --football-tile-accent: #46d9ff;
+}
+
+:root[data-theme="ice"] {
+  --theme-canvas: #071217;
+  --theme-surface: #0e222b;
+  --theme-surface-2: #15323e;
+  --theme-surface-3: #1e4655;
+  --theme-text: #effcff;
+  --theme-muted: #9ec0c9;
+  --theme-line: rgba(217, 250, 255, 0.15);
+  --theme-accent: #a7fff1;
+  --theme-danger: #ff7892;
+  --theme-warning: #ffd166;
+  --on-accent: #042d29;
+  --football-tile-accent: #8fb7ff;
+}
+
+:root[data-theme="volcano"] {
+  --theme-canvas: #160807;
+  --theme-surface: #28100e;
+  --theme-surface-2: #3a1813;
+  --theme-surface-3: #4f2119;
+  --theme-text: #fff4ef;
+  --theme-muted: #c9a098;
+  --theme-line: rgba(255, 214, 198, 0.13);
+  --theme-accent: #ff7a2f;
+  --theme-danger: #ff4f5e;
+  --theme-warning: #ffd166;
+  --on-accent: #2c0d00;
+  --football-tile-accent: #ffd36b;
+}

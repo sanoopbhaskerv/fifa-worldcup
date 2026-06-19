@@ -28,6 +28,11 @@ describe("fantasy game API", () => {
     });
     expect(response.body.teams).toHaveLength(48);
     expect(response.body.squadPlayers).toHaveLength(1248);
+    expect(response.body.matches).toEqual(expect.arrayContaining([
+      expect.objectContaining({ id: "fra-esp-0620", kickoff: "2026-06-20T21:30:00+05:30" }),
+      expect.objectContaining({ id: "arg-eng-0625", kickoff: "2026-06-25T23:30:00+05:30" }),
+      expect.objectContaining({ id: "bra-fra-0626", kickoff: "2026-06-26T21:30:00+05:30" }),
+    ]));
     expect(response.body.questions.some((question) => question.type === "PLAYER")).toBe(true);
   });
 

@@ -22,7 +22,7 @@ import FantasyAdminQuestionTemplatesPage from "../../pages/FantasyAdminQuestionT
 import FantasyAdminAiSettingsPage from "../../pages/FantasyAdminAiSettingsPage";
 import FantasyAdminAiHostPage from "../../pages/FantasyAdminAiHostPage";
 import FantasyAdminSubmittedPollsPage from "../../pages/FantasyAdminSubmittedPollsPage";
-import { matchPassesDateRange } from "../../components/MatchDateRangeFilter";
+import { MatchDateRangeFilter, matchPassesDateRange } from "../../components/MatchDateRangeFilter";
 
 describe("fantasy prediction game", () => {
   beforeEach(() => {
@@ -255,6 +255,105 @@ describe("fantasy prediction game", () => {
     }));
 
     expect(matches.map((match) => match.id)).toEqual(["bra-arg", "fra-ger", "eng-esp"]);
+  });
+
+  it("includes middle dates in the next seven days range", () => {
+    const matches = [
+      { id: "day-19", kickoff: "2026-06-19T12:00:00Z", stage: "Group A" },
+      { id: "day-20", kickoff: "2026-06-20T12:00:00Z", stage: "Group A" },
+      { id: "day-21", kickoff: "2026-06-21T12:00:00Z", stage: "Group A" },
+      { id: "day-22", kickoff: "2026-06-22T12:00:00Z", stage: "Group A" },
+      { id: "day-23", kickoff: "2026-06-23T12:00:00Z", stage: "Group A" },
+      { id: "day-24", kickoff: "2026-06-24T12:00:00Z", stage: "Group A" },
+      { id: "day-25", kickoff: "2026-06-25T12:00:00Z", stage: "Group A" },
+      { id: "day-26", kickoff: "2026-06-26T12:00:00Z", stage: "Group A" },
+    ];
+
+    expect(matches.filter((match) => matchPassesDateRange(match, {
+      fromDate: "2026-06-19",
+      toDate: "2026-06-25",
+      groupStageOnly: false,
+    })).map((match) => match.id)).toEqual(["day-19", "day-20", "day-21", "day-22", "day-23", "day-24", "day-25"]);
+  });
+
+  it("excludes dates outside the selected range and honors group stage filtering", () => {
+    const matches = [
+      { id: "before", kickoff: "2026-06-18T23:30:00+05:30", stage: "Group A" },
+      { id: "boundary-start", kickoff: "2026-06-19T00:05:00+05:30", stage: "Group A" },
+      { id: "middle", kickoff: "2026-06-22T23:30:00+05:30", stage: "Group A" },
+      { id: "knockout-middle", kickoff: "2026-06-23T20:30:00+05:30", stage: "Round of 16" },
+      { id: "boundary-end", kickoff: "2026-06-25T23:55:00+05:30", stage: "Group A" },
+      { id: "after", kickoff: "2026-06-26T00:05:00+05:30", stage: "Group A" },
+    ];
+
+    expect(matches.filter((match) => matchPassesDateRange(match, {
+      fromDate: "2026-06-19",
+      toDate: "2026-06-25",
+      groupStageOnly: false,
+    })).map((match) => match.id)).toEqual(["boundary-start", "middle", "knockout-middle", "boundary-end"]);
+    expect(matches.filter((match) => matchPassesDateRange(match, {
+      fromDate: "2026-06-19",
+      toDate: "2026-06-25",
+      groupStageOnly: true,
+    })).map((match) => match.id)).toEqual(["boundary-start", "middle", "boundary-end"]);
+  });
+
+  it("handles reversed and open-ended date ranges", () => {
+    const matches = [
+      { id: "before", kickoff: "2026-06-18T12:00:00Z", stage: "Group A" },
+      { id: "inside", kickoff: "2026-06-22T12:00:00Z", stage: "Group A" },
+      { id: "after", kickoff: "2026-06-26T12:00:00Z", stage: "Group A" },
+    ];
+
+    expect(matches.filter((match) => matchPassesDateRange(match, {
+      fromDate: "2026-06-25",
+      toDate: "2026-06-19",
+      groupStageOnly: false,
+    })).map((match) => match.id)).toEqual(["inside"]);
+    expect(matches.filter((match) => matchPassesDateRange(match, {
+      fromDate: "2026-06-19",
+      toDate: "",
+      groupStageOnly: false,
+    })).map((match) => match.id)).toEqual(["inside", "after"]);
+    expect(matches.filter((match) => matchPassesDateRange(match, {
+      fromDate: "",
+      toDate: "2026-06-25",
+      groupStageOnly: false,
+    })).map((match) => match.id)).toEqual(["before", "inside"]);
+  });
+
+  it("shows all admin poll matches inside the next seven days window", () => {
+    vi.setSystemTime(new Date("2026-06-19T12:00:00+05:30"));
+    vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({ data: fantasyGameData });
+
+    renderWithQueryClient(<FantasyAdminPollsPage />);
+
+    expect(screen.getByRole("button", { name: "Next 7 days" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getAllByText("France vs Spain").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("England vs Germany").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Argentina vs France").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Brazil vs England").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Germany vs Spain").length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Argentina vs England").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Brazil vs France")).not.toBeInTheDocument();
+  });
+
+  it("marks the selected date shortcut as pressed", async () => {
+    const user = userEvent.setup();
+    let value = { fromDate: "2026-06-17", toDate: "2026-06-23", groupStageOnly: false };
+    const onChange = vi.fn((nextValue: typeof value) => {
+      value = nextValue;
+      rerender(<MatchDateRangeFilter onChange={onChange} value={value} />);
+    });
+
+    const { rerender } = render(<MatchDateRangeFilter onChange={onChange} value={value} />);
+
+    expect(screen.getByRole("button", { name: "Next 7 days" })).toHaveAttribute("aria-pressed", "true");
+
+    await user.click(screen.getByRole("button", { name: "Today" }));
+
+    expect(screen.getByRole("button", { name: "Today" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("button", { name: "Next 7 days" })).toHaveAttribute("aria-pressed", "false");
   });
 
   it("opens admin poll draft filters in a dialog while league stays outside", async () => {

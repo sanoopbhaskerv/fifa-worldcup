@@ -24,6 +24,11 @@ const addDays = (date: Date, days: number) => {
   return next;
 };
 
+const matchDateValue = (kickoff: string) => {
+  const isoDate = kickoff.match(/\d{4}-\d{2}-\d{2}/)?.[0];
+  return isoDate ?? dateInputValue(new Date(kickoff));
+};
+
 export const nextSevenDaysMatchRange = (baseDate = new Date()): MatchDateRangeValue => ({
   fromDate: dateInputValue(baseDate),
   toDate: dateInputValue(addDays(baseDate, 6)),
@@ -34,7 +39,7 @@ export const matchPassesDateRange = (
   match: { kickoff: string; stage?: string },
   range: MatchDateRangeValue,
 ) => {
-  const date = dateInputValue(new Date(match.kickoff));
+  const date = matchDateValue(match.kickoff);
   const [fromDate, toDate] = range.fromDate && range.toDate && range.fromDate > range.toDate
     ? [range.toDate, range.fromDate]
     : [range.fromDate, range.toDate];
@@ -50,15 +55,21 @@ export const matchPassesDateRange = (
  * @returns Date range filter controls.
  */
 export function MatchDateRangeFilter({ value, onChange }: MatchDateRangeFilterProps) {
+  const today = dateInputValue(new Date());
+  const tomorrow = dateInputValue(addDays(new Date(), 1));
+  const nextSeven = nextSevenDaysMatchRange();
+  const isTodaySelected = value.fromDate === today && value.toDate === today && !value.groupStageOnly;
+  const isTomorrowSelected = value.fromDate === tomorrow && value.toDate === tomorrow && !value.groupStageOnly;
+  const isNextSevenSelected = value.fromDate === nextSeven.fromDate && value.toDate === nextSeven.toDate && !value.groupStageOnly;
+  const isGroupStageSelected = value.fromDate === nextSeven.fromDate && value.toDate === nextSeven.toDate && value.groupStageOnly;
+  const isAllMatchesSelected = !value.fromDate && !value.toDate && !value.groupStageOnly;
   const setToday = () => {
-    const today = dateInputValue(new Date());
     onChange({ fromDate: today, toDate: today, groupStageOnly: false });
   };
   const setTomorrow = () => {
-    const tomorrow = dateInputValue(addDays(new Date(), 1));
     onChange({ fromDate: tomorrow, toDate: tomorrow, groupStageOnly: false });
   };
-  const setNextSeven = () => onChange(nextSevenDaysMatchRange());
+  const setNextSeven = () => onChange(nextSeven);
 
   return (
     <div className="match-date-range-filter">
@@ -67,11 +78,11 @@ export function MatchDateRangeFilter({ value, onChange }: MatchDateRangeFilterPr
         <LabeledInput label="To date" onChange={(toDate) => onChange({ ...value, toDate })} type="date" value={value.toDate} />
       </div>
       <div className="match-date-range-filter__actions">
-        <button onClick={setToday} type="button">Today</button>
-        <button onClick={setTomorrow} type="button">Tomorrow</button>
-        <button onClick={setNextSeven} type="button">Next 7 days</button>
-        <button onClick={() => onChange({ ...nextSevenDaysMatchRange(), groupStageOnly: true })} type="button">Group stage</button>
-        <button onClick={() => onChange({ fromDate: "", toDate: "", groupStageOnly: false })} type="button">All matches</button>
+        <button aria-pressed={isTodaySelected} onClick={setToday} type="button">Today</button>
+        <button aria-pressed={isTomorrowSelected} onClick={setTomorrow} type="button">Tomorrow</button>
+        <button aria-pressed={isNextSevenSelected} onClick={setNextSeven} type="button">Next 7 days</button>
+        <button aria-pressed={isGroupStageSelected} onClick={() => onChange({ ...nextSeven, groupStageOnly: true })} type="button">Group stage</button>
+        <button aria-pressed={isAllMatchesSelected} onClick={() => onChange({ fromDate: "", toDate: "", groupStageOnly: false })} type="button">All matches</button>
       </div>
     </div>
   );

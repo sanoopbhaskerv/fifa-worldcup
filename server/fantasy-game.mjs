@@ -51,6 +51,83 @@ const matches = [
     status: "COMPLETED",
     pollCloseAt: "2026-06-16T23:15:00+05:30",
   },
+  {
+    id: "fra-esp-0620",
+    tournamentId: tournament.id,
+    homeTeamId: "fra",
+    awayTeamId: "esp",
+    kickoff: "2026-06-20T21:30:00+05:30",
+    stage: "Group B",
+    importance: "NORMAL",
+    status: "SCHEDULED",
+    pollCloseAt: "2026-06-20T21:15:00+05:30",
+  },
+  {
+    id: "eng-ger-0621",
+    tournamentId: tournament.id,
+    homeTeamId: "eng",
+    awayTeamId: "ger",
+    kickoff: "2026-06-21T18:30:00+05:30",
+    stage: "Group F",
+    importance: "BIG_MATCH",
+    status: "SCHEDULED",
+    pollCloseAt: "2026-06-21T18:15:00+05:30",
+  },
+  {
+    id: "arg-fra-0622",
+    tournamentId: tournament.id,
+    homeTeamId: "arg",
+    awayTeamId: "fra",
+    kickoff: "2026-06-22T23:30:00+05:30",
+    stage: "Group D",
+    importance: "NORMAL",
+    status: "SCHEDULED",
+    pollCloseAt: "2026-06-22T23:15:00+05:30",
+  },
+  {
+    id: "bra-eng-0623",
+    tournamentId: tournament.id,
+    homeTeamId: "bra",
+    awayTeamId: "eng",
+    kickoff: "2026-06-23T20:30:00+05:30",
+    stage: "Group D",
+    importance: "BIG_MATCH",
+    status: "SCHEDULED",
+    pollCloseAt: "2026-06-23T20:15:00+05:30",
+  },
+  {
+    id: "ger-esp-0624",
+    tournamentId: tournament.id,
+    homeTeamId: "ger",
+    awayTeamId: "esp",
+    kickoff: "2026-06-24T18:30:00+05:30",
+    stage: "Group B",
+    importance: "NORMAL",
+    status: "SCHEDULED",
+    pollCloseAt: "2026-06-24T18:15:00+05:30",
+  },
+  {
+    id: "arg-eng-0625",
+    tournamentId: tournament.id,
+    homeTeamId: "arg",
+    awayTeamId: "eng",
+    kickoff: "2026-06-25T23:30:00+05:30",
+    stage: "Group D",
+    importance: "BIG_MATCH",
+    status: "SCHEDULED",
+    pollCloseAt: "2026-06-25T23:15:00+05:30",
+  },
+  {
+    id: "bra-fra-0626",
+    tournamentId: tournament.id,
+    homeTeamId: "bra",
+    awayTeamId: "fra",
+    kickoff: "2026-06-26T21:30:00+05:30",
+    stage: "Group D",
+    importance: "NORMAL",
+    status: "SCHEDULED",
+    pollCloseAt: "2026-06-26T21:15:00+05:30",
+  },
 ];
 
 const questions = [
@@ -61,6 +138,13 @@ const questions = [
   { id: "q-bra-arg-first-goal", tournamentId: tournament.id, matchId: "bra-arg", category: "FIRST_GOAL_SCORER", type: "PLAYER", text: "Who scores the first goal?", options: ["Vinicius Jr", "Rodrygo", "Lionel Messi", "Julian Alvarez", "Own Goal", "No goal", "Other"], points: 8, status: "OPEN", closeAt: "2026-06-18T20:15:00+05:30" },
   { id: "q-eng-esp-winner", tournamentId: tournament.id, matchId: "eng-esp", category: "MATCH_WINNER", type: "SINGLE_CHOICE", text: "Who won the match?", options: ["England", "Spain", "Draw"], points: 5, status: "SCORED", closeAt: "2026-06-16T23:15:00+05:30" },
   { id: "q-eng-esp-exact-score", tournamentId: tournament.id, matchId: "eng-esp", category: "EXACT_SCORE", type: "EXACT_SCORE", text: "What was the final score?", options: [], points: 8, status: "SCORED", closeAt: "2026-06-16T23:15:00+05:30" },
+  { id: "q-fra-esp-0620-winner", tournamentId: tournament.id, matchId: "fra-esp-0620", category: "MATCH_WINNER", type: "SINGLE_CHOICE", text: "Who will win the match?", options: ["France", "Spain", "Draw"], points: 5, status: "OPEN", closeAt: "2026-06-20T21:15:00+05:30" },
+  { id: "q-eng-ger-0621-winner", tournamentId: tournament.id, matchId: "eng-ger-0621", category: "MATCH_WINNER", type: "SINGLE_CHOICE", text: "Who will win the match?", options: ["England", "Germany", "Draw"], points: 5, status: "OPEN", closeAt: "2026-06-21T18:15:00+05:30" },
+  { id: "q-arg-fra-0622-winner", tournamentId: tournament.id, matchId: "arg-fra-0622", category: "MATCH_WINNER", type: "SINGLE_CHOICE", text: "Who will win the match?", options: ["Argentina", "France", "Draw"], points: 5, status: "OPEN", closeAt: "2026-06-22T23:15:00+05:30" },
+  { id: "q-bra-eng-0623-winner", tournamentId: tournament.id, matchId: "bra-eng-0623", category: "MATCH_WINNER", type: "SINGLE_CHOICE", text: "Who will win the match?", options: ["Brazil", "England", "Draw"], points: 5, status: "OPEN", closeAt: "2026-06-23T20:15:00+05:30" },
+  { id: "q-ger-esp-0624-winner", tournamentId: tournament.id, matchId: "ger-esp-0624", category: "MATCH_WINNER", type: "SINGLE_CHOICE", text: "Who will win the match?", options: ["Germany", "Spain", "Draw"], points: 5, status: "OPEN", closeAt: "2026-06-24T18:15:00+05:30" },
+  { id: "q-arg-eng-0625-winner", tournamentId: tournament.id, matchId: "arg-eng-0625", category: "MATCH_WINNER", type: "SINGLE_CHOICE", text: "Who will win the match?", options: ["Argentina", "England", "Draw"], points: 5, status: "OPEN", closeAt: "2026-06-25T23:15:00+05:30" },
+  { id: "q-bra-fra-0626-winner", tournamentId: tournament.id, matchId: "bra-fra-0626", category: "MATCH_WINNER", type: "SINGLE_CHOICE", text: "Who will win the match?", options: ["Brazil", "France", "Draw"], points: 5, status: "OPEN", closeAt: "2026-06-26T21:15:00+05:30" },
 ];
 
 const questionTemplates = [
@@ -266,6 +350,17 @@ const normalizeGroupMembershipRecord = (membership) => ({
 });
 
 const canonicalTemplateById = new Map(questionTemplates.map((template) => [template.id, template]));
+const localDummyMatchIds = new Set([
+  "fra-esp-0620",
+  "eng-ger-0621",
+  "arg-fra-0622",
+  "bra-eng-0623",
+  "ger-esp-0624",
+  "arg-eng-0625",
+  "bra-fra-0626",
+]);
+const localDummyMatches = matches.filter((match) => localDummyMatchIds.has(match.id));
+const localDummyQuestions = questions.filter((question) => localDummyMatchIds.has(question.matchId));
 
 const normalizeGame = (game) => {
   const existingTemplates = new Map((game.questionTemplates ?? []).map((template) => [template.id, template]));
@@ -276,8 +371,19 @@ const normalizeGame = (game) => {
     })),
     ...(game.questionTemplates ?? []).filter((template) => !canonicalTemplateById.has(template.id)),
   ].sort((left, right) => left.sortOrder - right.sortOrder);
+  const hasBundledSeedFixtures = game.matches.some((match) => match.id === "bra-arg" || match.id === "eng-esp");
+  const existingMatchIds = new Set(game.matches.map((match) => match.id));
+  const normalizedMatches = hasBundledSeedFixtures
+    ? [...game.matches, ...localDummyMatches.filter((match) => !existingMatchIds.has(match.id))]
+    : game.matches;
+  const normalizedMatchIds = new Set(normalizedMatches.map((match) => match.id));
+  const existingQuestionIds = new Set(game.questions.map((question) => question.id));
+  const normalizedQuestions = hasBundledSeedFixtures
+    ? [...game.questions, ...localDummyQuestions.filter((question) => normalizedMatchIds.has(question.matchId) && !existingQuestionIds.has(question.id))]
+    : game.questions;
   return {
     ...game,
+    matches: normalizedMatches,
     participants: game.participants.map(normalizeParticipantRecord),
     groups: ((game.groups?.length ? game.groups : groups).map(normalizeGroupRecord)),
     groupMemberships: (game.groupMemberships?.length ? game.groupMemberships : game.participants.map((participant) => ({
@@ -286,7 +392,7 @@ const normalizeGame = (game) => {
       role: participant.id === activeParticipantId ? "OWNER" : "MEMBER",
       status: "ACTIVE",
     }))).map(normalizeGroupMembershipRecord),
-    questions: game.questions.map((question) => ({ groupId: defaultGroupId, ...question })),
+    questions: normalizedQuestions.map((question) => ({ groupId: defaultGroupId, ...question })),
     questionTemplates: normalizedTemplates,
     aiMessages: game.aiMessages ?? [],
     aiSettings: {

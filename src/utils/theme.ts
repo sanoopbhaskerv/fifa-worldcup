@@ -3,6 +3,17 @@ export const themeOptions = [
   { id: "ocean", label: "Ocean Blue" },
   { id: "sunset", label: "Sunset Amber" },
   { id: "neon", label: "Neon Night" },
+
+  { id: "champions", label: "Champions Gold" },
+  { id: "derby", label: "Derby Red" },
+  { id: "trophy", label: "Trophy Gold" },
+  { id: "night-match", label: "Night Match" },
+  { id: "brazil", label: "Brazil Yellow" },
+  { id: "argentina", label: "Argentina Sky" },
+  { id: "royal", label: "Royal Purple" },
+  { id: "street", label: "Street Football" },
+  { id: "ice", label: "Ice Blue" },
+  { id: "volcano", label: "Volcano Orange" },
 ] as const;
 
 export type ThemeId = (typeof themeOptions)[number]["id"];

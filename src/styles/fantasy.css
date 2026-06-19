@@ -590,6 +590,12 @@
 	border-color: color-mix(in srgb, var(--accent) 35%, transparent);
 }
 
+.match-date-range-filter__actions button[aria-pressed="true"] {
+	border-color: color-mix(in srgb, var(--accent) 70%, transparent);
+	color: var(--accent-strong);
+	background: color-mix(in srgb, var(--accent) 14%, var(--surface));
+}
+
 .fantasy-poll-list {
 	display: grid;
 	gap: var(--space-4);
@@ -1153,11 +1159,17 @@
 }
 
 .fantasy-team-button--active,
-.fantasy-match-button--active,
 .fantasy-template-button--active {
 	color: var(--on-accent);
 	border-color: var(--accent);
 	background: var(--accent);
+}
+
+.fantasy-match-button--active {
+	color: var(--text);
+	border-color: #38bdf8;
+	background: color-mix(in srgb, #38bdf8 18%, var(--surface-2));
+	box-shadow: inset 4px 0 0 #38bdf8;
 }
 
 .fantasy-team-button span,
