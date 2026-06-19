@@ -54,5 +54,8 @@ export default defineConfig(({ mode }) => {
       setupFiles: "./src/test/setup.ts",
       css: true,
     },
+    build: {
+      sourcemap: true,
+    },
   };
 });
