@@ -1,8 +1,11 @@
 import { createHash, randomBytes, timingSafeEqual } from "node:crypto";
 import { ProviderError } from "./errors.mjs";
 import { createDynamoFantasyStorage } from "./fantasy/dynamodb-storage.mjs";
+import { geminiGenerateHostMessage, geminiGenerateQuestionDrafts } from "./fantasy/gemini-provider.mjs";
+import { groqGenerateHostMessage } from "./fantasy/groq-provider.mjs";
 import { createMemoryFantasyStorage } from "./fantasy/storage.mjs";
 import { worldCup2026SquadPlayers, worldCup2026Teams } from "./fantasy/world-cup-2026-squads.mjs";
+import { getLiveMatchDetails, similarity } from "./api-football.mjs";
 import { getLiveCompetitionData } from "./football-data.mjs";
 
 const now = "2026-06-17T12:00:00+05:30";
@@ -2065,12 +2068,16 @@ const numberFromEnv = (value, fallback) => {
 };
 
 const aiProviderConfig = (env = {}) => ({
+  provider: (env.fantasyAiProvider ?? env.FANTASY_AI_PROVIDER ?? "").toLowerCase(),
   apiKey: env.fantasyAiApiKey ?? env.FANTASY_AI_API_KEY ?? "",
   providerUrl: env.fantasyAiProviderUrl ?? env.FANTASY_AI_PROVIDER_URL ?? "",
   model: env.fantasyAiModel ?? env.FANTASY_AI_MODEL ?? "",
   dailyCallLimit: Math.max(0, Math.floor(numberFromEnv(env.fantasyAiDailyCallLimit ?? env.FANTASY_AI_DAILY_CALL_LIMIT, 0))),
   estimatedCostCents: Math.max(0, Math.floor(numberFromEnv(env.fantasyAiEstimatedCostCents ?? env.FANTASY_AI_ESTIMATED_COST_CENTS, 1))),
   maxOutputTokens: Math.max(60, Math.floor(numberFromEnv(env.fantasyAiMaxOutputTokens ?? env.FANTASY_AI_MAX_OUTPUT_TOKENS, 180))),
+  // Groq fallback — populated when FANTASY_AI_FALLBACK_API_KEY is set.
+  fallbackApiKey: env.fantasyAiFallbackApiKey ?? env.FANTASY_AI_FALLBACK_API_KEY ?? "",
+  fallbackModel: env.fantasyAiFallbackModel ?? env.FANTASY_AI_FALLBACK_MODEL ?? "llama-3.3-70b-versatile",
 });
 
 const canUseExternalAi = (game, env = {}) => {
@@ -2079,7 +2086,12 @@ const canUseExternalAi = (game, env = {}) => {
   if (settings.mode !== "ASSISTED" || !settings.externalProviderEnabled) {
     return { ok: false, reason: "AI assisted mode is disabled.", config };
   }
-  if (!config.apiKey || !config.providerUrl || !config.model) {
+  const isGemini = config.provider === "gemini";
+  const hasFallback = Boolean(config.fallbackApiKey);
+  // Gemini constructs its own URL from model + apiKey; providerUrl not needed.
+  // Allow through if at least one of primary or Groq fallback is configured.
+  const primaryOk = config.apiKey && config.model && (isGemini || config.providerUrl);
+  if (!primaryOk && !hasFallback) {
     return { ok: false, reason: "AI provider is not configured.", config };
   }
   if (config.dailyCallLimit < 1) {
@@ -2119,6 +2131,24 @@ const externalDraftFromContext = async (type, context, game, env = {}) => {
   if (!guard.ok) {
     throw new ProviderError(guard.reason, 429, "AI_GUARDRAIL_BLOCKED");
   }
+
+  // Route to Gemini AI Studio adapter when FANTASY_AI_PROVIDER=gemini
+  if (guard.config.provider === "gemini") {
+    try {
+      const result = await geminiGenerateHostMessage(
+        type,
+        context,
+        guard.config,
+        game.aiSettings,
+      );
+      return { ...result, estimatedCostCents: guard.config.estimatedCostCents, source: "EXTERNAL_AI" };
+    } catch (error) {
+      console.error("[Gemini] host message error:", error?.name, error?.code, error?.status, error?.message);
+      throw error;
+    }
+  }
+
+  // Default: OpenAI-compatible endpoint
   const response = await fetch(guard.config.providerUrl, {
     method: "POST",
     headers: {
@@ -2148,13 +2178,26 @@ const externalDraftFromContext = async (type, context, game, env = {}) => {
 };
 
 const assistedDraftFromContext = async (type, context, game, env = {}) => {
+  let primaryError;
   try {
     return await externalDraftFromContext(type, context, game, env);
   } catch (error) {
-    if (!game.aiSettings?.fallbackToTemplates) throw error;
+    primaryError = error;
+    // Try Groq fallback if configured and primary (Gemini) failed
+    const config = aiProviderConfig(env);
+    if (config.fallbackApiKey) {
+      try {
+        console.log("[Groq] Primary provider failed, trying Groq fallback:", error?.code ?? error?.message);
+        const result = await groqGenerateHostMessage(type, context, config, game.aiSettings);
+        return { ...result, estimatedCostCents: config.estimatedCostCents, source: "EXTERNAL_AI" };
+      } catch (fallbackError) {
+        console.error("[Groq] Fallback also failed:", fallbackError?.code ?? fallbackError?.message);
+      }
+    }
+    if (!game.aiSettings?.fallbackToTemplates) throw primaryError;
     return {
       ...templateDraftFromContext(type, context),
-      fallbackReason: error.code ?? "AI_PROVIDER_FAILED",
+      fallbackReason: primaryError.code ?? "AI_PROVIDER_FAILED",
       source: "TEMPLATE",
     };
   }
@@ -2684,6 +2727,126 @@ export const generateFantasyPolls = async (input = {}) => {
 };
 
 /**
+ * Generates poll question drafts for upcoming matches using Gemini AI.
+ *
+ * Requires FANTASY_AI_PROVIDER=gemini and ASSISTED mode to be enabled.
+ * Falls back to template generation when Gemini is unavailable or disabled.
+ *
+ * @param input - matchIds, limit, status, groupId, replaceExisting, actorId, env
+ * @param env   - Server env (contains AI provider config)
+ * @returns Generated questions and game payload.
+ */
+export const generateFantasyPollsWithAi = async (input = {}, env = {}) => {
+  const game = await gameState();
+  const guard = canUseExternalAi(game, env);
+
+  // If Gemini is not available or not Gemini provider, fall back to templates
+  if (!guard.ok || guard.config.provider !== "gemini") {
+    return generateFantasyPolls(input);
+  }
+
+  const groupId = resolveGroupId(game, input.groupId);
+  const status = input.status ?? "DRAFT";
+  if (!validQuestionStatus.has(status)) {
+    throw new ProviderError("Question status is invalid.", 400, "INVALID_QUESTION_DRAFT");
+  }
+  const requestedIds = Array.isArray(input.matchIds) ? new Set(input.matchIds) : undefined;
+  const limit = Number(input.limit ?? 8);
+  if (!Number.isInteger(limit) || limit < 1 || limit > 32) {
+    throw new ProviderError("Poll generation limit must be between 1 and 32.", 400, "INVALID_QUESTION_DRAFT");
+  }
+
+  const matchesToGenerate = game.matches
+    .filter((match) => match.status === "SCHEDULED")
+    .filter((match) => !requestedIds || requestedIds.has(match.id))
+    .sort((left, right) => left.kickoff.localeCompare(right.kickoff))
+    .slice(0, requestedIds ? game.matches.length : limit);
+
+  if (matchesToGenerate.length === 0) {
+    throw new ProviderError("No eligible fixtures found for poll generation.", 404, "NO_FIXTURES_FOR_POLLS");
+  }
+
+  const maxQuestionsPerMatch = game.aiSettings?.maxQuestions ?? {};
+  const allGenerated = [];
+
+  for (const match of matchesToGenerate) {
+    const maxQuestions = maxQuestionsPerMatch[match.importance ?? "NORMAL"] ?? 5;
+    const squadCandidates = scorerCandidates(match, game).map((p) => p.name);
+    let drafts;
+    try {
+      drafts = await geminiGenerateQuestionDrafts(
+        match,
+        squadCandidates,
+        maxQuestions,
+        guard.config,
+        game.aiSettings,
+      );
+    } catch {
+      // Per-match Gemini failure falls back to templates for that match
+      drafts = generatedQuestionsForMatch(game, match, groupId);
+    }
+
+    for (const draft of drafts) {
+      const question = {
+        id: `draft-${groupId}-${match.id}-${draft.category?.toLowerCase() ?? "ai"}-ai`,
+        tournamentId: game.tournament.id,
+        groupId,
+        matchId: match.id,
+        category: draft.category,
+        type: draft.type,
+        text: String(draft.text ?? "").slice(0, 120),
+        options: (draft.options ?? []).map(String),
+        points: Number.isInteger(draft.points) ? draft.points : 5,
+        status,
+        closeAt: match.pollCloseAt,
+        source: "AI",
+      };
+      try {
+        validateQuestionDraft(game, match.id, question, status);
+        allGenerated.push({ ...question, groupId, status, closeAt: question.closeAt || match.pollCloseAt });
+      } catch {
+        // Skip invalid AI-generated questions silently
+      }
+    }
+  }
+
+  if (allGenerated.length === 0) {
+    // Nothing survived validation — fall back to full template generation
+    return generateFantasyPolls(input);
+  }
+
+  const touchedMatchIds = new Set(matchesToGenerate.map((m) => m.id));
+  const savedIds = new Set(allGenerated.map((q) => q.id));
+  const replaceExisting = input.replaceExisting ?? true;
+  const nextQuestions = replaceExisting
+    ? [
+      ...game.questions.filter((q) => (q.groupId ?? defaultGroupId) !== groupId || (!touchedMatchIds.has(q.matchId) && !savedIds.has(q.id))),
+      ...allGenerated,
+    ]
+    : [
+      ...game.questions.filter((q) => !savedIds.has(q.id)),
+      ...allGenerated,
+    ];
+
+  const nextGame = { ...game, questions: nextQuestions };
+  const updatedGame = await saveGame(nextGame, await audit({
+    action: status === "OPEN" ? "POLLS_GENERATED_AND_PUBLISHED" : "POLLS_GENERATED",
+    actorId: input.actorId ?? "admin",
+    entityId: game.tournament.id,
+    entityType: "MATCH",
+    metadata: {
+      matchCount: matchesToGenerate.length,
+      questionCount: allGenerated.length,
+      status,
+      replaceExisting,
+      groupId,
+      source: "GEMINI_AI",
+    },
+  }));
+  return { fixtures: matchesToGenerate, questions: allGenerated, game: publicGame(updatedGame) };
+};
+
+/**
  * Clears existing match polls and user answers, then publishes fresh polls.
  *
  * @param input - Reset and generation options.
@@ -2945,6 +3108,244 @@ export const saveFantasyResult = async (matchId, result) => {
     metadata: { homeScore: nextResult.homeScore, awayScore: nextResult.awayScore },
   }));
   return { result: nextResult, game: publicGame(updatedGame) };
+};
+
+/**
+ * Fetches structured result facts for one match from API-Football events.
+ * Intended for admin-only use during poll result verification.
+ *
+ * Maps raw API-Football goal/card events → fantasy result fields:
+ *   firstGoalScorer, firstGoalMinute, anytimeScorers, bothTeamsScored,
+ *   penaltyAwarded, redCard, homeScore, awayScore, winnerTeamId
+ *
+ * Consumes 3 API-Football requests (events + lineups + statistics).
+ * Budget should be reserved for this admin workflow — keep
+ * API_FOOTBALL_DAILY_BUDGET low on public routes.
+ *
+ * @param {string} matchId - Fantasy match ID (e.g. "fd-537329")
+ * @param {object} env - Provider env from providerEnv()
+ * @returns {{ resultFacts: object, events: object[], lineups: object[], statistics: object[] }}
+ */
+export const fetchFantasyResultFacts = async (matchId, env) => {
+  const game = await gameState();
+  const match = game.matches.find((m) => m.id === matchId);
+  if (!match) throw new ProviderError("Match not found.", 404, "NOT_FOUND");
+
+  const homeTeam = game.teams.find((t) => t.id === match.homeTeamId);
+  const awayTeam = game.teams.find((t) => t.id === match.awayTeamId);
+  if (!homeTeam || !awayTeam) {
+    throw new ProviderError("Match teams not found in game data.", 404, "NOT_FOUND");
+  }
+
+  // Use a higher budget limit for admin-only result verification calls
+  const adminEnv = { ...env, apiFootballDailyBudget: env.apiFootballAdminBudget ?? 100 };
+
+  const details = await getLiveMatchDetails(
+    {
+      competitionId: game.tournament.competitionId,
+      kickoff: match.kickoff,
+      home: homeTeam.name,
+      away: awayTeam.name,
+    },
+    adminEnv,
+  );
+
+  if (details.notice) {
+    throw new ProviderError(details.notice, 404, "FIXTURE_NOT_FOUND");
+  }
+
+  // ── Step 1: Map API-Football teamId → "home" | "away" ──────────────────────
+  // Use lineups (most reliable) then fall back to statistics for team ID mapping.
+  // teamId in events ("af-team-16") is stable and matches lineups/statistics.
+  const afTeamSide = {};
+  const sources = details.lineups.length > 0 ? details.lineups : details.statistics;
+  for (const entry of sources) {
+    const homeScore = similarity(homeTeam.name, entry.teamName);
+    const awayScore = similarity(awayTeam.name, entry.teamName);
+    if (homeScore > awayScore) afTeamSide[entry.teamId] = "home";
+    else if (awayScore > homeScore) afTeamSide[entry.teamId] = "away";
+  }
+
+  // ── Step 2: Classify goal events ───────────────────────────────────────────
+  const detailLower = (e) => String(e.detail ?? "").toLowerCase();
+  const isOwnGoal = (e) => detailLower(e).includes("own goal");
+  const isPenaltyGoal = (e) => detailLower(e) === "penalty";
+  const isMissedPenalty = (e) => detailLower(e).includes("missed penalty");
+
+  // Missed penalties are type "goal" in the raw API but produce no goal
+  const goalEvents = details.events
+    .filter((e) => e.type === "goal" && !isMissedPenalty(e))
+    .sort((a, b) => a.minute - b.minute);
+
+  // ── Step 3: Count goals per side, accounting for own goals ─────────────────
+  let homeGoals = 0;
+  let awayGoals = 0;
+  for (const g of goalEvents) {
+    const side = afTeamSide[g.teamId];
+    if (isOwnGoal(g)) {
+      // Own goal by the home side → away team scores, and vice versa
+      if (side === "home") awayGoals++;
+      else homeGoals++;
+    } else {
+      if (side === "home") homeGoals++;
+      else awayGoals++;
+    }
+  }
+
+  // ── Step 4: Penalty flags ───────────────────────────────────────────────────
+  const penaltyGoalEvents = goalEvents.filter(isPenaltyGoal);
+  const missedPenaltyEvents = details.events.filter(isMissedPenalty);
+  const penaltyAwarded = penaltyGoalEvents.length > 0 || missedPenaltyEvents.length > 0;
+  const penaltyGoal = penaltyGoalEvents.length > 0;
+
+  // ── Step 5: Red card — prefer statistics (Red Cards: null means 0) ─────────
+  const redCard =
+    details.statistics.some((s) => Number(s.values?.["Red Cards"] ?? 0) > 0) ||
+    details.events.some((e) => e.type === "red-card");
+
+  // ── Step 6: Scorer lists (own goals excluded from scorer credit) ────────────
+  const regularGoals = goalEvents.filter((g) => !isOwnGoal(g));
+  const firstGoal = regularGoals[0]; // first chronological non-own-goal
+
+  // Count goals per player to find players with 2+
+  const goalsByPlayer = {};
+  for (const g of regularGoals) {
+    goalsByPlayer[g.player] = (goalsByPlayer[g.player] ?? 0) + 1;
+  }
+  const anytimeScorers = Object.keys(goalsByPlayer);
+  const playersWithTwoPlusGoals = anytimeScorers.filter((p) => goalsByPlayer[p] >= 2);
+
+  // ── Step 7: Goal timeline for time-range poll validation ──────────────────
+  // timeRange maps to poll option mode "FIRST_GOAL_TIME": Before 10, 11-45, 46-60, 60-90, 90+
+  const goalTimeRange = (minute) => {
+    if (minute <= 10) return "Before 10";
+    if (minute <= 45) return "11-45";
+    if (minute <= 60) return "46-60";
+    if (minute <= 90) return "60-90";
+    return "90+";
+  };
+
+  const goalTimeline = goalEvents.map((g) => ({
+    minute: g.minute,
+    extraMinute: g.extraMinute ?? undefined,
+    player: isOwnGoal(g) ? `${g.player} (OG)` : g.player,
+    team: afTeamSide[g.teamId] ?? "unknown",
+    type: isOwnGoal(g) ? "own-goal" : isPenaltyGoal(g) ? "penalty" : "normal",
+    timeRange: goalTimeRange(g.minute),
+  }));
+
+  // ── Step 8: Assemble result facts ──────────────────────────────────────────
+  const winnerTeamId =
+    homeGoals > awayGoals ? match.homeTeamId :
+    awayGoals > homeGoals ? match.awayTeamId :
+    undefined;
+
+  const resultFacts = {
+    matchId,
+    homeScore: homeGoals,
+    awayScore: awayGoals,
+    winnerTeamId,
+    firstGoalScorer: firstGoal?.player ?? undefined,
+    firstGoalMinute: firstGoal?.minute ?? undefined,
+    anytimeScorers,
+    playersWithTwoPlusGoals,
+    bothTeamsScored: homeGoals > 0 && awayGoals > 0,
+    totalGoalsRange: homeGoals + awayGoals >= 4 ? "4+" : homeGoals + awayGoals >= 2 ? "2-3" : "0-1",
+    penaltyAwarded,
+    penaltyGoal,
+    redCard,
+  };
+
+  return { resultFacts, goalTimeline, events: details.events, lineups: details.lineups, statistics: details.statistics };
+};
+
+/**
+ * Syncs result facts for all COMPLETED matches from the live competitions
+ * provider API. Derives scores, winner, bothTeamsScored, and totalGoalsRange
+ * automatically. Scorer/penalty/red-card facts still need manual entry via
+ * saveFantasyResult after the sync.
+ *
+ * Only creates results for matches not already saved (skips existing results
+ * unless overwrite=true is passed).
+ *
+ * @param {object} env - Provider env from providerEnv()
+ * @param {{ overwrite?: boolean, actorId?: string }} input
+ * @returns {{ synced: number, skipped: number, results: object[], game: object }}
+ */
+export const syncFantasyResultsFromProvider = async (env, input = {}) => {
+  const game = await gameState();
+  const competition = await getLiveCompetitionData(
+    game.tournament.competitionId,
+    game.tournament.editionId,
+    env,
+  );
+
+  const existingResultIds = new Set(game.results.map((r) => r.matchId));
+  const fantasyMatchIds = new Set(game.matches.map((m) => m.id));
+
+  const completed = competition.matches.filter(
+    (m) => m.status === "COMPLETED" && m.homeScore != null && m.awayScore != null,
+  );
+
+  const toSync = completed.filter(
+    (m) => fantasyMatchIds.has(m.id) && (input.overwrite || !existingResultIds.has(m.id)),
+  );
+
+  if (toSync.length === 0) {
+    return { synced: 0, skipped: completed.length, results: [], game: publicGame(game) };
+  }
+
+  const newResults = toSync.map((m) => {
+    const homeScore = m.homeScore ?? 0;
+    const awayScore = m.awayScore ?? 0;
+    const fantasyMatch = game.matches.find((fm) => fm.id === m.id);
+    const winnerTeamId =
+      homeScore > awayScore ? fantasyMatch?.homeTeamId :
+      awayScore > homeScore ? fantasyMatch?.awayTeamId :
+      undefined;
+    return {
+      matchId: m.id,
+      homeScore,
+      awayScore,
+      winnerTeamId,
+      bothTeamsScored: homeScore > 0 && awayScore > 0,
+      totalGoalsRange: homeScore + awayScore >= 4 ? "4+" : homeScore + awayScore >= 2 ? "2-3" : "0-1",
+      // Scorer/card facts not available from the schedule API — fill manually
+      anytimeScorers: [],
+      playersWithTwoPlusGoals: [],
+      firstGoalScorer: undefined,
+      firstGoalMinute: undefined,
+      penaltyAwarded: false,
+      penaltyGoal: false,
+      redCard: false,
+      publishedAt: new Date().toISOString(),
+    };
+  });
+
+  const syncedIds = new Set(newResults.map((r) => r.matchId));
+  const nextGame = {
+    ...game,
+    matches: game.matches.map((m) => syncedIds.has(m.id) ? { ...m, status: "COMPLETED" } : m),
+    results: [
+      ...game.results.filter((r) => !syncedIds.has(r.matchId)),
+      ...newResults,
+    ],
+  };
+
+  const updatedGame = await saveGame(nextGame, await audit({
+    action: "RESULTS_SYNCED",
+    actorId: input.actorId ?? "admin",
+    entityId: game.tournament.id,
+    entityType: "RESULT",
+    metadata: { synced: newResults.length, skipped: completed.length - newResults.length },
+  }));
+
+  return {
+    synced: newResults.length,
+    skipped: completed.length - newResults.length,
+    results: newResults,
+    game: publicGame(updatedGame),
+  };
 };
 
 /**

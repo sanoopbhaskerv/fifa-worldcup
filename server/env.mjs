@@ -67,4 +67,10 @@ export const providerEnv = (source = process.env) => ({
   fantasyAiMaxOutputTokens: source.FANTASY_AI_MAX_OUTPUT_TOKENS ?? "180",
   fantasyAiEstimatedCostCents: source.FANTASY_AI_ESTIMATED_COST_CENTS ?? "1",
   fantasyAiScheduleAutoPublish: source.FANTASY_AI_SCHEDULE_AUTO_PUBLISH === "true",
+  // Set to "gemini" to use the Google AI Studio adapter.
+  // Leave empty to use the default OpenAI-compatible adapter.
+  fantasyAiProvider: source.FANTASY_AI_PROVIDER ?? "",
+  // Groq fallback — used when the primary provider fails.
+  fantasyAiFallbackApiKey: source.FANTASY_AI_FALLBACK_API_KEY ?? "",
+  fantasyAiFallbackModel: source.FANTASY_AI_FALLBACK_MODEL ?? "llama-3.3-70b-versatile",
 });

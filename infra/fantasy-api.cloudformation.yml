@@ -39,6 +39,20 @@ Parameters:
     MinValue: 0
     MaxValue: 100
     Description: Process-local daily request safety budget for API-Football.
+  FantasyAiProvider:
+    Type: String
+    Default: ""
+    AllowedValues: ["", "gemini"]
+    Description: AI provider adapter. Use "gemini" for Google AI Studio. Leave empty for OpenAI-compatible endpoints.
+  FantasyAiFallbackApiKey:
+    Type: String
+    Default: ""
+    NoEcho: true
+    Description: Optional Groq API key used as fallback when the primary AI provider fails.
+  FantasyAiFallbackModel:
+    Type: String
+    Default: "llama-3.3-70b-versatile"
+    Description: Groq model name for the fallback provider.
   FantasyAiProviderUrl:
     Type: String
     Default: ""
@@ -167,6 +181,9 @@ Resources:
           FOOTBALL_DATA_API_KEY: !Ref FootballDataApiKey
           API_FOOTBALL_API_KEY: !Ref ApiFootballApiKey
           API_FOOTBALL_DAILY_BUDGET: !Ref ApiFootballDailyBudget
+          FANTASY_AI_PROVIDER: !Ref FantasyAiProvider
+          FANTASY_AI_FALLBACK_API_KEY: !Ref FantasyAiFallbackApiKey
+          FANTASY_AI_FALLBACK_MODEL: !Ref FantasyAiFallbackModel
           FANTASY_AI_PROVIDER_URL: !Ref FantasyAiProviderUrl
           FANTASY_AI_API_KEY: !Ref FantasyAiApiKey
           FANTASY_AI_MODEL: !Ref FantasyAiModel

@@ -322,6 +322,23 @@ interface SubmitFantasyPredictionsResponse {
   game: FantasyGameData;
 }
 
+interface GoalTimelineEntry {
+  minute: number;
+  extraMinute?: number;
+  player: string;
+  team: "home" | "away" | "unknown";
+  type: "normal" | "penalty" | "own-goal";
+  timeRange: string;
+}
+
+export interface ResultFactsFromProvider {
+  resultFacts: Partial<FantasyMatchResult>;
+  goalTimeline: GoalTimelineEntry[];
+  events: unknown[];
+  lineups: unknown[];
+  statistics: unknown[];
+}
+
 interface SaveFantasyResultInput {
   matchId: string;
   result: Partial<FantasyMatchResult>;
@@ -796,6 +813,15 @@ const publishFantasyScores = async (matchId: string): Promise<PublishFantasyScor
     throw new Error(payload?.error?.message ?? "Could not publish fantasy scores.");
   }
   return (await response.json()) as PublishFantasyScoresResponse;
+};
+
+const fetchResultFactsFromProvider = async (matchId: string): Promise<ResultFactsFromProvider> => {
+  const response = await fetch(fantasyApiUrl(`/api/fantasy/admin/results/${encodeURIComponent(matchId)}/fetch-from-provider`));
+  if (!response.ok) {
+    const payload = await response.json().catch(() => undefined);
+    throw new Error(payload?.error?.message ?? "Could not fetch result facts from API-Football.");
+  }
+  return (await response.json()) as ResultFactsFromProvider;
 };
 
 /**
@@ -1421,3 +1447,14 @@ export const usePublishFantasyScores = (participantId?: string) => {
     },
   });
 };
+
+/**
+ * Fetches derived result facts from API-Football for one completed match.
+ * Admin-only; counted against the daily API-Football admin budget.
+ *
+ * @returns TanStack mutation returning resultFacts and goalTimeline for review.
+ */
+export const useFetchResultFactsFromProvider = () =>
+  useMutation({
+    mutationFn: fetchResultFactsFromProvider,
+  });

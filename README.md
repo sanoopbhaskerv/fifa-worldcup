@@ -42,6 +42,30 @@ API_FOOTBALL_API_KEY=...
 API_FOOTBALL_DAILY_BUDGET=90
 ```
 
+To enable Gemini AI for the fantasy prediction game, add these server-only keys:
+
+```dotenv
+# Select the Gemini provider (Google AI Studio)
+FANTASY_AI_PROVIDER=gemini
+
+# API key from https://aistudio.google.com
+FANTASY_AI_API_KEY=...
+
+# Model name — gemini-2.0-flash is recommended (free tier)
+FANTASY_AI_MODEL=gemini-2.0-flash
+
+# Daily call limit (0 = disabled; start small e.g. 20)
+FANTASY_AI_DAILY_CALL_LIMIT=20
+
+# Estimated cost in cents per call (0 for free-tier Gemini)
+FANTASY_AI_ESTIMATED_COST_CENTS=0
+
+# Max output tokens per call (300–600 for host messages, auto-doubled for drafts)
+FANTASY_AI_MAX_OUTPUT_TOKENS=300
+```
+
+These keys must also be set as Lambda environment variables when deploying the fantasy backend on AWS. They are never exposed in browser assets.
+
 Do not prefix local server secrets with `VITE_`. Vite-prefixed values are
 compiled into browser code. `.env` is ignored by Git.
 

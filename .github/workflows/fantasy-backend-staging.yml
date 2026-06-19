@@ -67,12 +67,15 @@ jobs:
       FOOTBALL_DATA_API_KEY: ${{ secrets.FOOTBALL_DATA_API_KEY }}
       API_FOOTBALL_API_KEY: ${{ secrets.API_FOOTBALL_API_KEY }}
       API_FOOTBALL_DAILY_BUDGET: "90"
+      FANTASY_AI_PROVIDER: ${{ secrets.FANTASY_AI_PROVIDER }}
+      FANTASY_AI_FALLBACK_API_KEY: ${{ secrets.FANTASY_AI_FALLBACK_API_KEY }}
+      FANTASY_AI_FALLBACK_MODEL: ${{ secrets.FANTASY_AI_FALLBACK_MODEL || 'llama-3.3-70b-versatile' }}
       FANTASY_AI_PROVIDER_URL: ${{ secrets.FANTASY_AI_PROVIDER_URL }}
       FANTASY_AI_API_KEY: ${{ secrets.FANTASY_AI_API_KEY }}
       FANTASY_AI_MODEL: ${{ secrets.FANTASY_AI_MODEL }}
       FANTASY_AI_DAILY_CALL_LIMIT: ${{ inputs.fantasy_ai_daily_call_limit }}
-      FANTASY_AI_ESTIMATED_COST_CENTS: "1"
-      FANTASY_AI_MAX_OUTPUT_TOKENS: "180"
+      FANTASY_AI_ESTIMATED_COST_CENTS: ${{ secrets.FANTASY_AI_ESTIMATED_COST_CENTS || '0' }}
+      FANTASY_AI_MAX_OUTPUT_TOKENS: ${{ secrets.FANTASY_AI_MAX_OUTPUT_TOKENS || '300' }}
       FANTASY_AI_SCHEDULE_ENABLED: ${{ inputs.fantasy_ai_schedule_enabled }}
       FANTASY_AI_SCHEDULE_EXPRESSION: ${{ inputs.fantasy_ai_schedule_expression }}
       FANTASY_AI_SCHEDULE_AUTO_PUBLISH: ${{ inputs.fantasy_ai_schedule_auto_publish }}

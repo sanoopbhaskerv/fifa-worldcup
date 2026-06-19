@@ -27,10 +27,13 @@ import {
   resetAndGenerateFantasyPolls,
   runScheduledFantasyAiGeneration,
   saveFantasyQuestionDrafts,
+  fetchFantasyResultFacts,
   saveFantasyResult,
+  syncFantasyResultsFromProvider,
   seedFantasyWorldCupSquads,
   syncFantasyFixturesFromProvider,
   generateFantasyPolls,
+  generateFantasyPollsWithAi,
   submitFantasyPrediction,
   submitFantasyPredictions,
   testFantasyAiProvider,
@@ -357,6 +360,12 @@ export const handleApiRequest = async ({
       });
     }
 
+    if (requestMethod === "POST" && path === "/api/fantasy/admin/polls/generate-ai") {
+      return response(200, await generateFantasyPollsWithAi(parseJsonBody(body), env), {
+        "cache-control": "no-store",
+      });
+    }
+
     if (requestMethod === "POST" && path === "/api/fantasy/admin/polls/reset") {
       return response(200, await resetAndGenerateFantasyPolls(parseJsonBody(body)), {
         "cache-control": "no-store",
@@ -383,6 +392,19 @@ export const handleApiRequest = async ({
         participantId: payload.participantId,
         answer: payload.answer,
       }), {
+        "cache-control": "no-store",
+      });
+    }
+
+    if (requestMethod === "POST" && path === "/api/fantasy/admin/results/sync-from-provider") {
+      return response(200, await syncFantasyResultsFromProvider(env, parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
+    const resultFetchMatch = path.match(/^\/api\/fantasy\/admin\/results\/([^/]+)\/fetch-from-provider$/);
+    if (requestMethod === "GET" && resultFetchMatch) {
+      return response(200, await fetchFantasyResultFacts(decodeURIComponent(resultFetchMatch[1]), env), {
         "cache-control": "no-store",
       });
     }

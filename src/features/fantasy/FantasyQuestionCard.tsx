@@ -38,9 +38,22 @@ export const FantasyQuestionCard = ({
   const locked = isLocked ?? question.status !== "OPEN";
   const unchanged = Boolean(selected && selected === initial);
   const isExactScore = question.type === "EXACT_SCORE";
+  const isScored = prediction?.pointsAwarded !== undefined;
+  const gotItRight = isScored && prediction.pointsAwarded > 0;
+
   const changeSelected = (answer: string) => {
     setLocalSelected(answer);
     onAnswerChange?.(answer);
+  };
+
+  const optionClass = (option: string) => {
+    const base = "fantasy-option";
+    const isSelected = selected === option;
+    if (!isSelected) return base;
+    if (isScored) {
+      return `${base} ${base}--selected ${gotItRight ? `${base}--correct` : `${base}--incorrect`}`;
+    }
+    return `${base} ${base}--selected`;
   };
 
   return (
@@ -65,7 +78,7 @@ export const FantasyQuestionCard = ({
         <div className="fantasy-options" role="group" aria-label={question.text}>
           {question.options.map((option) => (
             <button
-              className={`fantasy-option ${selected === option ? "fantasy-option--selected" : ""}`}
+              className={optionClass(option)}
               disabled={locked}
               key={option}
               onClick={() => changeSelected(option)}
@@ -77,7 +90,19 @@ export const FantasyQuestionCard = ({
         </div>
       )}
       <footer>
-        <span>{locked ? "Locked" : unchanged ? "Saved pick" : selected ? "Draft selected" : "Open for picks"}</span>
+        <span>
+          {isScored
+            ? gotItRight
+              ? "Correct pick ✓"
+              : "Incorrect pick ✗"
+            : locked
+              ? "Locked"
+              : unchanged
+                ? "Saved pick"
+                : selected
+                  ? "Draft selected"
+                  : "Open for picks"}
+        </span>
         {onSubmit && !locked && (
           <button
             className="fantasy-save-pick"
@@ -88,7 +113,11 @@ export const FantasyQuestionCard = ({
             {isSubmitting ? "Saving..." : unchanged ? "Saved" : "Save pick"}
           </button>
         )}
-        {prediction?.pointsAwarded !== undefined && <strong>{prediction.pointsAwarded}/{question.points} pts</strong>}
+        {isScored && (
+          <strong className={gotItRight ? "fantasy-points-correct" : "fantasy-points-incorrect"}>
+            {prediction.pointsAwarded}/{question.points} pts
+          </strong>
+        )}
       </footer>
     </article>
   );
