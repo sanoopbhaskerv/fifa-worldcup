@@ -12,6 +12,15 @@ import {
 import type { ResultFactsFromProvider } from "../services/fantasy-queries";
 import type { FantasyMatch } from "../types/fantasy";
 
+const formatMatchDatetime = (iso: string) =>
+  new Intl.DateTimeFormat(undefined, {
+    weekday: "short",
+    day: "numeric",
+    month: "short",
+    hour: "numeric",
+    minute: "2-digit",
+  }).format(new Date(iso));
+
 interface PendingMatchCardProps {
   match: FantasyMatch;
   participantId: string;
@@ -63,6 +72,7 @@ function PendingMatchCard({ match, participantId }: PendingMatchCardProps) {
           <div>
             <span className="eyebrow">Published</span>
             <h2>{fantasyMatchTitle(match, data.teams)}</h2>
+            <p className="fantasy-match-meta">{match.stage} · {formatMatchDatetime(match.kickoff)}</p>
           </div>
           <Link to={`/fantasy/admin/score-review/${match.id}`}>Review <ArrowIcon /></Link>
         </div>
@@ -77,6 +87,7 @@ function PendingMatchCard({ match, participantId }: PendingMatchCardProps) {
         <div>
           <span className="eyebrow">Completed · Awaiting results</span>
           <h2>{fantasyMatchTitle(match, data.teams)}</h2>
+          <p className="fantasy-match-meta">{match.stage} · {formatMatchDatetime(match.kickoff)}</p>
         </div>
       </div>
 
@@ -286,6 +297,7 @@ export default function FantasyAdminResultsPage() {
                   <div>
                     <span className="eyebrow">Scores published</span>
                     <h2>{fantasyMatchTitle(match, data.teams)}</h2>
+                    <p className="fantasy-match-meta">{match.stage} · {formatMatchDatetime(match.kickoff)}</p>
                   </div>
                   <Link to={`/fantasy/admin/score-review/${match.id}`}>
                     Review <ArrowIcon />

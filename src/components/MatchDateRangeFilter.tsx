@@ -34,8 +34,11 @@ export const matchPassesDateRange = (
   match: { kickoff: string; stage?: string },
   range: MatchDateRangeValue,
 ) => {
-  const date = match.kickoff.slice(0, 10);
-  const inDateRange = (!range.fromDate || date >= range.fromDate) && (!range.toDate || date <= range.toDate);
+  const date = dateInputValue(new Date(match.kickoff));
+  const [fromDate, toDate] = range.fromDate && range.toDate && range.fromDate > range.toDate
+    ? [range.toDate, range.fromDate]
+    : [range.fromDate, range.toDate];
+  const inDateRange = (!fromDate || date >= fromDate) && (!toDate || date <= toDate);
   const inStage = !range.groupStageOnly || String(match.stage ?? "").toLowerCase().includes("group");
   return inDateRange && inStage;
 };

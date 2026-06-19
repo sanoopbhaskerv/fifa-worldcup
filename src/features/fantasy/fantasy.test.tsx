@@ -22,6 +22,7 @@ import FantasyAdminQuestionTemplatesPage from "../../pages/FantasyAdminQuestionT
 import FantasyAdminAiSettingsPage from "../../pages/FantasyAdminAiSettingsPage";
 import FantasyAdminAiHostPage from "../../pages/FantasyAdminAiHostPage";
 import FantasyAdminSubmittedPollsPage from "../../pages/FantasyAdminSubmittedPollsPage";
+import { matchPassesDateRange } from "../../components/MatchDateRangeFilter";
 
 describe("fantasy prediction game", () => {
   beforeEach(() => {
@@ -244,6 +245,16 @@ describe("fantasy prediction game", () => {
     expect(screen.getByText("Polls can only be published for upcoming matches.")).toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Publish open" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Publish filtered upcoming" })).toBeDisabled();
+  });
+
+  it("includes matches between date range boundaries", () => {
+    const matches = fantasyGameData.matches.filter((match) => matchPassesDateRange(match, {
+      fromDate: "2026-06-16",
+      toDate: "2026-06-18",
+      groupStageOnly: false,
+    }));
+
+    expect(matches.map((match) => match.id)).toEqual(["bra-arg", "fra-ger", "eng-esp"]);
   });
 
   it("opens admin poll draft filters in a dialog while league stays outside", async () => {
