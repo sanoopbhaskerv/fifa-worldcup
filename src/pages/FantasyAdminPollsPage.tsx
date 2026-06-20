@@ -18,6 +18,8 @@ const FilterIcon = () => (
   </svg>
 );
 
+const byKickoffAsc = <T extends { kickoff: string }>(left: T, right: T) => left.kickoff.localeCompare(right.kickoff);
+
 /**
  * Displays local AI-host-style poll drafts generated from templates and squad data.
  *
@@ -34,7 +36,7 @@ export default function FantasyAdminPollsPage() {
   const generatePolls = useGenerateFantasyPolls(data.activeParticipantId);
   const resetPolls = useResetFantasyPolls(data.activeParticipantId);
   const dateFilteredMatches = useMemo(() => (
-    data.matches.filter((match) => matchPassesDateRange(match, dateRange))
+    data.matches.filter((match) => matchPassesDateRange(match, dateRange)).sort(byKickoffAsc)
   ), [data.matches, dateRange]);
   const resolvedMatchFilterId = matchFilterId && dateFilteredMatches.some((match) => match.id === matchFilterId)
     ? matchFilterId

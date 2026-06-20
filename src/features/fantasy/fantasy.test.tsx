@@ -43,6 +43,14 @@ describe("fantasy prediction game", () => {
     });
     return render(<QueryClientProvider client={queryClient}>{children}</QueryClientProvider>);
   };
+  const headingIndexes = (names: string[]) => {
+    const headings = [...document.querySelectorAll("h1, h2, h3")];
+    return names.map((name) => headings.findIndex((heading) => heading.textContent?.includes(name)));
+  };
+  const matchButtonIndexes = (names: string[]) => {
+    const buttons = [...document.querySelectorAll(".fantasy-match-button")];
+    return names.map((name) => buttons.findIndex((button) => button.textContent?.includes(name)));
+  };
 
   it("allows selecting an open poll option locally", async () => {
     const user = userEvent.setup();
@@ -158,6 +166,33 @@ describe("fantasy prediction game", () => {
     await user.click(screen.getByRole("button", { name: "All matches" }));
     expect(screen.getByRole("heading", { name: "England vs Spain" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "All saved" }).length).toBeGreaterThan(0);
+  });
+
+  it("sorts published poll matches by kickoff after filtering", () => {
+    vi.setSystemTime(new Date("2026-06-19T12:00:00+05:30"));
+    vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({
+      data: {
+        ...fantasyGameData,
+        matches: [...fantasyGameData.matches].reverse(),
+      },
+    });
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <FantasyPollsPage />
+      </MemoryRouter>,
+    );
+
+    const indexes = headingIndexes([
+      "France vs Spain",
+      "England vs Germany",
+      "Argentina vs France",
+      "Brazil vs England",
+      "Germany vs Spain",
+      "Argentina vs England",
+    ]);
+    expect(indexes.every((index) => index >= 0)).toBe(true);
+    expect(indexes).toEqual([...indexes].sort((left, right) => left - right));
   });
 
   it("opens poll filters in a dialog with the match filter inside", async () => {
@@ -324,7 +359,12 @@ describe("fantasy prediction game", () => {
 
   it("shows all admin poll matches inside the next seven days window", () => {
     vi.setSystemTime(new Date("2026-06-19T12:00:00+05:30"));
-    vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({ data: fantasyGameData });
+    vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({
+      data: {
+        ...fantasyGameData,
+        matches: [...fantasyGameData.matches].reverse(),
+      },
+    });
 
     renderWithQueryClient(<FantasyAdminPollsPage />);
 
@@ -336,6 +376,16 @@ describe("fantasy prediction game", () => {
     expect(screen.getAllByText("Germany vs Spain").length).toBeGreaterThan(0);
     expect(screen.getAllByText("Argentina vs England").length).toBeGreaterThan(0);
     expect(screen.queryByText("Brazil vs France")).not.toBeInTheDocument();
+    const indexes = matchButtonIndexes([
+      "France vs Spain",
+      "England vs Germany",
+      "Argentina vs France",
+      "Brazil vs England",
+      "Germany vs Spain",
+      "Argentina vs England",
+    ]);
+    expect(indexes.every((index) => index >= 0)).toBe(true);
+    expect(indexes).toEqual([...indexes].sort((left, right) => left - right));
   });
 
   it("marks the selected date shortcut as pressed", async () => {

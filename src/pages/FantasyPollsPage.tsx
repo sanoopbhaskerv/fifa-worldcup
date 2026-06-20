@@ -24,6 +24,8 @@ const FilterIcon = () => (
   </svg>
 );
 
+const byKickoffAsc = <T extends { match: { kickoff: string } }>(left: T, right: T) => left.match.kickoff.localeCompare(right.match.kickoff);
+
 export default function FantasyPollsPage() {
   const { data } = useFantasy();
   const submitPrediction = useSubmitFantasyPrediction(data.activeParticipantId);
@@ -38,7 +40,7 @@ export default function FantasyPollsPage() {
   const pollMatches = data.matches
     .map((match) => ({ match, questions: fantasyQuestionsForMatch(match.id, groupQuestions) }))
     .filter(({ questions }) => questions.length > 0);
-  const dateFilteredPollMatches = pollMatches.filter(({ match }) => matchPassesDateRange(match, dateRange));
+  const dateFilteredPollMatches = pollMatches.filter(({ match }) => matchPassesDateRange(match, dateRange)).sort(byKickoffAsc);
   const resolvedMatchId = matchId && dateFilteredPollMatches.some(({ match }) => match.id === matchId)
     ? matchId
     : "";
