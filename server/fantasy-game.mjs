@@ -442,6 +442,43 @@ const saveGame = async (nextGame, auditRecord) => {
 
 const normalize = (value) => String(value).trim().toLowerCase();
 
+/**
+ * Parses a player name into first-name and last-name parts, stripping trailing dots.
+ *
+ * @param name - Raw player name string.
+ * @returns Parsed first/last parts, or null for single-word names.
+ */
+const parsePlayerName = (name) => {
+  const parts = String(name ?? "").trim().split(/\s+/);
+  if (parts.length < 2) return null;
+  return {
+    first: normalize(parts[0].replace(/\.$/, "")),
+    last: normalize(parts[parts.length - 1].replace(/\.$/, "")),
+  };
+};
+
+/**
+ * Fuzzy-matches two player name strings across three conventions:
+ *  1. Exact match (case-insensitive)
+ *  2. First initial + full last name  — "M. Cunha" ↔ "Matheus Cunha"
+ *  3. Full first name + last initial  — "Matheus C." ↔ "Matheus Cunha"
+ *
+ * @param a - First player name.
+ * @param b - Second player name.
+ * @returns true when the two names are considered the same player.
+ */
+const scorerNameMatch = (a, b) => {
+  if (normalize(a) === normalize(b)) return true;
+  const pa = parsePlayerName(a);
+  const pb = parsePlayerName(b);
+  if (!pa || !pb) return false;
+  // Strategy 2: first initial + full last ("M. Cunha" ↔ "Matheus Cunha")
+  if (pa.last === pb.last && (pa.first === pb.first[0] || pb.first === pa.first[0])) return true;
+  // Strategy 3: full first + last initial ("Matheus C." ↔ "Matheus Cunha")
+  if (pa.first === pb.first && (pa.last === pb.last[0] || pb.last === pa.last[0])) return true;
+  return false;
+};
+
 const validTimestamp = (value) => {
   const timestamp = Date.parse(value ?? "");
   return Number.isFinite(timestamp) ? timestamp : undefined;
@@ -1001,11 +1038,12 @@ const scorePrediction = (question, prediction, result, game) => {
   const correct = correctAnswer(question, result, game);
   if (correct === undefined) return undefined;
   const answer = prediction.answer;
+  const isPlayer = question.type === "PLAYER";
   const isCorrect = question.type === "EXACT_SCORE"
     ? parseExactScore(Array.isArray(answer) ? answer[0] : answer) === correct
     : Array.isArray(answer)
-      ? answer.some((item) => normalize(item) === normalize(correct))
-      : normalize(answer) === normalize(correct);
+      ? answer.some((item) => isPlayer ? scorerNameMatch(item, correct) : normalize(item) === normalize(correct))
+      : isPlayer ? scorerNameMatch(answer, correct) : normalize(answer) === normalize(correct);
   return {
     ...prediction,
     pointsAwarded: isCorrect ? question.points : 0,
