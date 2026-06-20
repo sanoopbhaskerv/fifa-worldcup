@@ -6,12 +6,13 @@ import { FantasyQuestionCard } from "../features/fantasy/FantasyQuestionCard";
 import { ArrowIcon, CloseIcon } from "../components/Icons";
 import { useFantasy } from "../app/fantasy-context";
 import { LabeledSelect } from "../components/FormFields";
+import { MatchFilterControls, type MatchFilterValue, useMatchFilters } from "../components/MatchFilterControls";
 import { useSubmitFantasyPrediction, useSubmitFantasyPredictions } from "../services/fantasy-queries";
 import { fantasyDeadlineLabel, fantasyMatchTitle, fantasyPredictionForQuestion, fantasyPublishedQuestions, fantasyQuestionIsLocked, fantasyQuestionsForGroup, fantasyQuestionsForMatch } from "../utils/fantasy";
 import { formatDate, formatKickoff } from "../utils/football";
 import { PageHeading } from "../components/PageSections";
 import type { FantasyQuestion } from "../types/fantasy";
-import { MatchDateRangeFilter, matchPassesDateRange, nextSevenDaysMatchRange } from "../components/MatchDateRangeFilter";
+import { nextSevenDaysMatchRange } from "../components/MatchDateRangeFilter";
 
 /**
  * Displays match and tournament prediction polls.
@@ -24,15 +25,12 @@ const FilterIcon = () => (
   </svg>
 );
 
-const byKickoffAsc = <T extends { match: { kickoff: string } }>(left: T, right: T) => left.match.kickoff.localeCompare(right.match.kickoff);
-
 export default function FantasyPollsPage() {
   const { data } = useFantasy();
   const submitPrediction = useSubmitFantasyPrediction(data.activeParticipantId);
   const submitPredictions = useSubmitFantasyPredictions(data.activeParticipantId);
   const [groupId, setGroupId] = useState(data.groups[0]?.id ?? "group-main");
-  const [matchId, setMatchId] = useState<string>("");
-  const [dateRange, setDateRange] = useState(() => nextSevenDaysMatchRange());
+  const [matchFilter, setMatchFilter] = useState<MatchFilterValue>(() => ({ matchId: "", dateRange: nextSevenDaysMatchRange() }));
   const [isFilterOpen, setIsFilterOpen] = useState(false);
   const [draftAnswers, setDraftAnswers] = useState<Record<string, string>>({});
   const groupQuestions = fantasyQuestionsForGroup(groupId, data.questions);
@@ -40,13 +38,11 @@ export default function FantasyPollsPage() {
   const pollMatches = data.matches
     .map((match) => ({ match, questions: fantasyQuestionsForMatch(match.id, groupQuestions) }))
     .filter(({ questions }) => questions.length > 0);
-  const dateFilteredPollMatches = pollMatches.filter(({ match }) => matchPassesDateRange(match, dateRange)).sort(byKickoffAsc);
-  const resolvedMatchId = matchId && dateFilteredPollMatches.some(({ match }) => match.id === matchId)
-    ? matchId
-    : "";
-  const filteredPollMatches = resolvedMatchId
-    ? dateFilteredPollMatches.filter(({ match }) => match.id === resolvedMatchId)
-    : dateFilteredPollMatches;
+  const { dateFilteredItems: dateFilteredPollMatches, filteredItems: filteredPollMatches, resolvedMatchId } = useMatchFilters({
+    items: pollMatches,
+    value: matchFilter,
+    getMatch: ({ match }) => match,
+  });
   const initialAnswer = (question: FantasyQuestion) => {
     const prediction = fantasyPredictionForQuestion(question.id, data.activeParticipantId, data);
     return Array.isArray(prediction?.answer) ? prediction.answer[0] : prediction?.answer ?? "";
@@ -77,13 +73,9 @@ export default function FantasyPollsPage() {
     submitPredictions.isPending ? "Saving..." : changedCount > 0 ? `Save ${changedCount} changed` : "All saved"
   );
   const groupOptions = data.groups.map((group) => ({ value: group.id, label: group.name }));
-  const matchOptions = dateFilteredPollMatches.map(({ match }) => ({
-    value: match.id,
-    label: `${fantasyMatchTitle(match, data.teams)} – ${formatDate(match.kickoff, true)}`,
-  }));
 
   const activeFilterCount = (resolvedMatchId ? 1 : 0) +
-    (dateRange.fromDate || dateRange.toDate || dateRange.groupStageOnly ? 1 : 0) +
+    (matchFilter.dateRange.fromDate || matchFilter.dateRange.toDate || matchFilter.dateRange.groupStageOnly ? 1 : 0) +
     (groupId !== (data.groups[0]?.id ?? "group-main") ? 1 : 0);
 
   return (
@@ -96,7 +88,7 @@ export default function FantasyPollsPage() {
               label="League"
               onChange={(value) => {
                 setGroupId(value);
-                setMatchId("");
+                setMatchFilter((current) => ({ ...current, matchId: "" }));
               }}
               options={groupOptions}
               value={groupId}
@@ -105,15 +97,13 @@ export default function FantasyPollsPage() {
         )}
 
         <div className="fantasy-page-actions__inline-filters">
-          {pollMatches.length > 1 && (
-            <LabeledSelect
-              label="Match"
-              onChange={setMatchId}
-              options={[{ value: "", label: "All matches" }, ...matchOptions]}
-              value={resolvedMatchId}
-            />
-          )}
-          <MatchDateRangeFilter onChange={setDateRange} value={dateRange} />
+          <MatchFilterControls
+            matches={dateFilteredPollMatches.map(({ match }) => match)}
+            onChange={setMatchFilter}
+            showMatchSelect={pollMatches.length > 1}
+            teams={data.teams}
+            value={{ ...matchFilter, matchId: resolvedMatchId }}
+          />
         </div>
 
         <button
@@ -197,7 +187,7 @@ export default function FantasyPollsPage() {
             </section>
           );
         })}
-        {tournamentQuestions.length > 0 && !resolvedMatchId && dateRange.fromDate === "" && dateRange.toDate === "" && !dateRange.groupStageOnly && (() => {
+        {tournamentQuestions.length > 0 && !resolvedMatchId && matchFilter.dateRange.fromDate === "" && matchFilter.dateRange.toDate === "" && !matchFilter.dateRange.groupStageOnly && (() => {
           const changed = changedAnswers(tournamentQuestions);
           return (
           <section className="content-section fantasy-poll-group">
@@ -280,15 +270,13 @@ export default function FantasyPollsPage() {
                 </button>
               </header>
               <div className="fantasy-filter-dialog-body">
-                {pollMatches.length > 1 && (
-                  <LabeledSelect
-                    label="Match"
-                    onChange={setMatchId}
-                    options={[{ value: "", label: "All matches" }, ...matchOptions]}
-                    value={resolvedMatchId}
-                  />
-                )}
-                <MatchDateRangeFilter onChange={setDateRange} value={dateRange} />
+                <MatchFilterControls
+                  matches={dateFilteredPollMatches.map(({ match }) => match)}
+                  onChange={setMatchFilter}
+                  showMatchSelect={pollMatches.length > 1}
+                  teams={data.teams}
+                  value={{ ...matchFilter, matchId: resolvedMatchId }}
+                />
               </div>
               <footer className="fantasy-filter-dialog-footer">
                 <button
