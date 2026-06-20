@@ -1242,6 +1242,94 @@ describe("fantasy game API", () => {
     });
   });
 
+  it("derives first scoring team from provider goal events", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn(async (url) => {
+        const value = String(url);
+        const response = (items) => new Response(
+          JSON.stringify({ get: "fixtures", parameters: {}, errors: [], results: items.length, response: items }),
+          { status: 200, headers: { "content-type": "application/json" } },
+        );
+        if (value.includes("/fixtures?date=")) {
+          return response([
+            {
+              fixture: { id: 99, referee: "Alex Referee", status: { short: "FT" } },
+              league: { id: 1 },
+              teams: { home: { name: "Brazil" }, away: { name: "Argentina" } },
+            },
+          ]);
+        }
+        if (value.includes("/fixtures/events")) {
+          return response([
+            {
+              time: { elapsed: 5, extra: null },
+              team: { id: 10, name: "Brazil" },
+              player: { id: 7, name: "Brazil Defender" },
+              assist: { id: null, name: null },
+              type: "Goal",
+              detail: "Own Goal",
+            },
+            {
+              time: { elapsed: 22, extra: null },
+              team: { id: 20, name: "Argentina" },
+              player: { id: 10, name: "Lionel Messi" },
+              assist: { id: 11, name: "Julian Alvarez" },
+              type: "Goal",
+              detail: "Normal Goal",
+            },
+          ]);
+        }
+        if (value.includes("/fixtures/lineups")) {
+          return response([
+            {
+              team: { id: 10, name: "Brazil" },
+              formation: "4-3-3",
+              coach: { name: "Brazil Coach" },
+              startXI: [],
+              substitutes: [],
+            },
+            {
+              team: { id: 20, name: "Argentina" },
+              formation: "4-3-3",
+              coach: { name: "Argentina Coach" },
+              startXI: [],
+              substitutes: [],
+            },
+          ]);
+        }
+        return response([
+          { team: { id: 10, name: "Brazil" }, statistics: [{ type: "Red Cards", value: null }] },
+          { team: { id: 20, name: "Argentina" }, statistics: [{ type: "Red Cards", value: null }] },
+        ]);
+      }),
+    );
+
+    const response = await handleApiRequest({
+      method: "GET",
+      url: "/api/fantasy/admin/results/bra-arg/fetch-from-provider",
+      env: {
+        API_FOOTBALL_API_KEY: "test",
+        API_FOOTBALL_BASE_URL: "https://example.com",
+        API_FOOTBALL_DAILY_BUDGET: "90",
+      },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body.resultFacts).toMatchObject({
+      homeScore: 0,
+      awayScore: 2,
+      winnerTeamId: "arg",
+      firstScoringTeamId: "arg",
+      firstGoalScorer: "Lionel Messi",
+      firstGoalMinute: 22,
+    });
+    expect(response.body.goalTimeline[0]).toMatchObject({
+      type: "own-goal",
+      team: "home",
+    });
+  });
+
   it("clears existing match polls and publishes the new poll set", async () => {
     const response = await handleApiRequest({
       method: "POST",

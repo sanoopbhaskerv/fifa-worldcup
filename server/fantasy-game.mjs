@@ -3322,18 +3322,19 @@ export const fetchFantasyResultFacts = async (matchId, env) => {
     .sort((a, b) => a.minute - b.minute);
 
   // ── Step 3: Count goals per side, accounting for own goals ─────────────────
+  const scoringSideForGoal = (goal) => {
+    const side = afTeamSide[goal.teamId];
+    if (isOwnGoal(goal)) {
+      return side === "home" ? "away" : side === "away" ? "home" : undefined;
+    }
+    return side;
+  };
   let homeGoals = 0;
   let awayGoals = 0;
   for (const g of goalEvents) {
-    const side = afTeamSide[g.teamId];
-    if (isOwnGoal(g)) {
-      // Own goal by the home side → away team scores, and vice versa
-      if (side === "home") awayGoals++;
-      else homeGoals++;
-    } else {
-      if (side === "home") homeGoals++;
-      else awayGoals++;
-    }
+    const scoringSide = scoringSideForGoal(g);
+    if (scoringSide === "home") homeGoals++;
+    else if (scoringSide === "away") awayGoals++;
   }
 
   // ── Step 4: Penalty flags ───────────────────────────────────────────────────
@@ -3383,12 +3384,18 @@ export const fetchFantasyResultFacts = async (matchId, env) => {
     homeGoals > awayGoals ? match.homeTeamId :
     awayGoals > homeGoals ? match.awayTeamId :
     undefined;
+  const firstScoringSide = goalEvents[0] ? scoringSideForGoal(goalEvents[0]) : undefined;
+  const firstScoringTeamId =
+    firstScoringSide === "home" ? match.homeTeamId :
+    firstScoringSide === "away" ? match.awayTeamId :
+    undefined;
 
   const resultFacts = {
     matchId,
     homeScore: homeGoals,
     awayScore: awayGoals,
     winnerTeamId,
+    firstScoringTeamId,
     firstGoalScorer: firstGoal?.player ?? undefined,
     firstGoalMinute: firstGoal?.minute ?? undefined,
     anytimeScorers,
