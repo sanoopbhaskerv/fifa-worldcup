@@ -53,6 +53,11 @@ export default defineConfig(({ mode }) => {
       exclude: [...configDefaults.exclude, "tmp/**"],
       setupFiles: "./src/test/setup.ts",
       css: true,
+      env: {
+        // All mock timestamps use +05:30 offsets; pin the test timezone so
+        // Intl.DateTimeFormat(undefined, …) produces consistent IST output.
+        TZ: "Asia/Kolkata",
+      },
     },
     build: {
       sourcemap: true,
