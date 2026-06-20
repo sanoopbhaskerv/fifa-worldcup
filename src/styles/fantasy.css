@@ -1187,6 +1187,41 @@
 	align-content: start;
 }
 
+.fantasy-fixture-filters {
+	display: grid;
+	gap: 14px;
+}
+
+.fantasy-status-filter {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 8px;
+}
+
+.fantasy-status-filter button {
+	min-height: 34px;
+	padding: 0 11px;
+	border: 1px solid var(--line);
+	border-radius: 10px;
+	color: var(--text);
+	background: var(--surface-2);
+	font-size: 10px;
+	font-weight: 900;
+	cursor: pointer;
+}
+
+.fantasy-status-filter button[aria-pressed="true"] {
+	color: var(--on-accent);
+	border-color: var(--accent);
+	background: var(--accent);
+}
+
+.fantasy-match-list__grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(min(100%, 210px), 1fr));
+	gap: 10px;
+}
+
 .fantasy-team-button,
 .fantasy-match-button,
 .fantasy-template-button {
@@ -2026,7 +2061,7 @@
 	.fantasy-tournament-admin,
 	.fantasy-template-admin,
 	.fantasy-ai-admin {
-		grid-template-columns: 280px minmax(0, 1fr);
+		grid-template-columns: repeat(2, minmax(0, 1fr));
 		align-items: start;
 	}
 

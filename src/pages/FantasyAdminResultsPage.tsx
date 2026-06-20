@@ -3,6 +3,7 @@ import { Link } from "react-router-dom";
 import { ArrowIcon } from "../components/Icons";
 import { useFantasy } from "../app/fantasy-context";
 import { MatchFilterControls, type MatchFilterValue, compareMatchesByKickoff, useMatchFilters } from "../components/MatchFilterControls";
+import { pastMatchesRange } from "../components/MatchDateRangeFilter";
 import { fantasyMatchTitle, fantasyTeamName } from "../utils/fantasy";
 import { PageHeading } from "../components/PageSections";
 import {
@@ -24,7 +25,7 @@ const formatMatchDatetime = (iso: string) =>
 
 const allMatchesFilter = (): MatchFilterValue => ({
   matchId: "",
-  dateRange: { fromDate: "", toDate: "", groupStageOnly: false },
+  dateRange: pastMatchesRange(),
 });
 
 interface PendingMatchCardProps {
@@ -309,27 +310,9 @@ function PublishedResultCard({ match, result }: { match: FantasyMatch; result: F
   );
 }
 
-function ResultNotReadyCard({ match }: { match: FantasyMatch }) {
-  const { data } = useFantasy();
-
-  return (
-    <article className="content-section fantasy-admin-result fantasy-admin-result--pending-status">
-      <div className="section-heading">
-        <div>
-          <span className="eyebrow">{match.status} · Result not ready</span>
-          <h2>{fantasyMatchTitle(match, data.teams)}</h2>
-          <p className="fantasy-match-meta">{match.stage} · {formatMatchDatetime(match.kickoff)}</p>
-        </div>
-      </div>
-      <p className="fantasy-admin-note-text">Result entry opens once the fixture is marked completed.</p>
-    </article>
-  );
-}
-
 /**
  * Displays the admin result-entry workspace.
- * Shows completed matches without results first (fetch → review → publish),
- * then already-saved results with a link to the score review page.
+ * Shows completed matches without results first, then saved results.
  *
  * @returns Admin result entry page.
  */
@@ -345,7 +328,7 @@ export default function FantasyAdminResultsPage() {
       .map((question) => question.matchId as string),
   );
   const resultMatches = data.matches
-    .filter((match) => pollMatchIds.has(match.id) || resultByMatchId.has(match.id))
+    .filter((match) => match.status === "COMPLETED" && (pollMatchIds.has(match.id) || resultByMatchId.has(match.id)))
     .sort(compareMatchesByKickoff);
   const { dateFilteredItems, filteredItems, resolvedMatchId } = useMatchFilters<FantasyMatch>({
     items: resultMatches,
@@ -366,6 +349,7 @@ export default function FantasyAdminResultsPage() {
           <div className="fantasy-page-actions__inline-filters fantasy-page-actions__inline-filters--always">
             <MatchFilterControls
               allMatchesLabel="All result matches"
+              dateFilterVariant="history"
               matches={dateFilteredItems}
               onChange={setMatchFilter}
               teams={data.teams}
@@ -380,8 +364,7 @@ export default function FantasyAdminResultsPage() {
           {filteredItems.map((match) => {
             const result = resultByMatchId.get(match.id);
             if (result) return <PublishedResultCard key={match.id} match={match} result={result} />;
-            if (match.status === "COMPLETED") return <PendingMatchCard key={match.id} match={match} participantId={participantId} />;
-            return <ResultNotReadyCard key={match.id} match={match} />;
+            return <PendingMatchCard key={match.id} match={match} participantId={participantId} />;
           })}
         </div>
       )}
@@ -391,8 +374,7 @@ export default function FantasyAdminResultsPage() {
           <span className="eyebrow">Nothing to do yet</span>
           <h2>No published match polls</h2>
           <p>
-            Match polls will appear here after they are published. Result entry opens when a match
-            is marked completed.
+            Completed match polls will appear here after they are published.
           </p>
         </section>
       )}

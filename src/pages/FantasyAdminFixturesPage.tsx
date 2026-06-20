@@ -5,6 +5,7 @@ import type { FantasyMatch } from "../types/fantasy";
 import { fantasyDeadlineLabel, fantasyMatchTitle } from "../utils/fantasy";
 import { formatDate, formatKickoff } from "../utils/football";
 import { LabeledInput, LabeledSelect } from "../components/FormFields";
+import { MatchFilterControls, type MatchFilterValue, useMatchFilters } from "../components/MatchFilterControls";
 import { ErrorMessage, SuccessMessage } from "../components/FeedbackMessages";
 import { PageHeading } from "../components/PageSections";
 import { SectionHeading } from "../components/SectionHeading";
@@ -19,6 +20,13 @@ const statusSelectOptions = statusOptions.map((option) => ({
   value: option,
   label: option,
 }));
+const fixtureStatusFilterOptions = ["ALL", ...statusOptions] as const;
+type FixtureStatusFilter = typeof fixtureStatusFilterOptions[number];
+
+const allMatchesFilter = (): MatchFilterValue => ({
+  matchId: "",
+  dateRange: { fromDate: "", toDate: "", groupStageOnly: false },
+});
 
 /**
  * Displays admin fixture controls for match importance and poll lock timing.
@@ -30,8 +38,21 @@ export default function FantasyAdminFixturesPage() {
   const fixturesQuery = useFantasyFixtures();
   const fixtures = fixturesQuery.data?.fixtures ?? data.matches;
   const [activeMatchId, setActiveMatchId] = useState(fixtures[0]?.id ?? "");
-  const activeMatch = fixtures.find((match) => match.id === activeMatchId) ?? fixtures[0];
+  const [statusFilter, setStatusFilter] = useState<FixtureStatusFilter>("ALL");
+  const [matchFilter, setMatchFilter] = useState<MatchFilterValue>(() => allMatchesFilter());
+  const statusFilteredFixtures = fixtures.filter((match) => statusFilter === "ALL" || match.status === statusFilter);
+  const { dateFilteredItems, filteredItems, resolvedMatchId } = useMatchFilters<FantasyMatch>({
+    items: statusFilteredFixtures,
+    value: matchFilter,
+    getMatch: (match) => match,
+  });
+  const visibleFixtures = filteredItems;
+  const activeMatch = visibleFixtures.find((match) => match.id === activeMatchId) ?? visibleFixtures[0];
   const syncFixtures = useSyncFantasyFixtures(data.activeParticipantId);
+  const handleMatchFilterChange = (nextFilter: MatchFilterValue) => {
+    setMatchFilter(nextFilter);
+    if (nextFilter.matchId) setActiveMatchId(nextFilter.matchId);
+  };
 
   return (
     <div className="page fantasy-page">
@@ -47,12 +68,40 @@ export default function FantasyAdminFixturesPage() {
             {syncFixtures.isSuccess && <SuccessMessage>Synced {syncFixtures.data.fixtures.length} fixtures.</SuccessMessage>}
             {syncFixtures.isError && <ErrorMessage>{syncFixtures.error.message}</ErrorMessage>}
           </div>
-          {fixtures.map((match) => (
-            <button className={match.id === activeMatch?.id ? "fantasy-match-button fantasy-match-button--active" : "fantasy-match-button"} key={match.id} onClick={() => setActiveMatchId(match.id)} type="button">
-              <strong>{fantasyMatchTitle(match, data.teams)}</strong>
-              <span>{match.importance.replace("_", " ")} · {formatKickoff(match.kickoff)}</span>
-            </button>
-          ))}
+          <div className="fantasy-fixture-filters">
+            <div className="fantasy-status-filter" aria-label="Fixture status filters">
+              {fixtureStatusFilterOptions.map((status) => (
+                <button
+                  aria-pressed={statusFilter === status}
+                  key={status}
+                  onClick={() => setStatusFilter(status)}
+                  type="button"
+                >
+                  {status === "ALL" ? "All statuses" : status}
+                </button>
+              ))}
+            </div>
+            <MatchFilterControls
+              allMatchesLabel="All fixtures"
+              matches={dateFilteredItems}
+              onChange={handleMatchFilterChange}
+              teams={data.teams}
+              value={{ ...matchFilter, matchId: resolvedMatchId }}
+            />
+          </div>
+          <div className="fantasy-match-list__grid">
+            {visibleFixtures.map((match) => (
+              <button className={match.id === activeMatch?.id ? "fantasy-match-button fantasy-match-button--active" : "fantasy-match-button"} key={match.id} onClick={() => setActiveMatchId(match.id)} type="button">
+                <strong>{fantasyMatchTitle(match, data.teams)}</strong>
+                <span>{formatDate(match.kickoff, true)} · {formatKickoff(match.kickoff)}</span>
+                <span className="fantasy-match-button__indicators">
+                  <em>{match.status}</em>
+                  <em>{match.importance.replace("_", " ")}</em>
+                </span>
+              </button>
+            ))}
+            {visibleFixtures.length === 0 && <p>No fixtures match this filter.</p>}
+          </div>
         </aside>
         {activeMatch && <FixtureEditor key={activeMatch.id} match={activeMatch} />}
       </div>

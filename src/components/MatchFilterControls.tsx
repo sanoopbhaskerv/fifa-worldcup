@@ -22,6 +22,7 @@ type MatchFilterControlsProps = {
   value: MatchFilterValue;
   onChange: (value: MatchFilterValue) => void;
   allMatchesLabel?: string;
+  dateFilterVariant?: "upcoming" | "history";
   order?: "date-first" | "match-first";
   showMatchSelect?: boolean;
 };
@@ -61,6 +62,7 @@ export function MatchFilterControls({
   value,
   onChange,
   allMatchesLabel = "All matches",
+  dateFilterVariant = "upcoming",
   order = "match-first",
   showMatchSelect = matches.length > 1,
 }: MatchFilterControlsProps) {
@@ -81,6 +83,7 @@ export function MatchFilterControls({
     <MatchDateRangeFilter
       onChange={(nextDateRange) => onChange({ ...value, dateRange: nextDateRange })}
       value={value.dateRange}
+      variant={dateFilterVariant}
     />
   );
 

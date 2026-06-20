@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
 import { LabeledSelect } from "../components/FormFields";
 import { MatchFilterControls, type MatchFilterValue, useMatchFilters } from "../components/MatchFilterControls";
+import { pastMatchesRange } from "../components/MatchDateRangeFilter";
 import { fantasyGroupName, fantasyMatchTitle, fantasyParticipant, fantasyParticipantIdsForGroup, fantasyQuestionsForGroup } from "../utils/fantasy";
 import { formatDate, formatKickoff } from "../utils/football";
 import { PageHeading } from "../components/PageSections";
@@ -16,7 +17,7 @@ type SubmittedPollMatchGroup = {
 
 const allMatchesFilter = (): MatchFilterValue => ({
   matchId: "",
-  dateRange: { fromDate: "", toDate: "", groupStageOnly: false },
+  dateRange: pastMatchesRange(),
 });
 
 /**
@@ -110,6 +111,7 @@ export default function FantasyAdminSubmittedPollsPage() {
           <div className="fantasy-page-actions__inline-filters fantasy-page-actions__inline-filters--always">
             <MatchFilterControls
               allMatchesLabel="All response matches"
+              dateFilterVariant="history"
               matches={dateFilteredItems.map((group) => group.match)}
               onChange={setMatchFilter}
               teams={data.teams}

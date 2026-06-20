@@ -190,6 +190,13 @@ describe("fantasy prediction game", () => {
 
     renderWithQueryClient(<FantasyPredictionsPage />);
 
+    expect(screen.getByRole("button", { name: "Past matches" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("heading", { name: "England vs Spain" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Brazil vs Argentina" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "France vs Spain" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "All matches" }));
+
     expect(screen.getByRole("heading", { name: "Brazil vs Argentina" })).toBeInTheDocument();
     expect(screen.getByRole("heading", { name: "France vs Spain" })).toBeInTheDocument();
     expect(document.body.textContent).toContain("Saturday, Jun 20, 2026");
@@ -484,8 +491,9 @@ describe("fantasy prediction game", () => {
 
     expect(screen.getByRole("heading", { name: "Poll responses" })).toBeInTheDocument();
     expect(screen.getAllByText("Brazil Boss").length).toBeGreaterThan(0);
-    expect(screen.getAllByText(/Brazil vs Argentina/).length).toBeGreaterThan(0);
-    expect(screen.getAllByText("Who scores the first goal?").length).toBeGreaterThan(0);
+    expect(screen.getAllByText(/England vs Spain/).length).toBeGreaterThan(0);
+    expect(screen.getAllByText("Who won the match?").length).toBeGreaterThan(0);
+    expect(screen.queryByText(/Brazil vs Argentina/)).not.toBeInTheDocument();
     expect(screen.getAllByRole("heading", { name: "Pending" }).length).toBeGreaterThan(0);
   });
 
@@ -494,6 +502,11 @@ describe("fantasy prediction game", () => {
     vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({ data: fantasyGameData });
 
     renderWithQueryClient(<FantasyAdminSubmittedPollsPage />);
+
+    expect(screen.getByRole("button", { name: "Past matches" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.queryByRole("heading", { name: "France vs Spain" })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "All matches" }));
 
     expect(screen.getByRole("heading", { name: "France vs Spain" })).toBeInTheDocument();
     expect(document.body.textContent).toContain("Saturday, Jun 20, 2026");
@@ -505,7 +518,7 @@ describe("fantasy prediction game", () => {
     expect(screen.queryByRole("heading", { name: "Brazil vs Argentina" })).not.toBeInTheDocument();
   });
 
-  it("shows all poll-bearing result entries sorted by kickoff", () => {
+  it("shows only completed poll-bearing result entries", () => {
     vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({
       data: {
         ...fantasyGameData,
@@ -519,18 +532,11 @@ describe("fantasy prediction game", () => {
       </MemoryRouter>,
     );
 
-    expect(screen.getByRole("heading", { name: "France vs Spain" })).toBeInTheDocument();
-    expect(screen.getAllByText("Result entry opens once the fixture is marked completed.").length).toBeGreaterThan(0);
-    const indexes = headingIndexes([
-      "England vs Spain",
-      "France vs Germany",
-      "Brazil vs Argentina",
-      "France vs Spain",
-      "England vs Germany",
-      "Argentina vs France",
-    ]);
-    expect(indexes.every((index) => index >= 0)).toBe(true);
-    expect(indexes).toEqual([...indexes].sort((left, right) => left - right));
+    expect(screen.getByRole("button", { name: "Past matches" })).toHaveAttribute("aria-pressed", "true");
+    expect(screen.getByRole("heading", { name: "England vs Spain" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "France vs Germany" })).not.toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "France vs Spain" })).not.toBeInTheDocument();
+    expect(screen.queryByText("Result entry opens once the fixture is marked completed.")).not.toBeInTheDocument();
   });
 
   it("renders participant administration", () => {
@@ -596,13 +602,26 @@ describe("fantasy prediction game", () => {
     expect(screen.getByText("90+")).toBeInTheDocument();
   });
 
-  it("renders fixture administration", () => {
+  it("renders fixture administration with status and match filters", async () => {
+    const user = userEvent.setup();
     vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({ data: fantasyGameData });
 
     renderWithQueryClient(<FantasyAdminFixturesPage />);
 
     expect(screen.getByRole("heading", { name: "Fixtures" })).toBeInTheDocument();
     expect(screen.getByRole("button", { name: /brazil vs argentina/i })).toBeInTheDocument();
+    expect(document.body.textContent).toContain("Thursday, Jun 18, 2026");
+    expect(screen.getByRole("button", { name: "SCHEDULED" })).toHaveAttribute("aria-pressed", "false");
+
+    await user.click(screen.getByRole("button", { name: "COMPLETED" }));
+
+    expect(screen.getByRole("button", { name: /england vs spain/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /brazil vs argentina/i })).not.toBeInTheDocument();
+
+    await user.click(screen.getByRole("button", { name: "SCHEDULED" }));
+
+    expect(screen.getByRole("button", { name: /brazil vs argentina/i })).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /england vs spain/i })).not.toBeInTheDocument();
     expect(screen.getByRole("button", { name: "Save fixture" })).toBeInTheDocument();
   });
 

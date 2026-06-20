@@ -7,7 +7,7 @@ import {
   scorerNameMatch,
   scoreFantasyPrediction,
 } from "./fantasy-scoring";
-import type { FantasyMatch, FantasyMatchResult, FantasyPrediction, FantasyQuestion } from "../types/fantasy";
+import type { FantasyMatchResult, FantasyPrediction, FantasyQuestion } from "../types/fantasy";
 
 // ─── helpers ──────────────────────────────────────────────────────────────────
 

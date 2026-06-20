@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { useFantasy } from "../app/fantasy-context";
 import { MatchFilterControls, type MatchFilterValue, useMatchFilters } from "../components/MatchFilterControls";
+import { pastMatchesRange } from "../components/MatchDateRangeFilter";
 import { fantasyMatchTitle } from "../utils/fantasy";
 import { formatDate, formatKickoff } from "../utils/football";
 import { PageHeading } from "../components/PageSections";
@@ -18,7 +19,7 @@ type PredictionMatchGroup = {
 
 const allMatchesFilter = (): MatchFilterValue => ({
   matchId: "",
-  dateRange: { fromDate: "", toDate: "", groupStageOnly: false },
+  dateRange: pastMatchesRange(),
 });
 
 const answerLabel = (answer: string | string[]) => Array.isArray(answer) ? answer.join(", ") : answer;
@@ -61,6 +62,7 @@ export default function FantasyPredictionsPage() {
         <div className="fantasy-page-actions__inline-filters fantasy-page-actions__inline-filters--always">
           <MatchFilterControls
             allMatchesLabel="All prediction matches"
+            dateFilterVariant="history"
             matches={dateFilteredItems.map((group) => group.match)}
             onChange={setMatchFilter}
             teams={data.teams}

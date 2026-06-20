@@ -9,6 +9,7 @@ export type MatchDateRangeValue = {
 type MatchDateRangeFilterProps = {
   value: MatchDateRangeValue;
   onChange: (value: MatchDateRangeValue) => void;
+  variant?: "upcoming" | "history";
 };
 
 const dateInputValue = (date: Date) => {
@@ -35,6 +36,18 @@ export const nextSevenDaysMatchRange = (baseDate = new Date()): MatchDateRangeVa
   groupStageOnly: false,
 });
 
+export const lastSevenDaysMatchRange = (baseDate = new Date()): MatchDateRangeValue => ({
+  fromDate: dateInputValue(addDays(baseDate, -6)),
+  toDate: dateInputValue(baseDate),
+  groupStageOnly: false,
+});
+
+export const pastMatchesRange = (baseDate = new Date()): MatchDateRangeValue => ({
+  fromDate: "",
+  toDate: dateInputValue(baseDate),
+  groupStageOnly: false,
+});
+
 export const matchPassesDateRange = (
   match: { kickoff: string; stage?: string },
   range: MatchDateRangeValue,
@@ -54,13 +67,19 @@ export const matchPassesDateRange = (
  * @param props - Controlled filter state.
  * @returns Date range filter controls.
  */
-export function MatchDateRangeFilter({ value, onChange }: MatchDateRangeFilterProps) {
+export function MatchDateRangeFilter({ value, onChange, variant = "upcoming" }: MatchDateRangeFilterProps) {
   const today = dateInputValue(new Date());
   const tomorrow = dateInputValue(addDays(new Date(), 1));
+  const yesterday = dateInputValue(addDays(new Date(), -1));
   const nextSeven = nextSevenDaysMatchRange();
+  const lastSeven = lastSevenDaysMatchRange();
+  const pastMatches = pastMatchesRange();
   const isTodaySelected = value.fromDate === today && value.toDate === today && !value.groupStageOnly;
   const isTomorrowSelected = value.fromDate === tomorrow && value.toDate === tomorrow && !value.groupStageOnly;
+  const isYesterdaySelected = value.fromDate === yesterday && value.toDate === yesterday && !value.groupStageOnly;
   const isNextSevenSelected = value.fromDate === nextSeven.fromDate && value.toDate === nextSeven.toDate && !value.groupStageOnly;
+  const isLastSevenSelected = value.fromDate === lastSeven.fromDate && value.toDate === lastSeven.toDate && !value.groupStageOnly;
+  const isPastMatchesSelected = value.fromDate === pastMatches.fromDate && value.toDate === pastMatches.toDate && !value.groupStageOnly;
   const isGroupStageSelected = value.fromDate === nextSeven.fromDate && value.toDate === nextSeven.toDate && value.groupStageOnly;
   const isAllMatchesSelected = !value.fromDate && !value.toDate && !value.groupStageOnly;
   const setToday = () => {
@@ -69,7 +88,12 @@ export function MatchDateRangeFilter({ value, onChange }: MatchDateRangeFilterPr
   const setTomorrow = () => {
     onChange({ fromDate: tomorrow, toDate: tomorrow, groupStageOnly: false });
   };
+  const setYesterday = () => {
+    onChange({ fromDate: yesterday, toDate: yesterday, groupStageOnly: false });
+  };
   const setNextSeven = () => onChange(nextSeven);
+  const setLastSeven = () => onChange(lastSeven);
+  const setPastMatches = () => onChange(pastMatches);
 
   return (
     <div className="match-date-range-filter">
@@ -79,9 +103,19 @@ export function MatchDateRangeFilter({ value, onChange }: MatchDateRangeFilterPr
       </div>
       <div className="match-date-range-filter__actions">
         <button aria-pressed={isTodaySelected} onClick={setToday} type="button">Today</button>
-        <button aria-pressed={isTomorrowSelected} onClick={setTomorrow} type="button">Tomorrow</button>
-        <button aria-pressed={isNextSevenSelected} onClick={setNextSeven} type="button">Next 7 days</button>
-        <button aria-pressed={isGroupStageSelected} onClick={() => onChange({ ...nextSeven, groupStageOnly: true })} type="button">Group stage</button>
+        {variant === "history" ? (
+          <>
+            <button aria-pressed={isYesterdaySelected} onClick={setYesterday} type="button">Yesterday</button>
+            <button aria-pressed={isLastSevenSelected} onClick={setLastSeven} type="button">Last 7 days</button>
+            <button aria-pressed={isPastMatchesSelected} onClick={setPastMatches} type="button">Past matches</button>
+          </>
+        ) : (
+          <>
+            <button aria-pressed={isTomorrowSelected} onClick={setTomorrow} type="button">Tomorrow</button>
+            <button aria-pressed={isNextSevenSelected} onClick={setNextSeven} type="button">Next 7 days</button>
+            <button aria-pressed={isGroupStageSelected} onClick={() => onChange({ ...nextSeven, groupStageOnly: true })} type="button">Group stage</button>
+          </>
+        )}
         <button aria-pressed={isAllMatchesSelected} onClick={() => onChange({ fromDate: "", toDate: "", groupStageOnly: false })} type="button">All matches</button>
       </div>
     </div>
