@@ -6,6 +6,23 @@ import { useCompetition } from "../app/competition-context";
 import type { Match } from "../types/domain";
 import { formatDate, formatKickoff, formatLiveClock, isActiveLiveMatch, isActiveLivePhase, sectionPath } from "../utils/football";
 
+const liveMatchPairKey = (match: Match) => [match.home.id, match.away.id].sort().join(":");
+
+const dedupeLiveMatchesByTeamPair = (matches: Match[], nowMs = Date.now()) => {
+  const closestByPair = new Map<string, Match>();
+  const kickoffDistance = (match: Match) => Math.abs(Date.parse(match.kickoff) - nowMs);
+
+  for (const match of matches) {
+    const key = liveMatchPairKey(match);
+    const existing = closestByPair.get(key);
+    if (!existing || kickoffDistance(match) < kickoffDistance(existing)) {
+      closestByPair.set(key, match);
+    }
+  }
+
+  return [...closestByPair.values()].sort((left, right) => Date.parse(left.kickoff) - Date.parse(right.kickoff));
+};
+
 /**
  * Displays the competition landing page with hero match, key stats, and quick links.
  *
@@ -14,7 +31,7 @@ import { formatDate, formatKickoff, formatLiveClock, isActiveLiveMatch, isActive
 export default function OverviewPage() {
   const { data, editionId } = useCompetition();
   const { competition, matches, standings, scorers } = data;
-  const liveMatches = matches.filter(isActiveLiveMatch);
+  const liveMatches = dedupeLiveMatchesByTeamPair(matches.filter(isActiveLiveMatch));
   const upcomingMatches = matches.filter((match) => match.status === "UPCOMING");
   const featuredMatches = (liveMatches.length > 0 ? liveMatches : upcomingMatches.length > 0 ? upcomingMatches : matches.filter((match) => match.status !== "COMPLETED")).slice(0, 5);
   const recent = [...matches]

@@ -11,8 +11,10 @@ import { FantasyQuestionCard } from "./FantasyQuestionCard";
 import FantasyHomePage from "../../pages/FantasyHomePage";
 import FantasyCreatePollPage from "../../pages/FantasyCreatePollPage";
 import FantasyPollsPage from "../../pages/FantasyPollsPage";
+import FantasyPredictionsPage from "../../pages/FantasyPredictionsPage";
 import FantasyProfilePage from "../../pages/FantasyProfilePage";
 import FantasyAdminScoreReviewPage from "../../pages/FantasyAdminScoreReviewPage";
+import FantasyAdminResultsPage from "../../pages/FantasyAdminResultsPage";
 import FantasyAdminSquadsPage from "../../pages/FantasyAdminSquadsPage";
 import FantasyAdminPollsPage from "../../pages/FantasyAdminPollsPage";
 import FantasyAdminParticipantsPage from "../../pages/FantasyAdminParticipantsPage";
@@ -166,6 +168,37 @@ describe("fantasy prediction game", () => {
     await user.click(screen.getByRole("button", { name: "All matches" }));
     expect(screen.getByRole("heading", { name: "England vs Spain" })).toBeInTheDocument();
     expect(screen.getAllByRole("button", { name: "All saved" }).length).toBeGreaterThan(0);
+  });
+
+  it("groups my predictions by match with match date filters", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({
+      data: {
+        ...fantasyGameData,
+        predictions: [
+          ...fantasyGameData.predictions,
+          {
+            id: "pred-fra-esp-0620",
+            questionId: "q-fra-esp-0620-winner",
+            participantId: fantasyGameData.activeParticipantId,
+            answer: "France",
+            submittedAt: "2026-06-19T20:00:00+05:30",
+          },
+        ],
+      },
+    });
+
+    renderWithQueryClient(<FantasyPredictionsPage />);
+
+    expect(screen.getByRole("heading", { name: "Brazil vs Argentina" })).toBeInTheDocument();
+    expect(screen.getByRole("heading", { name: "France vs Spain" })).toBeInTheDocument();
+    expect(document.body.textContent).toContain("Saturday, Jun 20, 2026");
+    expect(document.body.textContent).toContain("9:30 PM");
+
+    await user.selectOptions(screen.getByLabelText("Match"), "fra-esp-0620");
+
+    expect(screen.getByRole("heading", { name: "France vs Spain" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Brazil vs Argentina" })).not.toBeInTheDocument();
   });
 
   it("sorts published poll matches by kickoff after filtering", () => {
@@ -454,6 +487,50 @@ describe("fantasy prediction game", () => {
     expect(screen.getAllByText(/Brazil vs Argentina/).length).toBeGreaterThan(0);
     expect(screen.getAllByText("Who scores the first goal?").length).toBeGreaterThan(0);
     expect(screen.getAllByRole("heading", { name: "Pending" }).length).toBeGreaterThan(0);
+  });
+
+  it("groups submitted admin polls by match with match filters", async () => {
+    const user = userEvent.setup();
+    vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({ data: fantasyGameData });
+
+    renderWithQueryClient(<FantasyAdminSubmittedPollsPage />);
+
+    expect(screen.getByRole("heading", { name: "France vs Spain" })).toBeInTheDocument();
+    expect(document.body.textContent).toContain("Saturday, Jun 20, 2026");
+    expect(document.body.textContent).toContain("9:30 PM");
+
+    await user.selectOptions(screen.getByLabelText("Match"), "fra-esp-0620");
+
+    expect(screen.getByRole("heading", { name: "France vs Spain" })).toBeInTheDocument();
+    expect(screen.queryByRole("heading", { name: "Brazil vs Argentina" })).not.toBeInTheDocument();
+  });
+
+  it("shows all poll-bearing result entries sorted by kickoff", () => {
+    vi.spyOn(fantasyContext, "useFantasy").mockReturnValue({
+      data: {
+        ...fantasyGameData,
+        matches: [...fantasyGameData.matches].reverse(),
+      },
+    });
+
+    renderWithQueryClient(
+      <MemoryRouter>
+        <FantasyAdminResultsPage />
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByRole("heading", { name: "France vs Spain" })).toBeInTheDocument();
+    expect(screen.getAllByText("Result entry opens once the fixture is marked completed.").length).toBeGreaterThan(0);
+    const indexes = headingIndexes([
+      "England vs Spain",
+      "France vs Germany",
+      "Brazil vs Argentina",
+      "France vs Spain",
+      "England vs Germany",
+      "Argentina vs France",
+    ]);
+    expect(indexes.every((index) => index >= 0)).toBe(true);
+    expect(indexes).toEqual([...indexes].sort((left, right) => left - right));
   });
 
   it("renders participant administration", () => {

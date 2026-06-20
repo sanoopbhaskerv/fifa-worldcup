@@ -499,6 +499,18 @@
 	display: none;
 }
 
+.fantasy-page-actions--filters-only {
+	justify-content: flex-start;
+	margin-top: 0;
+}
+
+.fantasy-page-actions__inline-filters--always {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 20px;
+}
+
 .fantasy-poll-group .section-heading {
 	align-items: start;
 }
@@ -860,6 +872,35 @@
 	background: var(--surface);
 }
 
+.fantasy-prediction-match-group,
+.fantasy-submitted-match-group {
+	display: grid;
+	gap: 10px;
+	padding: 14px;
+	border: 1px solid var(--line);
+	border-radius: 14px;
+	background: var(--surface-2);
+}
+
+.fantasy-match-group-header {
+	display: flex;
+	justify-content: space-between;
+	gap: 12px;
+	padding-bottom: 4px;
+}
+
+.fantasy-match-group-header h2 {
+	margin: 5px 0 4px;
+	font-size: 19px;
+}
+
+.fantasy-match-group-header p {
+	margin: 0;
+	color: var(--muted);
+	font-size: 12px;
+	font-weight: 800;
+}
+
 .fantasy-prediction-row h2 {
 	margin: 5px 0 4px;
 	font-size: 17px;
@@ -970,6 +1011,17 @@
 
 .fantasy-admin-result .section-heading svg {
 	width: 14px;
+}
+
+.fantasy-admin-result--pending-status {
+	opacity: .86;
+}
+
+.fantasy-admin-note-text {
+	margin: 0;
+	color: var(--muted);
+	font-size: 13px;
+	font-weight: 800;
 }
 
 .fantasy-admin-scoreline {
@@ -1805,6 +1857,10 @@
 	background: var(--surface-2);
 }
 
+.fantasy-submitted-match-group .fantasy-submitted-poll {
+	background: var(--surface);
+}
+
 .fantasy-submitted-poll header {
 	display: flex;
 	justify-content: space-between;
@@ -2298,6 +2354,10 @@
   }
   .fantasy-page-actions__inline-filters {
     display: none !important;
+  }
+  .fantasy-page-actions__inline-filters--always {
+    display: flex !important;
+    flex: 1 1 100%;
   }
   .fantasy-page-actions__filter-trigger {
     display: inline-flex !important;

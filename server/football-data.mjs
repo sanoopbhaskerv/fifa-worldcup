@@ -215,6 +215,15 @@ const providerStatusFromLiveStatus = (status, fallback) => {
   return fallback;
 };
 
+const liveFixtureKickoffDelta = (match, fixture) => Math.abs(
+  Date.parse(match.utcDate) - Date.parse(fixture.fixture?.date ?? ""),
+);
+
+const isLiveFixtureKickoffCandidate = (match, fixture) => {
+  const kickoffDelta = liveFixtureKickoffDelta(match, fixture);
+  return Number.isFinite(kickoffDelta) && kickoffDelta <= 4 * 60 * 60_000;
+};
+
 /**
  * Scores a football-data.org match against an API-Football live fixture.
  *
@@ -223,14 +232,11 @@ const providerStatusFromLiveStatus = (status, fallback) => {
  * @returns Match confidence score, where higher values are stronger.
  */
 const liveFixtureMatchScore = (match, fixture) => {
-  const kickoffDelta = Math.abs(
-    Date.parse(match.utcDate) - Date.parse(fixture.fixture?.date ?? ""),
-  );
-  const dateBonus = Number.isFinite(kickoffDelta) && kickoffDelta <= 4 * 60 * 60_000 ? 4 : 0;
+  if (!isLiveFixtureKickoffCandidate(match, fixture)) return 0;
   return (
     similarity(match.homeTeam?.name, fixture.teams?.home?.name) +
     similarity(match.awayTeam?.name, fixture.teams?.away?.name) +
-    dateBonus
+    4
   );
 };
 

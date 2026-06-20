@@ -2,6 +2,7 @@ import { useState } from "react";
 import { Link } from "react-router-dom";
 import { ArrowIcon } from "../components/Icons";
 import { useFantasy } from "../app/fantasy-context";
+import { MatchFilterControls, type MatchFilterValue, compareMatchesByKickoff, useMatchFilters } from "../components/MatchFilterControls";
 import { fantasyMatchTitle, fantasyTeamName } from "../utils/fantasy";
 import { PageHeading } from "../components/PageSections";
 import {
@@ -10,7 +11,7 @@ import {
   usePublishFantasyScores,
 } from "../services/fantasy-queries";
 import type { ResultFactsFromProvider } from "../services/fantasy-queries";
-import type { FantasyMatch } from "../types/fantasy";
+import type { FantasyMatch, FantasyMatchResult } from "../types/fantasy";
 
 const formatMatchDatetime = (iso: string) =>
   new Intl.DateTimeFormat(undefined, {
@@ -20,6 +21,11 @@ const formatMatchDatetime = (iso: string) =>
     hour: "numeric",
     minute: "2-digit",
   }).format(new Date(iso));
+
+const allMatchesFilter = (): MatchFilterValue => ({
+  matchId: "",
+  dateRange: { fromDate: "", toDate: "", groupStageOnly: false },
+});
 
 interface PendingMatchCardProps {
   match: FantasyMatch;
@@ -247,6 +253,79 @@ function PendingMatchCard({ match, participantId }: PendingMatchCardProps) {
   );
 }
 
+function PublishedResultCard({ match, result }: { match: FantasyMatch; result: FantasyMatchResult }) {
+  const { data } = useFantasy();
+
+  return (
+    <article className="content-section fantasy-admin-result" key={match.id}>
+      <div className="section-heading">
+        <div>
+          <span className="eyebrow">Scores published</span>
+          <h2>{fantasyMatchTitle(match, data.teams)}</h2>
+          <p className="fantasy-match-meta">{match.stage} · {formatMatchDatetime(match.kickoff)}</p>
+        </div>
+        <Link to={`/fantasy/admin/score-review/${match.id}`}>
+          Review <ArrowIcon />
+        </Link>
+      </div>
+      <div className="fantasy-admin-scoreline">
+        <span>{fantasyTeamName(match.homeTeamId, data.teams)}</span>
+        <strong>
+          {result.homeScore} : {result.awayScore}
+        </strong>
+        <span>{fantasyTeamName(match.awayTeamId, data.teams)}</span>
+      </div>
+      <dl className="fantasy-result-facts">
+        <div>
+          <dt>Winner</dt>
+          <dd>
+            {result.winnerTeamId
+              ? fantasyTeamName(result.winnerTeamId, data.teams)
+              : "Draw"}
+          </dd>
+        </div>
+        <div>
+          <dt>First scorer</dt>
+          <dd>{result.firstGoalScorer ?? "—"}</dd>
+        </div>
+        <div>
+          <dt>First goal minute</dt>
+          <dd>{result.firstGoalMinute != null ? `${result.firstGoalMinute}'` : "—"}</dd>
+        </div>
+        <div>
+          <dt>Man of the Match</dt>
+          <dd>{result.manOfTheMatch ?? "—"}</dd>
+        </div>
+        <div>
+          <dt>Penalty awarded</dt>
+          <dd>{result.penaltyAwarded ? "Yes" : "No"}</dd>
+        </div>
+        <div>
+          <dt>Red card</dt>
+          <dd>{result.redCard ? "Yes" : "No"}</dd>
+        </div>
+      </dl>
+    </article>
+  );
+}
+
+function ResultNotReadyCard({ match }: { match: FantasyMatch }) {
+  const { data } = useFantasy();
+
+  return (
+    <article className="content-section fantasy-admin-result fantasy-admin-result--pending-status">
+      <div className="section-heading">
+        <div>
+          <span className="eyebrow">{match.status} · Result not ready</span>
+          <h2>{fantasyMatchTitle(match, data.teams)}</h2>
+          <p className="fantasy-match-meta">{match.stage} · {formatMatchDatetime(match.kickoff)}</p>
+        </div>
+      </div>
+      <p className="fantasy-admin-note-text">Result entry opens once the fixture is marked completed.</p>
+    </article>
+  );
+}
+
 /**
  * Displays the admin result-entry workspace.
  * Shows completed matches without results first (fetch → review → publish),
@@ -256,20 +335,23 @@ function PendingMatchCard({ match, participantId }: PendingMatchCardProps) {
  */
 export default function FantasyAdminResultsPage() {
   const { data } = useFantasy();
+  const [matchFilter, setMatchFilter] = useState<MatchFilterValue>(() => allMatchesFilter());
   const participantId = data.activeParticipantId;
 
-  const resultMatchIds = new Set(data.results.map((r) => r.matchId));
-
-  const pendingMatches = data.matches.filter(
-    (m) => m.status === "COMPLETED" && !resultMatchIds.has(m.id),
+  const resultByMatchId = new Map(data.results.map((result) => [result.matchId, result]));
+  const pollMatchIds = new Set(
+    data.questions
+      .filter((question) => question.status !== "DRAFT" && question.matchId)
+      .map((question) => question.matchId as string),
   );
-
-  const completedResults = data.results
-    .map((result) => {
-      const match = data.matches.find((m) => m.id === result.matchId);
-      return match ? { match, result } : undefined;
-    })
-    .filter((item): item is NonNullable<typeof item> => Boolean(item));
+  const resultMatches = data.matches
+    .filter((match) => pollMatchIds.has(match.id) || resultByMatchId.has(match.id))
+    .sort(compareMatchesByKickoff);
+  const { dateFilteredItems, filteredItems, resolvedMatchId } = useMatchFilters<FantasyMatch>({
+    items: resultMatches,
+    value: matchFilter,
+    getMatch: (match) => match,
+  });
 
   return (
     <div className="page fantasy-page">
@@ -279,81 +361,47 @@ export default function FantasyAdminResultsPage() {
         description="Fetch match facts from API-Football, review them, then save and publish scores. Players will see their results immediately after publishing."
       />
 
-      {pendingMatches.length > 0 && (
-        <div className="fantasy-admin-grid">
-          {pendingMatches.map((match) => (
-            <PendingMatchCard key={match.id} match={match} participantId={participantId} />
-          ))}
+      {resultMatches.length > 0 && (
+        <div className="fantasy-page-actions fantasy-page-actions--filters-only">
+          <div className="fantasy-page-actions__inline-filters fantasy-page-actions__inline-filters--always">
+            <MatchFilterControls
+              allMatchesLabel="All result matches"
+              matches={dateFilteredItems}
+              onChange={setMatchFilter}
+              teams={data.teams}
+              value={{ ...matchFilter, matchId: resolvedMatchId }}
+            />
+          </div>
         </div>
       )}
 
-      {completedResults.length > 0 && (
-        <>
-          <h2 className="fantasy-admin-section-title">Published results</h2>
-          <div className="fantasy-admin-grid">
-            {completedResults.map(({ match, result }) => (
-              <article className="content-section fantasy-admin-result" key={match.id}>
-                <div className="section-heading">
-                  <div>
-                    <span className="eyebrow">Scores published</span>
-                    <h2>{fantasyMatchTitle(match, data.teams)}</h2>
-                    <p className="fantasy-match-meta">{match.stage} · {formatMatchDatetime(match.kickoff)}</p>
-                  </div>
-                  <Link to={`/fantasy/admin/score-review/${match.id}`}>
-                    Review <ArrowIcon />
-                  </Link>
-                </div>
-                <div className="fantasy-admin-scoreline">
-                  <span>{fantasyTeamName(match.homeTeamId, data.teams)}</span>
-                  <strong>
-                    {result.homeScore} : {result.awayScore}
-                  </strong>
-                  <span>{fantasyTeamName(match.awayTeamId, data.teams)}</span>
-                </div>
-                <dl className="fantasy-result-facts">
-                  <div>
-                    <dt>Winner</dt>
-                    <dd>
-                      {result.winnerTeamId
-                        ? fantasyTeamName(result.winnerTeamId, data.teams)
-                        : "Draw"}
-                    </dd>
-                  </div>
-                  <div>
-                    <dt>First scorer</dt>
-                    <dd>{result.firstGoalScorer ?? "—"}</dd>
-                  </div>
-                  <div>
-                    <dt>First goal minute</dt>
-                    <dd>{result.firstGoalMinute != null ? `${result.firstGoalMinute}'` : "—"}</dd>
-                  </div>
-                  <div>
-                    <dt>Man of the Match</dt>
-                    <dd>{result.manOfTheMatch ?? "—"}</dd>
-                  </div>
-                  <div>
-                    <dt>Penalty awarded</dt>
-                    <dd>{result.penaltyAwarded ? "Yes" : "No"}</dd>
-                  </div>
-                  <div>
-                    <dt>Red card</dt>
-                    <dd>{result.redCard ? "Yes" : "No"}</dd>
-                  </div>
-                </dl>
-              </article>
-            ))}
-          </div>
-        </>
+      {filteredItems.length > 0 && (
+        <div className="fantasy-admin-grid">
+          {filteredItems.map((match) => {
+            const result = resultByMatchId.get(match.id);
+            if (result) return <PublishedResultCard key={match.id} match={match} result={result} />;
+            if (match.status === "COMPLETED") return <PendingMatchCard key={match.id} match={match} participantId={participantId} />;
+            return <ResultNotReadyCard key={match.id} match={match} />;
+          })}
+        </div>
       )}
 
-      {pendingMatches.length === 0 && completedResults.length === 0 && (
+      {resultMatches.length === 0 && (
         <section className="content-section fantasy-admin-note">
           <span className="eyebrow">Nothing to do yet</span>
-          <h2>No completed matches</h2>
+          <h2>No published match polls</h2>
           <p>
-            Matches will appear here once their status is set to COMPLETED. Use the Fixtures admin
-            page to update match status after a game ends.
+            Match polls will appear here after they are published. Result entry opens when a match
+            is marked completed.
           </p>
+        </section>
+      )}
+
+      {resultMatches.length > 0 && filteredItems.length === 0 && (
+        <section className="content-section fantasy-admin-note">
+          <span className="eyebrow">No matches</span>
+          <h2>No result entries match this filter</h2>
+          <p>Choose a wider date range or clear the match filter.</p>
         </section>
       )}
     </div>
