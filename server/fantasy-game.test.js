@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { handleApiRequest } from "./handler.mjs";
 import { getFantasyStorageRecords, resetFantasyGame } from "./fantasy-game.mjs";
+import { clearCache } from "./cache.mjs";
 
 describe("fantasy game API", () => {
   beforeEach(async () => {
@@ -495,6 +496,76 @@ describe("fantasy game API", () => {
       action: "POLLS_GENERATED_AND_PUBLISHED",
       metadata: { matchCount: 1, status: "OPEN" },
     });
+  });
+
+  it("runs scheduled fixture/result automation and publishes completed match polls", async () => {
+    let providerStatus = "TIMED";
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      const href = String(url);
+      if (href.includes("/matches?season=2026")) {
+        const isFinished = providerStatus === "FINISHED";
+        return new Response(JSON.stringify({
+          matches: [
+            {
+              id: 100,
+              utcDate: "2026-06-20T18:00:00Z",
+              status: providerStatus,
+              stage: "GROUP_STAGE",
+              group: "GROUP_D",
+              matchday: 1,
+              homeTeam: { id: 1, name: "Brazil", shortName: "Brazil", tla: "BRA" },
+              awayTeam: { id: 2, name: "Argentina", shortName: "Argentina", tla: "ARG" },
+              score: { fullTime: { home: isFinished ? 1 : null, away: isFinished ? 2 : null } },
+            },
+          ],
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (href.includes("/standings?season=2026")) {
+        return new Response(JSON.stringify({ standings: [] }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (href.includes("/scorers?season=2026")) {
+        return new Response(JSON.stringify({ scorers: [] }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response(JSON.stringify({}), { status: 404, headers: { "content-type": "application/json" } });
+    }));
+
+    await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/fixtures/sync-live",
+      body: JSON.stringify({ replaceExisting: true }),
+      env: { FOOTBALL_DATA_API_KEY: "test-key", FOOTBALL_DATA_BASE_URL: "https://fd.test/v4" },
+    });
+    await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/polls/generate",
+      body: JSON.stringify({ limit: 1, status: "OPEN", replaceExisting: true }),
+      env: {},
+    });
+
+    providerStatus = "FINISHED";
+    clearCache();
+    const response = await handleApiRequest({
+      method: "POST",
+      url: "/api/fantasy/admin/scheduled/match-automation",
+      body: JSON.stringify({ actorId: "test-scheduler" }),
+      env: { FOOTBALL_DATA_API_KEY: "test-key", FOOTBALL_DATA_BASE_URL: "https://fd.test/v4" },
+    });
+
+    expect(response.status).toBe(200);
+    expect(response.body).toMatchObject({
+      fixtures: { synced: 1 },
+      results: { synced: 1, skipped: 0 },
+      published: [expect.objectContaining({ matchId: "fd-100" })],
+    });
+    expect(response.body.game.matches.find((match) => match.id === "fd-100")).toMatchObject({
+      status: "COMPLETED",
+    });
+    expect(response.body.game.results).toEqual(expect.arrayContaining([
+      expect.objectContaining({ matchId: "fd-100", homeScore: 1, awayScore: 2 }),
+    ]));
+    expect(response.body.game.questions.filter((question) => question.matchId === "fd-100")).toEqual(
+      expect.arrayContaining([expect.objectContaining({ status: "SCORED" })]),
+    );
   });
 
   it("lists and updates question templates", async () => {

@@ -42,13 +42,25 @@ const bodyFromEvent = (event) => {
  */
 export const handler = async (event) => {
   if (event?.source === "aws.events") {
-    const result = await handleApiRequest({
-      method: "POST",
-      url: "/api/fantasy/admin/ai-messages/scheduled",
-      body: JSON.stringify({
+    const scheduleTask = event.detail?.task ?? event.resources?.[0]?.split("/").at(-1);
+    const isMatchAutomation = scheduleTask === "match-automation" || scheduleTask === "FantasyMatchAutomation";
+    const url = isMatchAutomation
+      ? "/api/fantasy/admin/scheduled/match-automation"
+      : "/api/fantasy/admin/ai-messages/scheduled";
+    const body = isMatchAutomation
+      ? {
+        actorId: "eventbridge",
+        replaceExisting: process.env.FANTASY_MATCH_AUTOMATION_REPLACE_EXISTING === "true",
+        overwriteResults: process.env.FANTASY_MATCH_AUTOMATION_OVERWRITE_RESULTS === "true",
+      }
+      : {
         actorId: "eventbridge",
         autoPublish: process.env.FANTASY_AI_SCHEDULE_AUTO_PUBLISH === "true",
-      }),
+      };
+    const result = await handleApiRequest({
+      method: "POST",
+      url,
+      body: JSON.stringify(body),
       env: process.env,
     });
     return {

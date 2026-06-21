@@ -24,6 +24,7 @@ import {
   publishFantasyScores,
   publishFantasyAiMessage,
   regenerateFantasyAiMessage,
+  runScheduledFantasyMatchAutomation,
   resetAndGenerateFantasyPolls,
   runScheduledFantasyAiGeneration,
   saveFantasyQuestionDrafts,
@@ -336,6 +337,12 @@ export const handleApiRequest = async ({
 
     if (requestMethod === "POST" && path === "/api/fantasy/admin/fixtures/sync-live") {
       return response(200, await syncFantasyFixturesFromProvider(env, parseJsonBody(body)), {
+        "cache-control": "no-store",
+      });
+    }
+
+    if (requestMethod === "POST" && path === "/api/fantasy/admin/scheduled/match-automation") {
+      return response(200, await runScheduledFantasyMatchAutomation(env, parseJsonBody(body)), {
         "cache-control": "no-store",
       });
     }

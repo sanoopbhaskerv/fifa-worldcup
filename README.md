@@ -331,6 +331,11 @@ Runtime variables set by the template:
 - `API_FOOTBALL_API_KEY`
 - `API_FOOTBALL_DAILY_BUDGET`
 
+Scheduled fixture/result automation is documented in
+[docs/scheduled-match-automation.md](docs/scheduled-match-automation.md).
+It is disabled by default. When `FantasyMatchAutomationEnabled=true`, the default
+frequency is every 1 hour through `FantasyMatchAutomationScheduleExpression`.
+
 The Lambda entrypoint is `server/aws/lambda.handler`. The server uses local
 memory storage by default and switches to DynamoDB when
 `FANTASY_DYNAMODB_TABLE` is present.

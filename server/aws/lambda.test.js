@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { clearCache } from "../cache.mjs";
 import { resetFantasyGame } from "../fantasy-game.mjs";
 import { handler } from "./lambda.mjs";
 
@@ -8,6 +9,9 @@ describe("fantasy Lambda adapter", () => {
     vi.setSystemTime(new Date("2026-06-17T12:00:00+05:30"));
     delete process.env.EMIT_LAMBDA_CORS_HEADERS;
     delete process.env.CORS_ALLOW_ORIGIN;
+    delete process.env.FOOTBALL_DATA_API_KEY;
+    delete process.env.FOOTBALL_DATA_BASE_URL;
+    clearCache();
     await resetFantasyGame();
   });
 
@@ -70,5 +74,50 @@ describe("fantasy Lambda adapter", () => {
       autoPublish: false,
     });
     expect(Array.isArray(body.generated)).toBe(true);
+  });
+
+  it("routes EventBridge match automation events to fixture and result sync", async () => {
+    process.env.FOOTBALL_DATA_API_KEY = "test-key";
+    process.env.FOOTBALL_DATA_BASE_URL = "https://fd.test/v4";
+    vi.stubGlobal("fetch", vi.fn(async (url) => {
+      const href = String(url);
+      if (href.includes("/matches?season=2026")) {
+        return new Response(JSON.stringify({
+          matches: [
+            {
+              id: 100,
+              utcDate: "2026-06-20T18:00:00Z",
+              status: "FINISHED",
+              stage: "GROUP_STAGE",
+              group: "GROUP_D",
+              matchday: 1,
+              homeTeam: { id: 1, name: "Brazil", shortName: "Brazil", tla: "BRA" },
+              awayTeam: { id: 2, name: "Argentina", shortName: "Argentina", tla: "ARG" },
+              score: { fullTime: { home: 1, away: 2 } },
+            },
+          ],
+        }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (href.includes("/standings?season=2026")) {
+        return new Response(JSON.stringify({ standings: [] }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      if (href.includes("/scorers?season=2026")) {
+        return new Response(JSON.stringify({ scorers: [] }), { status: 200, headers: { "content-type": "application/json" } });
+      }
+      return new Response(JSON.stringify({}), { status: 404, headers: { "content-type": "application/json" } });
+    }));
+
+    const response = await handler({
+      source: "aws.events",
+      detail: { task: "match-automation" },
+    });
+    const body = JSON.parse(response.body);
+
+    expect(response.statusCode).toBe(200);
+    expect(body).toMatchObject({
+      fixtures: { synced: 1 },
+      results: { synced: 1, skipped: 0 },
+      published: [expect.objectContaining({ matchId: "fd-100" })],
+    });
   });
 });

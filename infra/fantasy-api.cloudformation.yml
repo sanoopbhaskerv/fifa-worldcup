@@ -98,6 +98,25 @@ Parameters:
     Default: "false"
     AllowedValues: ["true", "false"]
     Description: Publish scheduled AI messages automatically. Default keeps them as admin-reviewed drafts.
+  FantasyMatchAutomationScheduleExpression:
+    Type: String
+    Default: rate(1 hour)
+    Description: EventBridge schedule for fixture status/result sync and score publishing.
+  FantasyMatchAutomationEnabled:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Enable EventBridge scheduled fixture/result automation.
+  FantasyMatchAutomationReplaceExisting:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Replace the full stored fixture list on scheduled sync. Keep false to preserve local/manual fixtures.
+  FantasyMatchAutomationOverwriteResults:
+    Type: String
+    Default: "false"
+    AllowedValues: ["true", "false"]
+    Description: Re-sync existing result facts on schedule. Keep false for idempotent low-cost runs.
   BudgetAlertEmail:
     Type: String
     Default: ""
@@ -106,6 +125,7 @@ Parameters:
 Conditions:
   HasBudgetAlertEmail: !Not [!Equals [!Ref BudgetAlertEmail, ""]]
   IsFantasyAiScheduleEnabled: !Equals [!Ref FantasyAiScheduleEnabled, "true"]
+  IsFantasyMatchAutomationEnabled: !Equals [!Ref FantasyMatchAutomationEnabled, "true"]
 
 Resources:
   PredictionGameTable:
@@ -191,6 +211,8 @@ Resources:
           FANTASY_AI_ESTIMATED_COST_CENTS: !Ref FantasyAiEstimatedCostCents
           FANTASY_AI_MAX_OUTPUT_TOKENS: !Ref FantasyAiMaxOutputTokens
           FANTASY_AI_SCHEDULE_AUTO_PUBLISH: !Ref FantasyAiScheduleAutoPublish
+          FANTASY_MATCH_AUTOMATION_REPLACE_EXISTING: !Ref FantasyMatchAutomationReplaceExisting
+          FANTASY_MATCH_AUTOMATION_OVERWRITE_RESULTS: !Ref FantasyMatchAutomationOverwriteResults
           NODE_ENV: production
 
   FantasyApiLogGroup:
@@ -242,6 +264,27 @@ Resources:
       FunctionName: !Ref FantasyApiFunction
       Principal: events.amazonaws.com
       SourceArn: !GetAtt FantasyAiScheduleRule.Arn
+
+  FantasyMatchAutomationScheduleRule:
+    Type: AWS::Events::Rule
+    Condition: IsFantasyMatchAutomationEnabled
+    Properties:
+      Description: Scheduled fixture/result sync and fantasy score publishing.
+      ScheduleExpression: !Ref FantasyMatchAutomationScheduleExpression
+      State: ENABLED
+      Targets:
+        - Arn: !GetAtt FantasyApiFunction.Arn
+          Id: FantasyMatchAutomation
+          Input: '{"task":"match-automation"}'
+
+  FantasyMatchAutomationScheduleInvokePermission:
+    Type: AWS::Lambda::Permission
+    Condition: IsFantasyMatchAutomationEnabled
+    Properties:
+      Action: lambda:InvokeFunction
+      FunctionName: !Ref FantasyApiFunction
+      Principal: events.amazonaws.com
+      SourceArn: !GetAtt FantasyMatchAutomationScheduleRule.Arn
 
   MonthlyCostBudget:
     Type: AWS::Budgets::Budget

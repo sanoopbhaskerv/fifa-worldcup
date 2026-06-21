@@ -43,6 +43,34 @@ on:
           - "false"
           - "true"
         default: "false"
+      fantasy_match_automation_enabled:
+        description: Enable EventBridge fixture/result sync and fantasy score publishing.
+        required: true
+        type: choice
+        options:
+          - "false"
+          - "true"
+        default: "false"
+      fantasy_match_automation_schedule_expression:
+        description: EventBridge schedule expression for fixture/result sync and score publishing.
+        required: true
+        default: "rate(1 hour)"
+      fantasy_match_automation_replace_existing:
+        description: Replace the full stored fixture list during scheduled fixture sync.
+        required: true
+        type: choice
+        options:
+          - "false"
+          - "true"
+        default: "false"
+      fantasy_match_automation_overwrite_results:
+        description: Re-sync already stored result facts during scheduled result sync.
+        required: true
+        type: choice
+        options:
+          - "false"
+          - "true"
+        default: "false"
 
 permissions:
   contents: read
@@ -79,6 +107,10 @@ jobs:
       FANTASY_AI_SCHEDULE_ENABLED: ${{ inputs.fantasy_ai_schedule_enabled }}
       FANTASY_AI_SCHEDULE_EXPRESSION: ${{ inputs.fantasy_ai_schedule_expression }}
       FANTASY_AI_SCHEDULE_AUTO_PUBLISH: ${{ inputs.fantasy_ai_schedule_auto_publish }}
+      FANTASY_MATCH_AUTOMATION_ENABLED: ${{ inputs.fantasy_match_automation_enabled }}
+      FANTASY_MATCH_AUTOMATION_SCHEDULE_EXPRESSION: ${{ inputs.fantasy_match_automation_schedule_expression }}
+      FANTASY_MATCH_AUTOMATION_REPLACE_EXISTING: ${{ inputs.fantasy_match_automation_replace_existing }}
+      FANTASY_MATCH_AUTOMATION_OVERWRITE_RESULTS: ${{ inputs.fantasy_match_automation_overwrite_results }}
       STACK_NAME: fantasy-prediction-game-staging
       APP_NAME: fantasy-prediction-game-staging
 

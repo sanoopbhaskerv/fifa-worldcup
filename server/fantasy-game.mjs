@@ -3500,6 +3500,52 @@ export const syncFantasyResultsFromProvider = async (env, input = {}) => {
 };
 
 /**
+ * Runs the zero-touch provider sync used by scheduled infrastructure.
+ *
+ * Sync order:
+ * 1. Pull latest fixtures/statuses from the live provider.
+ * 2. Save result facts for newly completed fixtures.
+ * 3. Publish scores for those newly saved results.
+ *
+ * @param {object} env - Provider env from providerEnv()
+ * @param {{ actorId?: string, replaceExisting?: boolean, overwriteResults?: boolean }} input
+ * @returns {{ fixtures: object, results: object, published: object[], game: object }}
+ */
+export const runScheduledFantasyMatchAutomation = async (env, input = {}) => {
+  const actorId = input.actorId ?? "scheduler";
+  const fixtures = await syncFantasyFixturesFromProvider(env, {
+    actorId,
+    replaceExisting: input.replaceExisting ?? false,
+  });
+  const results = await syncFantasyResultsFromProvider(env, {
+    actorId,
+    overwrite: input.overwriteResults ?? false,
+  });
+  const published = [];
+  let game = results.game;
+  for (const result of results.results) {
+    const publishResult = await publishFantasyScores(result.matchId);
+    published.push({
+      matchId: result.matchId,
+      predictionCount: publishResult.predictions.length,
+    });
+    game = publishResult.game;
+  }
+
+  return {
+    fixtures: {
+      synced: fixtures.fixtures.length,
+    },
+    results: {
+      synced: results.synced,
+      skipped: results.skipped,
+    },
+    published,
+    game,
+  };
+};
+
+/**
  * Calculates points for every prediction attached to a match.
  *
  * @param matchId - Match whose predictions should be scored.
