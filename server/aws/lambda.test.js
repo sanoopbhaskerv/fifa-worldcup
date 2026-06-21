@@ -83,21 +83,23 @@ describe("fantasy Lambda adapter", () => {
   it("routes EventBridge match automation events to fixture and result sync", async () => {
     process.env.FOOTBALL_DATA_API_KEY = "test-key";
     process.env.FOOTBALL_DATA_BASE_URL = "https://fd.test/v4";
+    let providerStatus = "TIMED";
     vi.stubGlobal("fetch", vi.fn(async (url) => {
       const href = String(url);
       if (href.includes("/matches?season=2026")) {
+        const isFinished = providerStatus === "FINISHED";
         return new Response(JSON.stringify({
           matches: [
             {
               id: 100,
               utcDate: "2026-06-20T18:00:00Z",
-              status: "FINISHED",
+              status: providerStatus,
               stage: "GROUP_STAGE",
               group: "GROUP_D",
               matchday: 1,
               homeTeam: { id: 1, name: "Brazil", shortName: "Brazil", tla: "BRA" },
               awayTeam: { id: 2, name: "Argentina", shortName: "Argentina", tla: "ARG" },
-              score: { fullTime: { home: 1, away: 2 } },
+              score: { fullTime: { home: isFinished ? 1 : null, away: isFinished ? 2 : null } },
             },
           ],
         }), { status: 200, headers: { "content-type": "application/json" } });
@@ -111,13 +113,26 @@ describe("fantasy Lambda adapter", () => {
       return new Response(JSON.stringify({}), { status: 404, headers: { "content-type": "application/json" } });
     }));
 
+    await handler({
+      requestContext: { http: { method: "POST" } },
+      rawPath: "/api/fantasy/admin/fixtures/sync-live",
+      body: JSON.stringify({ replaceExisting: true }),
+    });
+    await handler({
+      requestContext: { http: { method: "POST" } },
+      rawPath: "/api/fantasy/admin/polls/generate",
+      body: JSON.stringify({ limit: 1, status: "OPEN", replaceExisting: true }),
+    });
+
+    providerStatus = "FINISHED";
+    clearCache();
     const response = await handler({
       source: "aws.events",
       detail: { task: "match-automation" },
     });
     const body = JSON.parse(response.body);
 
-    expect(response.statusCode).toBe(200);
+    expect(response.statusCode, JSON.stringify(body)).toBe(200);
     expect(body).toMatchObject({
       fixtures: { synced: 1 },
       results: { synced: 1, skipped: 0 },
