@@ -11,12 +11,16 @@ describe("fantasy Lambda adapter", () => {
     delete process.env.CORS_ALLOW_ORIGIN;
     delete process.env.FOOTBALL_DATA_API_KEY;
     delete process.env.FOOTBALL_DATA_BASE_URL;
+    delete process.env.FANTASY_AI_SCHEDULE_AUTO_PUBLISH;
+    delete process.env.FANTASY_MATCH_AUTOMATION_REPLACE_EXISTING;
+    delete process.env.FANTASY_MATCH_AUTOMATION_OVERWRITE_RESULTS;
     clearCache();
     await resetFantasyGame();
   });
 
   afterEach(() => {
     vi.useRealTimers();
+    vi.unstubAllGlobals();
   });
 
   it("handles CORS preflight without touching the API router", async () => {
