@@ -78,38 +78,46 @@ cp -R "${ROOT_DIR}/server" "${WORK_DIR}/server"
 
 aws s3 cp "${ZIP_PATH}" "s3://${ARTIFACT_BUCKET}/${ARTIFACT_KEY}" --region "${AWS_REGION}"
 
-aws cloudformation deploy \
-  --region "${AWS_REGION}" \
-  --template-file "${ROOT_DIR}/infra/fantasy-api.cloudformation.yml" \
-  --stack-name "${STACK_NAME}" \
-  --capabilities CAPABILITY_IAM \
-  --parameter-overrides \
-    AppName="${APP_NAME}" \
-    LambdaS3Bucket="${ARTIFACT_BUCKET}" \
-    LambdaS3Key="${ARTIFACT_KEY}" \
-    CorsAllowOrigin="${CORS_ALLOW_ORIGIN}" \
-    MonthlyBudgetUsd="${MONTHLY_BUDGET_USD}" \
-    LambdaReservedConcurrency="${LAMBDA_RESERVED_CONCURRENCY}" \
-    FootballDataApiKey="${FOOTBALL_DATA_API_KEY}" \
-    ApiFootballApiKey="${API_FOOTBALL_API_KEY}" \
-    ApiFootballDailyBudget="${API_FOOTBALL_DAILY_BUDGET}" \
-    FantasyAiProvider="${FANTASY_AI_PROVIDER}" \
-    FantasyAiFallbackApiKey="${FANTASY_AI_FALLBACK_API_KEY}" \
-    FantasyAiFallbackModel="${FANTASY_AI_FALLBACK_MODEL}" \
-    FantasyAiProviderUrl="${FANTASY_AI_PROVIDER_URL}" \
-    FantasyAiApiKey="${FANTASY_AI_API_KEY}" \
-    FantasyAiModel="${FANTASY_AI_MODEL}" \
-    FantasyAiDailyCallLimit="${FANTASY_AI_DAILY_CALL_LIMIT}" \
-    FantasyAiEstimatedCostCents="${FANTASY_AI_ESTIMATED_COST_CENTS}" \
-    FantasyAiMaxOutputTokens="${FANTASY_AI_MAX_OUTPUT_TOKENS}" \
-    FantasyAiScheduleExpression="${FANTASY_AI_SCHEDULE_EXPRESSION}" \
-    FantasyAiScheduleEnabled="${FANTASY_AI_SCHEDULE_ENABLED}" \
-    FantasyAiScheduleAutoPublish="${FANTASY_AI_SCHEDULE_AUTO_PUBLISH}" \
-    FantasyMatchAutomationScheduleExpression="${FANTASY_MATCH_AUTOMATION_SCHEDULE_EXPRESSION}" \
-    FantasyMatchAutomationEnabled="${FANTASY_MATCH_AUTOMATION_ENABLED}" \
-    FantasyMatchAutomationReplaceExisting="${FANTASY_MATCH_AUTOMATION_REPLACE_EXISTING}" \
-    FantasyMatchAutomationOverwriteResults="${FANTASY_MATCH_AUTOMATION_OVERWRITE_RESULTS}" \
-    BudgetAlertEmail="${BUDGET_ALERT_EMAIL}"
+if ! aws cloudformation deploy \
+    --region "${AWS_REGION}" \
+    --template-file "${ROOT_DIR}/infra/fantasy-api.cloudformation.yml" \
+    --stack-name "${STACK_NAME}" \
+    --capabilities CAPABILITY_IAM \
+    --parameter-overrides \
+      AppName="${APP_NAME}" \
+      LambdaS3Bucket="${ARTIFACT_BUCKET}" \
+      LambdaS3Key="${ARTIFACT_KEY}" \
+      CorsAllowOrigin="${CORS_ALLOW_ORIGIN}" \
+      MonthlyBudgetUsd="${MONTHLY_BUDGET_USD}" \
+      LambdaReservedConcurrency="${LAMBDA_RESERVED_CONCURRENCY}" \
+      FootballDataApiKey="${FOOTBALL_DATA_API_KEY}" \
+      ApiFootballApiKey="${API_FOOTBALL_API_KEY}" \
+      ApiFootballDailyBudget="${API_FOOTBALL_DAILY_BUDGET}" \
+      FantasyAiProvider="${FANTASY_AI_PROVIDER}" \
+      FantasyAiFallbackApiKey="${FANTASY_AI_FALLBACK_API_KEY}" \
+      FantasyAiFallbackModel="${FANTASY_AI_FALLBACK_MODEL}" \
+      FantasyAiProviderUrl="${FANTASY_AI_PROVIDER_URL}" \
+      FantasyAiApiKey="${FANTASY_AI_API_KEY}" \
+      FantasyAiModel="${FANTASY_AI_MODEL}" \
+      FantasyAiDailyCallLimit="${FANTASY_AI_DAILY_CALL_LIMIT}" \
+      FantasyAiEstimatedCostCents="${FANTASY_AI_ESTIMATED_COST_CENTS}" \
+      FantasyAiMaxOutputTokens="${FANTASY_AI_MAX_OUTPUT_TOKENS}" \
+      FantasyAiScheduleExpression="${FANTASY_AI_SCHEDULE_EXPRESSION}" \
+      FantasyAiScheduleEnabled="${FANTASY_AI_SCHEDULE_ENABLED}" \
+      FantasyAiScheduleAutoPublish="${FANTASY_AI_SCHEDULE_AUTO_PUBLISH}" \
+      FantasyMatchAutomationScheduleExpression="${FANTASY_MATCH_AUTOMATION_SCHEDULE_EXPRESSION}" \
+      FantasyMatchAutomationEnabled="${FANTASY_MATCH_AUTOMATION_ENABLED}" \
+      FantasyMatchAutomationReplaceExisting="${FANTASY_MATCH_AUTOMATION_REPLACE_EXISTING}" \
+      FantasyMatchAutomationOverwriteResults="${FANTASY_MATCH_AUTOMATION_OVERWRITE_RESULTS}" \
+      BudgetAlertEmail="${BUDGET_ALERT_EMAIL}"; then
+  echo "CloudFormation deploy failed. Recent failed stack events:" >&2
+  aws cloudformation describe-stack-events \
+    --region "${AWS_REGION}" \
+    --stack-name "${STACK_NAME}" \
+    --query "StackEvents[?contains(ResourceStatus, 'FAILED')].[Timestamp,LogicalResourceId,ResourceStatus,ResourceStatusReason]" \
+    --output table >&2 || true
+  exit 1
+fi
 
 aws cloudformation describe-stacks \
   --region "${AWS_REGION}" \
