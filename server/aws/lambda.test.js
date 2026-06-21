@@ -11,6 +11,13 @@ describe("fantasy Lambda adapter", () => {
     delete process.env.CORS_ALLOW_ORIGIN;
     delete process.env.FOOTBALL_DATA_API_KEY;
     delete process.env.FOOTBALL_DATA_BASE_URL;
+    delete process.env.VITE_FOOTBALL_DATA_API_KEY;
+    delete process.env.API_FOOTBALL_API_KEY;
+    delete process.env.API_FOOTBALL_BASE_URL;
+    delete process.env.API_FOOTBALL_DAILY_BUDGET;
+    delete process.env.VITE_API_FOOTBALL_API_KEY;
+    delete process.env.VITE_API_FOOTBALL_KEY;
+    delete process.env.VITE_API_FOOTBALL_BASE_URL;
     delete process.env.FANTASY_AI_SCHEDULE_AUTO_PUBLISH;
     delete process.env.FANTASY_MATCH_AUTOMATION_REPLACE_EXISTING;
     delete process.env.FANTASY_MATCH_AUTOMATION_OVERWRITE_RESULTS;
@@ -83,6 +90,9 @@ describe("fantasy Lambda adapter", () => {
   it("routes EventBridge match automation events to fixture and result sync", async () => {
     process.env.FOOTBALL_DATA_API_KEY = "test-key";
     process.env.FOOTBALL_DATA_BASE_URL = "https://fd.test/v4";
+    process.env.API_FOOTBALL_API_KEY = "";
+    process.env.VITE_API_FOOTBALL_API_KEY = "";
+    process.env.VITE_API_FOOTBALL_KEY = "";
     let providerStatus = "TIMED";
     vi.stubGlobal("fetch", vi.fn(async (url) => {
       const href = String(url);
