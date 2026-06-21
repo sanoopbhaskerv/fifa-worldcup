@@ -20,7 +20,7 @@ on:
         required: true
         default: "2"
       fantasy_ai_daily_call_limit:
-        description: Hard daily external AI call cap. Use 0 to disable external AI calls.
+        description: Hard daily external AI call cap, 0-50. Use 0 to disable external AI calls.
         required: true
         default: "0"
       fantasy_ai_schedule_enabled:

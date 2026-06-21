@@ -41,6 +41,17 @@ require_command() {
   fi
 }
 
+require_integer_range() {
+  local name="$1"
+  local value="$2"
+  local min="$3"
+  local max="$4"
+  if ! [[ "${value}" =~ ^[0-9]+$ ]] || (( value < min || value > max )); then
+    echo "${name} must be an integer between ${min} and ${max}. Received: ${value}" >&2
+    exit 1
+  fi
+}
+
 if [[ -z "${ARTIFACT_BUCKET}" ]]; then
   echo "ARTIFACT_BUCKET is required. Example: ARTIFACT_BUCKET=my-deploy-bucket yarn deploy:fantasy:staging" >&2
   exit 1
@@ -49,6 +60,9 @@ fi
 require_command aws
 require_command zip
 require_command yarn
+require_integer_range "FANTASY_AI_DAILY_CALL_LIMIT" "${FANTASY_AI_DAILY_CALL_LIMIT}" 0 50
+require_integer_range "FANTASY_AI_ESTIMATED_COST_CENTS" "${FANTASY_AI_ESTIMATED_COST_CENTS}" 0 100
+require_integer_range "FANTASY_AI_MAX_OUTPUT_TOKENS" "${FANTASY_AI_MAX_OUTPUT_TOKENS}" 60 500
 
 rm -rf "${WORK_DIR}" "${ZIP_PATH}"
 mkdir -p "${WORK_DIR}" "$(dirname "${ZIP_PATH}")"

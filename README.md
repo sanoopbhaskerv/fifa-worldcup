@@ -54,7 +54,7 @@ FANTASY_AI_API_KEY=...
 # Model name — gemini-2.0-flash is recommended (free tier)
 FANTASY_AI_MODEL=gemini-2.0-flash
 
-# Daily call limit (0 = disabled; start small e.g. 20)
+# Daily call limit (0 = disabled; deployment max is 50)
 FANTASY_AI_DAILY_CALL_LIMIT=20
 
 # Estimated cost in cents per call (0 for free-tier Gemini)
