@@ -135,6 +135,9 @@ describe("fantasy Lambda adapter", () => {
     });
 
     providerStatus = "FINISHED";
+    // Advance clock past the fd-100 kickoff (2026-06-20T18:00:00Z) so the
+    // automation's "scheduled past kickoff" filter recognises it as due.
+    vi.setSystemTime(new Date("2026-06-22T06:00:00+05:30"));
     clearCache();
     const response = await handler({
       source: "aws.events",

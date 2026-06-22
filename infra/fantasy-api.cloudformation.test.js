@@ -13,7 +13,7 @@ describe("fantasy AWS staging template", () => {
     expect(template).toContain("UpdateReplacePolicy: Retain");
     expect(template).toContain("RetentionInDays: 7");
     expect(template).toContain("ReservedConcurrentExecutions: !Ref LambdaReservedConcurrency");
-    expect(template).toContain("Timeout: 30");
+    expect(template).toContain("Timeout: 60");
     expect(template).toContain("Type: AWS::Lambda::Url");
     expect(template).toContain("FANTASY_DYNAMODB_TABLE: !Ref PredictionGameTable");
     expect(template).toContain("FOOTBALL_DATA_API_KEY: !Ref FootballDataApiKey");
