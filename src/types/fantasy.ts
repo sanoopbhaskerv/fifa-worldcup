@@ -149,6 +149,13 @@ export interface FantasyMatch {
   importance: FantasyMatchImportance;
   status: "SCHEDULED" | "LOCKED" | "COMPLETED";
   pollCloseAt: string;
+  /**
+   * Set by scheduled match automation when result data cannot be fetched
+   * automatically (e.g. match is beyond the provider's 2-day API window).
+   * "NEEDS_MANUAL_RESULT" prevents the scheduler from retrying indefinitely
+   * and signals the admin UI to prompt for manual result entry.
+   */
+  automationNote?: "NEEDS_MANUAL_RESULT";
 }
 
 export interface FantasyQuestion {
@@ -238,6 +245,8 @@ export interface FantasyMatchResult {
   bothTeamsScored: boolean;
   totalGoalsRange: "0-1" | "2-3" | "4+";
   publishedAt: string;
+  /** True when result was saved without full data (e.g. beyond provider API window). Prompts admin manual review. */
+  dataUnavailable?: boolean;
 }
 
 export interface FantasyScoreBreakdown {

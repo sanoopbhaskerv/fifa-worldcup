@@ -6,6 +6,7 @@ import { MatchFilterControls, type MatchFilterValue, compareMatchesByKickoff, us
 import { pastMatchesRange } from "../components/MatchDateRangeFilter";
 import { fantasyMatchTitle, fantasyTeamName } from "../utils/fantasy";
 import { PageHeading } from "../components/PageSections";
+import { resolveFantasyCorrectAnswer } from "../utils/fantasy-scoring";
 import {
   useFetchResultFactsFromProvider,
   useSaveFantasyResult,
@@ -92,11 +93,20 @@ function PendingMatchCard({ match, participantId }: PendingMatchCardProps) {
     <article className="content-section fantasy-admin-result">
       <div className="section-heading">
         <div>
-          <span className="eyebrow">Completed · Awaiting results</span>
+          <span className="eyebrow">
+            {match.automationNote === "NEEDS_MANUAL_RESULT"
+              ? "Beyond API window · Manual entry required"
+              : "Completed · Awaiting results"}
+          </span>
           <h2>{fantasyMatchTitle(match, data.teams)}</h2>
           <p className="fantasy-match-meta">{match.stage} · {formatMatchDatetime(match.kickoff)}</p>
         </div>
       </div>
+      {match.automationNote === "NEEDS_MANUAL_RESULT" && (
+        <p className="fantasy-admin-warning">
+          ⚠️ This match is older than 2 days. The scheduled automation cannot fetch result data from the provider. Use "Fetch from API-Football" below if the data is now available, or enter the result manually.
+        </p>
+      )}
 
       {!fetched ? (
         <div className="fantasy-admin-fetch">
@@ -112,6 +122,7 @@ function PendingMatchCard({ match, participantId }: PendingMatchCardProps) {
         </div>
       ) : (
         <>
+          {/* Scoreline */}
           <div className="fantasy-admin-scoreline">
             <span>{homeTeam}</span>
             <strong>
@@ -120,74 +131,90 @@ function PendingMatchCard({ match, participantId }: PendingMatchCardProps) {
             <span>{awayTeam}</span>
           </div>
 
-          <dl className="fantasy-result-facts">
-            <div>
-              <dt>Winner</dt>
-              <dd>
-                {fetched.resultFacts.winnerTeamId
-                  ? fantasyTeamName(fetched.resultFacts.winnerTeamId, data.teams)
-                  : "Draw"}
-              </dd>
-            </div>
-            <div>
-              <dt>First scoring team</dt>
-              <dd>
-                {fetched.resultFacts.firstScoringTeamId
-                  ? fantasyTeamName(fetched.resultFacts.firstScoringTeamId, data.teams)
-                  : "—"}
-              </dd>
-            </div>
-            <div>
-              <dt>First scorer</dt>
-              <dd>{fetched.resultFacts.firstGoalScorer ?? "—"}</dd>
-            </div>
-            <div>
-              <dt>First goal minute</dt>
-              <dd>
-                {fetched.resultFacts.firstGoalMinute != null
-                  ? `${fetched.resultFacts.firstGoalMinute}'`
-                  : "—"}
-              </dd>
-            </div>
-            <div>
-              <dt>Man of the Match</dt>
-              <dd>{fetched.resultFacts.manOfTheMatch ?? "—"}</dd>
-            </div>
-            <div>
-              <dt>Both teams scored</dt>
-              <dd>{fetched.resultFacts.bothTeamsScored ? "Yes" : "No"}</dd>
-            </div>
-            <div>
-              <dt>Total goals range</dt>
-              <dd>{fetched.resultFacts.totalGoalsRange ?? "—"}</dd>
-            </div>
-            <div>
-              <dt>Penalty awarded</dt>
-              <dd>{fetched.resultFacts.penaltyAwarded ? "Yes" : "No"}</dd>
-            </div>
-            <div>
-              <dt>Penalty goal</dt>
-              <dd>{fetched.resultFacts.penaltyGoal ? "Yes" : "No"}</dd>
-            </div>
-            <div>
-              <dt>Red card</dt>
-              <dd>{fetched.resultFacts.redCard ? "Yes" : "No"}</dd>
-            </div>
-            {fetched.resultFacts.anytimeScorers && fetched.resultFacts.anytimeScorers.length > 0 && (
-              <div>
-                <dt>All scorers</dt>
-                <dd>{fetched.resultFacts.anytimeScorers.join(", ")}</dd>
-              </div>
-            )}
-            {fetched.resultFacts.playersWithTwoPlusGoals &&
-              fetched.resultFacts.playersWithTwoPlusGoals.length > 0 && (
-                <div>
-                  <dt>2+ goals</dt>
-                  <dd>{fetched.resultFacts.playersWithTwoPlusGoals.join(", ")}</dd>
-                </div>
-              )}
-          </dl>
+          {/* Question-by-question answer verification */}
+          {(() => {
+            const matchQuestions = data.questions.filter((q) => q.matchId === match.id);
+            if (matchQuestions.length === 0) return null;
+            // Build a complete-enough result object from the fetched facts so
+            // resolveFantasyCorrectAnswer can derive answers the same way scoring does.
+            const resultForResolve = {
+              matchId: match.id,
+              homeScore: fetched.resultFacts.homeScore ?? 0,
+              awayScore: fetched.resultFacts.awayScore ?? 0,
+              winnerTeamId: fetched.resultFacts.winnerTeamId,
+              firstScoringTeamId: fetched.resultFacts.firstScoringTeamId,
+              firstGoalMinute: fetched.resultFacts.firstGoalMinute,
+              firstGoalScorer: fetched.resultFacts.firstGoalScorer,
+              anytimeScorers: fetched.resultFacts.anytimeScorers ?? [],
+              playersWithTwoPlusGoals: fetched.resultFacts.playersWithTwoPlusGoals ?? [],
+              manOfTheMatch: fetched.resultFacts.manOfTheMatch,
+              bothTeamsScored: fetched.resultFacts.bothTeamsScored ?? false,
+              totalGoalsRange: fetched.resultFacts.totalGoalsRange ?? "0-1",
+              penaltyAwarded: fetched.resultFacts.penaltyAwarded ?? false,
+              penaltyGoal: fetched.resultFacts.penaltyGoal ?? false,
+              redCard: fetched.resultFacts.redCard ?? false,
+              publishedAt: new Date().toISOString(),
+            } as FantasyMatchResult;
 
+            return (
+              <div className="fantasy-admin-question-verify">
+                <h3>Question answers from fetched data</h3>
+                <p className="fantasy-admin-verify-hint">
+                  Review the derived correct answer for each poll question before saving.
+                </p>
+                <table className="fantasy-verify-table">
+                  <thead>
+                    <tr>
+                      <th>Question</th>
+                      <th>Options</th>
+                      <th>Derived answer</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {matchQuestions.map((q) => {
+                      const derived = resolveFantasyCorrectAnswer(q, resultForResolve, data);
+                      // EXACT_SCORE and free-text types have no options list — skip the check.
+                      const hasManagedOptions = q.options.length > 0;
+                      const isInOptions = !hasManagedOptions || (derived != null && q.options.includes(derived));
+                      return (
+                        <tr key={q.id}>
+                          <td>
+                            <span className="eyebrow">{q.category.replaceAll("_", " ")}</span>
+                            <span>{q.text}</span>
+                          </td>
+                          <td className="fantasy-verify-options">
+                            {hasManagedOptions
+                              ? q.options.map((opt) => (
+                                  <span
+                                    key={opt}
+                                    className={`fantasy-verify-option${opt === derived ? " fantasy-verify-option--match" : ""}`}
+                                  >
+                                    {opt}
+                                  </span>
+                                ))
+                              : <span className="fantasy-verify-unknown">free text</span>
+                            }
+                          </td>
+                          <td>
+                            {derived == null ? (
+                              <span className="fantasy-verify-unknown">—</span>
+                            ) : (
+                              <strong className={isInOptions ? "fantasy-verify-answer--ok" : "fantasy-verify-answer--warn"}>
+                                {derived}
+                                {!isInOptions && " ⚠️ not in options"}
+                              </strong>
+                            )}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            );
+          })()}
+
+          {/* Goal timeline */}
           {fetched.goalTimeline.length > 0 && (
             <div className="fantasy-goal-timeline">
               <h3>Goal timeline</h3>
@@ -261,9 +288,14 @@ function PublishedResultCard({ match, result }: { match: FantasyMatch; result: F
     <article className="content-section fantasy-admin-result" key={match.id}>
       <div className="section-heading">
         <div>
-          <span className="eyebrow">Scores published</span>
+          <span className="eyebrow">
+            {result.dataUnavailable ? "Scores published · Partial data" : "Scores published"}
+          </span>
           <h2>{fantasyMatchTitle(match, data.teams)}</h2>
           <p className="fantasy-match-meta">{match.stage} · {formatMatchDatetime(match.kickoff)}</p>
+          {result.dataUnavailable && (
+            <p className="fantasy-admin-warning">⚠️ Scorer and card facts were not available when this result was saved. Use "Review" to fetch and complete them.</p>
+          )}
         </div>
         <Link to={`/fantasy/admin/score-review/${match.id}`}>
           Review <ArrowIcon />

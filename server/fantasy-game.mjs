@@ -1774,12 +1774,17 @@ export const seedFantasyWorldCupSquads = async (input = {}) => {
  * @returns Synced fixture rows and game payload.
  */
 export const syncFantasyFixturesFromProvider = async (env, input = {}) => {
+  const tag = "[fixture-sync]";
   const game = await gameState();
+  console.log(`${tag} fetching competition fixtures from provider (competitionId=${game.tournament.competitionId})…`);
+
   const competition = await getLiveCompetitionData(
     game.tournament.competitionId,
     game.tournament.editionId,
     env,
   );
+  console.log(`${tag} provider returned ${competition.matches.length} fixture(s) via ${competition.provider}`);
+
   const existingById = new Map(game.matches.map((match) => [match.id, match]));
   const syncedFixtures = competition.matches
     .map((match) => providerMatchToFantasyMatch(match, game, existingById.get(match.id)))
@@ -1789,6 +1794,12 @@ export const syncFantasyFixturesFromProvider = async (env, input = {}) => {
   if (syncedFixtures.length === 0) {
     throw new ProviderError("No provider fixtures matched the stored World Cup teams.", 404, "NO_FIXTURE_MATCHES");
   }
+
+  const statusCounts = syncedFixtures.reduce((acc, m) => {
+    acc[m.status] = (acc[m.status] ?? 0) + 1;
+    return acc;
+  }, {});
+  console.log(`${tag} matched ${syncedFixtures.length} fixture(s) — status breakdown:`, statusCounts);
 
   const syncedIds = new Set(syncedFixtures.map((fixture) => fixture.id));
   const replaceExisting = input.replaceExisting ?? true;
@@ -1820,6 +1831,7 @@ export const syncFantasyFixturesFromProvider = async (env, input = {}) => {
       replaceExisting,
     },
   }));
+  console.log(`${tag} saved ${syncedFixtures.length} fixture(s) to DynamoDB (replaceExisting=${replaceExisting})`);
   return { fixtures: syncedFixtures, game: publicGame(updatedGame) };
 };
 
@@ -3424,7 +3436,10 @@ export const fetchFantasyResultFacts = async (matchId, env) => {
  * @returns {{ synced: number, skipped: number, results: object[], game: object }}
  */
 export const syncFantasyResultsFromProvider = async (env, input = {}) => {
+  const tag = "[result-sync]";
   const game = await gameState();
+  console.log(`${tag} fetching competition results from provider…`);
+
   const competition = await getLiveCompetitionData(
     game.tournament.competitionId,
     game.tournament.editionId,
@@ -3432,10 +3447,22 @@ export const syncFantasyResultsFromProvider = async (env, input = {}) => {
   );
 
   const existingResultIds = new Set(game.results.map((r) => r.matchId));
-  const fantasyMatchIds = new Set(game.matches.map((m) => m.id));
+  // Only consider fantasy matches whose kickoff has passed — future matches
+  // can never have a result yet, so there is no point evaluating them.
+  const now = new Date();
+  const fantasyMatchIds = new Set(
+    game.matches
+      .filter((m) => new Date(m.kickoff) < now)
+      .map((m) => m.id),
+  );
 
   const completed = competition.matches.filter(
     (m) => m.status === "COMPLETED" && m.homeScore != null && m.awayScore != null,
+  );
+  console.log(
+    `${tag} provider completed matches: ${completed.length},` +
+    ` past-kickoff fantasy matches eligible: ${fantasyMatchIds.size},` +
+    ` already have results: ${existingResultIds.size}`,
   );
 
   const toSync = completed.filter(
@@ -3443,8 +3470,14 @@ export const syncFantasyResultsFromProvider = async (env, input = {}) => {
   );
 
   if (toSync.length === 0) {
+    console.log(`${tag} nothing to sync — all completed matches already have results or no new completions.`);
     return { synced: 0, skipped: completed.length, results: [], game: publicGame(game) };
   }
+
+  console.log(
+    `${tag} syncing ${toSync.length} result(s):`,
+    toSync.map((m) => `${m.id} (${m.homeScore}-${m.awayScore})`).join(", "),
+  );
 
   const newResults = toSync.map((m) => {
     const homeScore = m.homeScore ?? 0;
@@ -3461,7 +3494,8 @@ export const syncFantasyResultsFromProvider = async (env, input = {}) => {
       winnerTeamId,
       bothTeamsScored: homeScore > 0 && awayScore > 0,
       totalGoalsRange: homeScore + awayScore >= 4 ? "4+" : homeScore + awayScore >= 2 ? "2-3" : "0-1",
-      // Scorer/card facts not available from the schedule API — fill manually
+      // Scorer/card facts not available from the schedule API — admin uses
+      // the result entry UI to fetch these from API-Football.
       anytimeScorers: [],
       playersWithTwoPlusGoals: [],
       firstGoalScorer: undefined,
@@ -3469,6 +3503,7 @@ export const syncFantasyResultsFromProvider = async (env, input = {}) => {
       penaltyAwarded: false,
       penaltyGoal: false,
       redCard: false,
+      dataUnavailable: true,
       publishedAt: new Date().toISOString(),
     };
   });
@@ -3491,6 +3526,11 @@ export const syncFantasyResultsFromProvider = async (env, input = {}) => {
     metadata: { synced: newResults.length, skipped: completed.length - newResults.length },
   }));
 
+  console.log(
+    `[result-sync] saved ${newResults.length} result(s) — scores only (scorer/card facts need admin entry).`,
+    `skipped: ${completed.length - newResults.length}`,
+  );
+
   return {
     synced: newResults.length,
     skipped: completed.length - newResults.length,
@@ -3499,49 +3539,149 @@ export const syncFantasyResultsFromProvider = async (env, input = {}) => {
   };
 };
 
+/** How far back the football provider returns fixture event data (free tier). */
+const PROVIDER_API_WINDOW_MS = 2 * 24 * 60 * 60 * 1000; // 2 days
+
 /**
  * Runs the zero-touch provider sync used by scheduled infrastructure.
  *
  * Sync order:
- * 1. Pull latest fixtures/statuses from the live provider.
- * 2. Save result facts for newly completed fixtures.
- * 3. Publish scores for those newly saved results.
+ * 1. Load game state and segment past-kickoff matches with no result:
+ *    a. Within the provider's 2-day API window → sync normally.
+ *    b. Beyond the window → mark with automationNote="NEEDS_MANUAL_RESULT"
+ *       so they never get retried by the scheduler.
+ * 2. If no within-window matches remain, exit immediately (single DynamoDB read).
+ * 3. Pull latest fixture statuses from the provider.
+ * 4. Save result facts for newly completed fixtures.
+ * 5. Publish scores for each newly saved result.
  *
  * @param {object} env - Provider env from providerEnv()
  * @param {{ actorId?: string, replaceExisting?: boolean, overwriteResults?: boolean }} input
- * @returns {{ fixtures: object, results: object, published: object[], game: object }}
+ * @returns {{ fixtures, results, published, markedUnavailable, skipped, game }}
  */
 export const runScheduledFantasyMatchAutomation = async (env, input = {}) => {
   const actorId = input.actorId ?? "scheduler";
+  const now = new Date();
+  const tag = "[match-automation]";
+
+  console.log(`${tag} run started at ${now.toISOString()} actorId=${actorId}`);
+
+  // ── 1. Load game state ────────────────────────────────────────────────────
+  const game = await gameState();
+  const existingResultIds = new Set(game.results.map((r) => r.matchId));
+  const totalMatches = game.matches.length;
+  const scheduledPastKickoff = game.matches.filter(
+    (m) =>
+      m.status === "SCHEDULED" &&
+      !m.automationNote &&
+      new Date(m.kickoff) < now &&
+      !existingResultIds.has(m.id),
+  );
+
+  console.log(
+    `${tag} game loaded — total matches: ${totalMatches},` +
+    ` scheduled past kickoff needing result: ${scheduledPastKickoff.length}`,
+  );
+
+  // ── 2. Segment by provider API window ─────────────────────────────────────
+  const withinWindow = scheduledPastKickoff.filter(
+    (m) => now - new Date(m.kickoff) <= PROVIDER_API_WINDOW_MS,
+  );
+  const beyondWindow = scheduledPastKickoff.filter(
+    (m) => now - new Date(m.kickoff) > PROVIDER_API_WINDOW_MS,
+  );
+
+  if (withinWindow.length > 0) {
+    console.log(
+      `${tag} within API window (≤2 days): ${withinWindow.length} match(es) —`,
+      withinWindow.map((m) => `${m.id} (kickoff: ${m.kickoff})`).join(", "),
+    );
+  }
+  if (beyondWindow.length > 0) {
+    console.warn(
+      `${tag} beyond API window (>2 days): ${beyondWindow.length} match(es) will be marked NEEDS_MANUAL_RESULT —`,
+      beyondWindow.map((m) => `${m.id} (kickoff: ${m.kickoff})`).join(", "),
+    );
+  }
+
+  // ── 3. Mark beyond-window matches so they're never retried ────────────────
+  let markedUnavailable = [];
+  if (beyondWindow.length > 0) {
+    const beyondIds = new Set(beyondWindow.map((m) => m.id));
+    const patchedGame = {
+      ...game,
+      matches: game.matches.map((m) =>
+        beyondIds.has(m.id) ? { ...m, automationNote: "NEEDS_MANUAL_RESULT" } : m,
+      ),
+    };
+    await saveGame(patchedGame, await audit({
+      action: "MATCHES_MARKED_UNAVAILABLE",
+      actorId,
+      entityId: game.tournament.id,
+      entityType: "MATCH",
+      metadata: { matchIds: [...beyondIds] },
+    }));
+    markedUnavailable = beyondWindow.map((m) => m.id);
+    console.log(`${tag} marked ${markedUnavailable.length} match(es) as NEEDS_MANUAL_RESULT:`, markedUnavailable.join(", "));
+  }
+
+  // ── 4. Early exit when nothing actionable remains ─────────────────────────
+  if (withinWindow.length === 0) {
+    console.log(`${tag} no within-window matches — skipping provider sync. run complete.`);
+    return {
+      fixtures: { synced: 0 },
+      results: { synced: 0, skipped: 0 },
+      published: [],
+      markedUnavailable,
+      skipped: true,
+      game: publicGame(game),
+    };
+  }
+
+  // ── 5. Fixture sync ───────────────────────────────────────────────────────
+  console.log(`${tag} starting fixture sync (replaceExisting=${input.replaceExisting ?? false})…`);
   const fixtures = await syncFantasyFixturesFromProvider(env, {
     actorId,
     replaceExisting: input.replaceExisting ?? false,
   });
+  console.log(`${tag} fixture sync complete — synced: ${fixtures.fixtures.length}`);
+
+  // ── 6. Result sync ────────────────────────────────────────────────────────
+  console.log(`${tag} starting result sync (overwrite=${input.overwriteResults ?? false})…`);
   const results = await syncFantasyResultsFromProvider(env, {
     actorId,
     overwrite: input.overwriteResults ?? false,
   });
+  console.log(
+    `${tag} result sync complete — synced: ${results.synced}, skipped (no result yet / future): ${results.skipped}`,
+  );
+
+  // ── 7. Publish scores for each newly synced result ────────────────────────
   const published = [];
-  let game = results.game;
+  let latestGame = results.game;
   for (const result of results.results) {
+    console.log(`${tag} publishing scores for matchId=${result.matchId}…`);
     const publishResult = await publishFantasyScores(result.matchId);
-    published.push({
-      matchId: result.matchId,
-      predictionCount: publishResult.predictions.length,
-    });
-    game = publishResult.game;
+    published.push({ matchId: result.matchId, predictionCount: publishResult.predictions.length });
+    latestGame = publishResult.game;
+    console.log(
+      `${tag} scores published for matchId=${result.matchId} — predictions scored: ${publishResult.predictions.length}`,
+    );
   }
 
+  console.log(
+    `${tag} run complete — fixtures synced: ${fixtures.fixtures.length},` +
+    ` results synced: ${results.synced}, score batches published: ${published.length},` +
+    ` marked unavailable: ${markedUnavailable.length}`,
+  );
+
   return {
-    fixtures: {
-      synced: fixtures.fixtures.length,
-    },
-    results: {
-      synced: results.synced,
-      skipped: results.skipped,
-    },
+    fixtures: { synced: fixtures.fixtures.length },
+    results: { synced: results.synced, skipped: results.skipped },
     published,
-    game,
+    markedUnavailable,
+    skipped: false,
+    game: latestGame,
   };
 };
 

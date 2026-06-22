@@ -14,6 +14,21 @@ const chunk = (items, size) => {
   return chunks;
 };
 
+/**
+ * Runs async tasks with bounded concurrency to avoid exhausting the DynamoDB
+ * socket pool (default cap: 50). Without this, a World Cup game with 32 teams
+ * + 64 matches + questions fires 100+ parallel queries, hitting the SDK's
+ * socket limit and causing a 30s Lambda timeout.
+ */
+const runConcurrent = async (tasks, concurrency = 20) => {
+  const results = [];
+  for (const taskChunk of chunk(tasks, concurrency)) {
+    const chunkResults = await Promise.all(taskChunk.map((task) => task()));
+    results.push(...chunkResults);
+  }
+  return results;
+};
+
 const clone = (value) => structuredClone(value);
 
 const bySortKey = (records) => [...records].sort((left, right) => left.SK.localeCompare(right.SK));
@@ -115,11 +130,11 @@ export const createDynamoFantasyStorage = ({
       .filter((record) => record.type === "GROUP")
       .map((record) => record.data.id);
 
-    const relatedRecords = await Promise.all([
-      ...teamIds.map((teamId) => queryByPk(`TEAM#${teamId}`)),
-      ...questionIds.map((questionId) => queryByPk(`QUESTION#${questionId}`)),
-      ...matchIds.map((matchId) => queryByPk(`MATCH#${matchId}`)),
-      ...groupIds.map((groupId) => queryByPk(`GROUP#${groupId}`)),
+    const relatedRecords = await runConcurrent([
+      ...teamIds.map((teamId) => () => queryByPk(`TEAM#${teamId}`)),
+      ...questionIds.map((questionId) => () => queryByPk(`QUESTION#${questionId}`)),
+      ...matchIds.map((matchId) => () => queryByPk(`MATCH#${matchId}`)),
+      ...groupIds.map((groupId) => () => queryByPk(`GROUP#${groupId}`)),
     ]);
 
     return [...tournamentRecords, ...relatedRecords.flat()];

@@ -16,7 +16,7 @@
     "deploy:fantasy:iam": "scripts/deploy-fantasy-iam.sh"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22"
   },
   "dependencies": {
     "@aws-sdk/client-dynamodb": "^3.1070.0",

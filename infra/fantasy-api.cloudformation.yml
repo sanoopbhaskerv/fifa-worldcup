@@ -185,7 +185,7 @@ Resources:
     Type: AWS::Lambda::Function
     Properties:
       FunctionName: !Ref AppName
-      Runtime: nodejs20.x
+      Runtime: nodejs22.x
       Handler: server/aws/lambda.handler
       Role: !GetAtt FantasyApiRole.Arn
       Code:
@@ -193,7 +193,7 @@ Resources:
         S3Key: !Ref LambdaS3Key
       MemorySize: 256
       ReservedConcurrentExecutions: !Ref LambdaReservedConcurrency
-      Timeout: 30
+      Timeout: 60
       Environment:
         Variables:
           FANTASY_DYNAMODB_TABLE: !Ref PredictionGameTable
