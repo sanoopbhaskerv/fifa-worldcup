@@ -521,6 +521,106 @@
 	font-size: 11px;
 }
 
+/* ── Collapsible poll group toggle ─────────────────────────────────────────── */
+
+.poll-group-toggle {
+	display: flex;
+	align-items: flex-start;
+	justify-content: space-between;
+	gap: 12px;
+	width: 100%;
+	padding: 0;
+	border: 0;
+	background: none;
+	cursor: pointer;
+	text-align: left;
+	color: inherit;
+}
+
+.poll-group-toggle:focus-visible {
+	outline: 2px solid var(--accent);
+	outline-offset: 4px;
+	border-radius: 6px;
+}
+
+.poll-group-toggle__meta {
+	flex: 1 1 0;
+	min-width: 0;
+}
+
+.poll-group-toggle__meta h2 {
+	margin: 4px 0 0;
+	font-size: 20px;
+	line-height: 1.2;
+}
+
+.poll-group-toggle__sub {
+	margin: 5px 0 0;
+	color: var(--muted);
+	font-size: 11px;
+}
+
+.poll-group-toggle__right {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-end;
+	gap: 8px;
+	flex-shrink: 0;
+	color: var(--muted);
+	padding-top: 2px;
+}
+
+/* ── Summary chips ─────────────────────────────────────────────────────────── */
+
+.poll-group-chips {
+	display: flex;
+	flex-wrap: wrap;
+	justify-content: flex-end;
+	gap: 5px;
+}
+
+.poll-group-chip {
+	display: inline-block;
+	padding: 3px 8px;
+	border-radius: 999px;
+	font-size: 10px;
+	font-weight: 700;
+	line-height: 1.5;
+	white-space: nowrap;
+}
+
+.poll-group-chip--default {
+	color: var(--accent);
+	background: color-mix(in srgb, var(--accent) 12%, transparent);
+}
+
+.poll-group-chip--success {
+	color: var(--fantasy-gold, #d4a017);
+	background: color-mix(in srgb, var(--fantasy-gold, #d4a017) 12%, transparent);
+}
+
+.poll-group-chip--warning {
+	color: #e06c00;
+	background: color-mix(in srgb, #e06c00 11%, transparent);
+}
+
+.poll-group-chip--muted {
+	color: var(--muted);
+	background: color-mix(in srgb, var(--muted) 10%, transparent);
+}
+
+/* ── Top save bar (inside expanded group) ──────────────────────────────────── */
+
+.fantasy-poll-actions--top {
+	display: flex;
+	justify-content: flex-end;
+	align-items: center;
+	gap: var(--space-3);
+	margin-bottom: var(--space-4);
+	padding-bottom: var(--space-4);
+	border-bottom: 1px solid var(--line);
+}
+
 .fantasy-poll-group .section-heading>strong,
 .fantasy-poll-actions>strong {
 	display: inline-grid;
