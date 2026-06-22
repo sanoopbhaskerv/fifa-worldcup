@@ -3570,9 +3570,12 @@ export const runScheduledFantasyMatchAutomation = async (env, input = {}) => {
   const game = await gameState();
   const existingResultIds = new Set(game.results.map((r) => r.matchId));
   const totalMatches = game.matches.length;
+  // Include COMPLETED matches too — fixture sync may have already marked the
+  // match done but result sync hasn't run yet (or this is the first automation
+  // run after the match finished).
   const scheduledPastKickoff = game.matches.filter(
     (m) =>
-      m.status === "SCHEDULED" &&
+      (m.status === "SCHEDULED" || m.status === "COMPLETED") &&
       !m.automationNote &&
       new Date(m.kickoff) < now &&
       !existingResultIds.has(m.id),
@@ -3580,7 +3583,7 @@ export const runScheduledFantasyMatchAutomation = async (env, input = {}) => {
 
   console.log(
     `${tag} game loaded — total matches: ${totalMatches},` +
-    ` scheduled past kickoff needing result: ${scheduledPastKickoff.length}`,
+    ` past kickoff needing result: ${scheduledPastKickoff.length}`,
   );
 
   // ── 2. Segment by provider API window ─────────────────────────────────────
