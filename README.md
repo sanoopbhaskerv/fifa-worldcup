@@ -296,6 +296,25 @@ Optional GitHub repository secret:
 
 - `FANTASY_BUDGET_ALERT_EMAIL`: email recipient for the optional AWS Budget.
 
+The role behind `AWS_ROLE_TO_ASSUME` must be allowed to deploy and inspect this
+CloudFormation stack. At minimum, include CloudFormation read access such as
+`cloudformation:DescribeStacks` and `cloudformation:DescribeStackEvents` for
+the staging stack ARN. Without `DescribeStackEvents`, failed deploys cannot print
+the resource-level reason in GitHub Actions.
+
+Example CloudFormation diagnostics permission:
+
+```json
+{
+  "Effect": "Allow",
+  "Action": [
+    "cloudformation:DescribeStacks",
+    "cloudformation:DescribeStackEvents"
+  ],
+  "Resource": "arn:aws:cloudformation:ap-south-1:YOUR_ACCOUNT_ID:stack/fantasy-prediction-game-staging/*"
+}
+```
+
 The workflow runs `yarn lint`, `yarn typecheck`, and `yarn test`, then calls the
 same `yarn deploy:fantasy:staging` script used locally. Default CORS origin is
 `https://develop.d32ngvag2hklf1.amplifyapp.com`.

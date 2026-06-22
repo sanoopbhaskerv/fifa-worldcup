@@ -1,0 +1,234 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  One-time bootstrap stack for the Fantasy Prediction Game CI/CD pipeline.
+  Creates the GitHub OIDC provider and the deploy role used by GitHub Actions
+  to deploy infra/fantasy-api.cloudformation.yml.
+  Deploy this stack manually with admin credentials whenever the app stack
+  gains new resource types that require additional IAM permissions.
+
+Parameters:
+  GitHubOrg:
+    Type: String
+    Description: GitHub organisation or username that owns the repository.
+  GitHubRepo:
+    Type: String
+    Description: Repository name (without the org prefix).
+  GitHubBranch:
+    Type: String
+    Default: "*"
+    Description: Branch allowed to assume the deploy role. Use * to allow all branches.
+  DeployRoleName:
+    Type: String
+    Default: GitHubFantasyBackendStagingDeployRole
+    Description: Name of the IAM role assumed by GitHub Actions during deployment.
+  AppStackName:
+    Type: String
+    Default: fantasy-prediction-game-staging
+    Description: >
+      CloudFormation stack name used by the app deploy. The role is scoped to
+      this stack and the resources it creates.
+  ArtifactBucket:
+    Type: String
+    Description: S3 bucket used to upload the Lambda deployment artifact.
+
+Resources:
+
+  # ── GitHub OIDC provider ───────────────────────────────────────────────────
+  # AWS now validates GitHub's OIDC certificate automatically; the thumbprint
+  # below is the well-known placeholder value accepted by IAM.
+  GitHubOidcProvider:
+    Type: AWS::IAM::OIDCProvider
+    Properties:
+      Url: https://token.actions.githubusercontent.com
+      ClientIdList:
+        - sts.amazonaws.com
+      ThumbprintList:
+        - 6938fd4d98bab03faadb97b34396831e3780aea1
+
+  # ── Deploy role ────────────────────────────────────────────────────────────
+  GitHubDeployRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref DeployRoleName
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Federated: !GetAtt GitHubOidcProvider.Arn
+            Action: sts:AssumeRoleWithWebIdentity
+            Condition:
+              StringEquals:
+                token.actions.githubusercontent.com:aud: sts.amazonaws.com
+              StringLike:
+                token.actions.githubusercontent.com:sub:
+                  !Sub "repo:${GitHubOrg}/${GitHubRepo}:ref:refs/heads/${GitHubBranch}"
+      Policies:
+
+        # CloudFormation — manage the app stack
+        - PolicyName: CloudFormationDeploy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - cloudformation:CreateStack
+                  - cloudformation:UpdateStack
+                  - cloudformation:DeleteStack
+                  - cloudformation:DescribeStacks
+                  - cloudformation:DescribeStackEvents
+                  - cloudformation:DescribeStackResource
+                  - cloudformation:DescribeStackResources
+                  - cloudformation:GetTemplate
+                  - cloudformation:ValidateTemplate
+                  - cloudformation:CreateChangeSet
+                  - cloudformation:DescribeChangeSet
+                  - cloudformation:ExecuteChangeSet
+                  - cloudformation:DeleteChangeSet
+                  - cloudformation:ListChangeSets
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:cloudformation:${AWS::Region}:${AWS::AccountId}:stack/${AppStackName}/*"
+
+        # S3 — upload and read the Lambda zip artifact
+        - PolicyName: ArtifactBucketAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:PutObject
+                  - s3:GetObject
+                  - s3:DeleteObject
+                Resource: !Sub "arn:${AWS::Partition}:s3:::${ArtifactBucket}/fantasy-api/*"
+              - Effect: Allow
+                Action: s3:ListBucket
+                Resource: !Sub "arn:${AWS::Partition}:s3:::${ArtifactBucket}"
+
+        # IAM — manage the Lambda execution role created inside the app stack
+        - PolicyName: LambdaExecutionRoleManagement
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - iam:CreateRole
+                  - iam:DeleteRole
+                  - iam:GetRole
+                  - iam:GetRolePolicy
+                  - iam:PutRolePolicy
+                  - iam:DeleteRolePolicy
+                  - iam:AttachRolePolicy
+                  - iam:DetachRolePolicy
+                  - iam:TagRole
+                  - iam:UntagRole
+                  - iam:PassRole
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/${AppStackName}-*"
+                  # CloudFormation generates a role name from the logical ID; scope broadly enough.
+                  - !Sub "arn:${AWS::Partition}:iam::${AWS::AccountId}:role/*FantasyApiRole*"
+
+        # Lambda — create/update the function, URL, and permissions
+        - PolicyName: LambdaManagement
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - lambda:CreateFunction
+                  - lambda:DeleteFunction
+                  - lambda:GetFunction
+                  - lambda:GetFunctionConfiguration
+                  - lambda:UpdateFunctionCode
+                  - lambda:UpdateFunctionConfiguration
+                  - lambda:AddPermission
+                  - lambda:RemovePermission
+                  - lambda:GetPolicy
+                  - lambda:CreateFunctionUrlConfig
+                  - lambda:UpdateFunctionUrlConfig
+                  - lambda:DeleteFunctionUrlConfig
+                  - lambda:GetFunctionUrlConfig
+                  - lambda:PutFunctionConcurrency
+                  - lambda:DeleteFunctionConcurrency
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${AppStackName}"
+                  - !Sub "arn:${AWS::Partition}:lambda:${AWS::Region}:${AWS::AccountId}:function:${AppStackName}:*"
+
+        # DynamoDB — create/describe the prediction table (retained on stack delete)
+        - PolicyName: DynamoDbManagement
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - dynamodb:CreateTable
+                  - dynamodb:DescribeTable
+                  - dynamodb:UpdateTable
+                  - dynamodb:DeleteTable
+                  - dynamodb:TagResource
+                  - dynamodb:UntagResource
+                  - dynamodb:DescribeContinuousBackups
+                  - dynamodb:UpdateContinuousBackups
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:dynamodb:${AWS::Region}:${AWS::AccountId}:table/${AppStackName}-table"
+
+        # CloudWatch Logs — manage the Lambda log group
+        - PolicyName: LogGroupManagement
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:DeleteLogGroup
+                  - logs:DescribeLogGroups
+                  - logs:PutRetentionPolicy
+                  - logs:DeleteRetentionPolicy
+                  - logs:TagLogGroup
+                  - logs:UntagLogGroup
+                  - logs:ListTagsLogGroup
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AppStackName}"
+                  - !Sub "arn:${AWS::Partition}:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/lambda/${AppStackName}:*"
+
+        # EventBridge — manage the AI schedule and match automation rules
+        - PolicyName: EventBridgeManagement
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - events:PutRule
+                  - events:DescribeRule
+                  - events:DeleteRule
+                  - events:EnableRule
+                  - events:DisableRule
+                  - events:PutTargets
+                  - events:RemoveTargets
+                  - events:ListTargetsByRule
+                  - events:TagResource
+                  - events:UntagResource
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/${AppStackName}-*"
+                  # CloudFormation also generates physical names from logical IDs
+                  - !Sub "arn:${AWS::Partition}:events:${AWS::Region}:${AWS::AccountId}:rule/${AppStackName}*"
+
+        # AWS Budgets — manage the optional monthly cost budget
+        - PolicyName: BudgetsManagement
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - budgets:ViewBudget
+                  - budgets:ModifyBudget
+                  - budgets:DeleteBudget
+                Resource:
+                  - !Sub "arn:${AWS::Partition}:budgets::${AWS::AccountId}:budget/${AppStackName}-*"
+
+Outputs:
+  DeployRoleArn:
+    Description: ARN to store as AWS_ROLE_TO_ASSUME in GitHub repository secrets.
+    Value: !GetAtt GitHubDeployRole.Arn
+  GitHubOidcProviderArn:
+    Description: ARN of the GitHub OIDC provider (shared if you have multiple repos).
+    Value: !GetAtt GitHubOidcProvider.Arn

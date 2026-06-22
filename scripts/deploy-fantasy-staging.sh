@@ -111,11 +111,13 @@ if ! aws cloudformation deploy \
       FantasyMatchAutomationOverwriteResults="${FANTASY_MATCH_AUTOMATION_OVERWRITE_RESULTS}" \
       BudgetAlertEmail="${BUDGET_ALERT_EMAIL}"; then
   echo "CloudFormation deploy failed. Recent failed stack events:" >&2
-  aws cloudformation describe-stack-events \
+  if ! aws cloudformation describe-stack-events \
     --region "${AWS_REGION}" \
     --stack-name "${STACK_NAME}" \
     --query "StackEvents[?contains(ResourceStatus, 'FAILED')].[Timestamp,LogicalResourceId,ResourceStatus,ResourceStatusReason]" \
-    --output table >&2 || true
+    --output table >&2; then
+    echo "Unable to read stack events. Add cloudformation:DescribeStackEvents to the GitHub deploy role, then rerun this workflow or inspect the stack events in the AWS Console." >&2
+  fi
   exit 1
 fi
 

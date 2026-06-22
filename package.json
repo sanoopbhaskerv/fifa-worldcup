@@ -12,7 +12,8 @@
     "typecheck": "tsc -b --pretty false",
     "preview": "vite preview",
     "start": "node server/index.mjs",
-    "deploy:fantasy:staging": "scripts/deploy-fantasy-staging.sh"
+    "deploy:fantasy:staging": "scripts/deploy-fantasy-staging.sh",
+    "deploy:fantasy:iam": "scripts/deploy-fantasy-iam.sh"
   },
   "engines": {
     "node": ">=20"

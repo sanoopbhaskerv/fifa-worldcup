@@ -1,5 +1,20 @@
 import { handleApiRequest } from "../handler.mjs";
 
+// Log which AI env vars are populated on cold start (values never logged).
+const logStartupConfig = () => {
+  const vars = [
+    "FANTASY_AI_PROVIDER",
+    "FANTASY_AI_API_KEY",
+    "FANTASY_AI_MODEL",
+    "FANTASY_AI_DAILY_CALL_LIMIT",
+    "FANTASY_AI_FALLBACK_API_KEY",
+  ];
+  const summary = vars.map((k) => `${k}=${process.env[k] ? "set" : "MISSING"}`).join(" ");
+  console.log("[lambda] startup config:", summary);
+};
+
+logStartupConfig();
+
 const corsHeaders = () => ({
   "access-control-allow-headers": "content-type",
   "access-control-allow-methods": "GET,PUT,POST,OPTIONS",
@@ -41,8 +56,13 @@ const bodyFromEvent = (event) => {
  * @returns Lambda proxy response.
  */
 export const handler = async (event) => {
-  if (event?.source === "aws.events") {
-    const scheduleTask = event.detail?.task ?? event.resources?.[0]?.split("/").at(-1);
+  // EventBridge scheduled events arrive in two shapes:
+  //   1. Standard envelope: event.source === "aws.events" — no custom Input set on the rule target.
+  //   2. Custom Input override: the entire event is replaced by the Input JSON, so there is no
+  //      envelope at all. The match-automation rule uses Input: '{"task":"match-automation"}'.
+  const isScheduledEvent = event?.source === "aws.events" || event?.task === "match-automation";
+  if (isScheduledEvent) {
+    const scheduleTask = event.task ?? event.detail?.task ?? event.resources?.[0]?.split("/").at(-1);
     const isMatchAutomation = scheduleTask === "match-automation" || scheduleTask === "FantasyMatchAutomation";
     const url = isMatchAutomation
       ? "/api/fantasy/admin/scheduled/match-automation"
