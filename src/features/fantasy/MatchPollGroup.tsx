@@ -1,49 +1,17 @@
 import { useState } from "react";
 import { useFantasy } from "../../app/fantasy-context";
 import { FantasyQuestionCard } from "./FantasyQuestionCard";
+import { CollapsibleMatchGroup, type ChipDef } from "./CollapsibleMatchGroup";
 import { useSubmitFantasyPrediction, useSubmitFantasyPredictions } from "../../services/fantasy-queries";
 import {
-  fantasyDeadlineLabel,
   fantasyMatchTitle,
   fantasyPredictionForQuestion,
   fantasyQuestionIsLocked,
 } from "../../utils/fantasy";
-import { formatDate, formatKickoff } from "../../utils/football";
 import type { FantasyMatch, FantasyQuestion } from "../../types/fantasy";
 
-// ── Chevron icon ──────────────────────────────────────────────────────────────
-const ChevronIcon = ({ open }: { open: boolean }) => (
-  <svg
-    viewBox="0 0 16 16"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="2"
-    strokeLinecap="round"
-    strokeLinejoin="round"
-    style={{
-      width: 16,
-      height: 16,
-      flexShrink: 0,
-      transition: "transform 0.2s ease",
-      transform: open ? "rotate(180deg)" : "rotate(0deg)",
-    }}
-  >
-    <polyline points="4 6 8 10 12 6" />
-  </svg>
-);
-
-// ── Summary chips ─────────────────────────────────────────────────────────────
-interface SummaryChipProps {
-  label: string;
-  variant?: "default" | "success" | "warning" | "muted";
-}
-
-const SummaryChip = ({ label, variant = "default" }: SummaryChipProps) => (
-  <span className={`poll-group-chip poll-group-chip--${variant}`}>{label}</span>
-);
-
-// ── Per-group summary computed from data ──────────────────────────────────────
-function useGroupSummary(match: FantasyMatch, questions: FantasyQuestion[]) {
+// ── Chip derivation for poll groups ──────────────────────────────────────────
+function usePollGroupChips(match: FantasyMatch, questions: FantasyQuestion[]): ChipDef[] {
   const { data } = useFantasy();
   const participantId = data.activeParticipantId;
 
@@ -57,50 +25,25 @@ function useGroupSummary(match: FantasyMatch, questions: FantasyQuestion[]) {
   const allAnswered = answeredCount === questions.length && questions.length > 0;
   const anyOpenUnlocked = questions.some((q) => !fantasyQuestionIsLocked(q, data));
 
-  return { answeredCount, earnedPts, totalPts, hasResult, isScored, allAnswered, anyOpenUnlocked };
-}
+  const chips: ChipDef[] = [];
 
-function GroupSummaryChips({
-  match,
-  questions,
-}: {
-  match: FantasyMatch;
-  questions: FantasyQuestion[];
-}) {
-  const { answeredCount, earnedPts, totalPts, hasResult, isScored, allAnswered, anyOpenUnlocked } =
-    useGroupSummary(match, questions);
+  if (match.status === "COMPLETED") chips.push({ label: "Completed", variant: hasResult ? "success" : "warning" });
+  else if (match.status === "LOCKED") chips.push({ label: "Live", variant: "warning" });
+  else if (anyOpenUnlocked) chips.push({ label: "Open", variant: "default" });
+  else chips.push({ label: "Locked", variant: "muted" });
 
-  return (
-    <div className="poll-group-chips">
-      {/* Match status */}
-      {match.status === "COMPLETED" && (
-        <SummaryChip label="Completed" variant={hasResult ? "success" : "warning"} />
-      )}
-      {match.status === "LOCKED" && <SummaryChip label="Live" variant="warning" />}
-      {match.status === "SCHEDULED" && anyOpenUnlocked && (
-        <SummaryChip label="Open" variant="default" />
-      )}
-      {match.status === "SCHEDULED" && !anyOpenUnlocked && (
-        <SummaryChip label="Locked" variant="muted" />
-      )}
+  if (hasResult) chips.push({ label: "Result published", variant: "success" });
 
-      {/* Result published */}
-      {hasResult && <SummaryChip label="Result published" variant="success" />}
+  if (isScored) {
+    chips.push({ label: `${earnedPts}/${totalPts} pts`, variant: earnedPts > 0 ? "success" : "muted" });
+  } else {
+    chips.push({
+      label: allAnswered ? `All answered · ${totalPts} pts` : `${answeredCount}/${questions.length} answered`,
+      variant: allAnswered ? "success" : anyOpenUnlocked ? "warning" : "muted",
+    });
+  }
 
-      {/* Points / answered */}
-      {isScored ? (
-        <SummaryChip
-          label={`${earnedPts}/${totalPts} pts`}
-          variant={earnedPts > 0 ? "success" : "muted"}
-        />
-      ) : (
-        <SummaryChip
-          label={allAnswered ? `All answered · ${totalPts} pts` : `${answeredCount}/${questions.length} answered`}
-          variant={allAnswered ? "success" : anyOpenUnlocked ? "warning" : "muted"}
-        />
-      )}
-    </div>
-  );
+  return chips;
 }
 
 // ── Main component ─────────────────────────────────────────────────────────────
@@ -130,14 +73,14 @@ export function MatchPollGroup({
 
   const [draftAnswers, setDraftAnswers] = useState<Record<string, string>>({});
 
-  const { anyOpenUnlocked } = useGroupSummary(match, questions);
+  const chips = usePollGroupChips(match, questions);
+  const anyOpenUnlocked = questions.some((q) => !fantasyQuestionIsLocked(q, data));
 
   // Auto-expand: open if there are unanswered open questions
   const hasUnanswered = questions.some((q) => {
     const pred = fantasyPredictionForQuestion(q.id, participantId, data);
     return !fantasyQuestionIsLocked(q, data) && !pred?.answer;
   });
-  const [expanded, setExpanded] = useState(hasUnanswered);
 
   const initialAnswer = (q: FantasyQuestion) => {
     const pred = fantasyPredictionForQuestion(q.id, participantId, data);
@@ -171,73 +114,51 @@ export function MatchPollGroup({
   const totalPts = questions.reduce((sum, q) => sum + q.points, 0);
 
   return (
-    <section className="content-section fantasy-poll-group">
-      {/* ── Collapsible header ── */}
-      <button
-        className="poll-group-toggle"
-        onClick={() => setExpanded((v) => !v)}
-        type="button"
-        aria-expanded={expanded}
-      >
-        <div className="poll-group-toggle__meta">
-          <span className="eyebrow">{eyebrow ?? match.stage}</span>
-          <h2>{heading ?? fantasyMatchTitle(match, data.teams)}</h2>
-          <p className="poll-group-toggle__sub">
-            {subheading ?? `${formatDate(match.kickoff, true)} · kickoff ${formatKickoff(match.kickoff)} · ${fantasyDeadlineLabel(match.pollCloseAt)}`}
-          </p>
+    <CollapsibleMatchGroup
+      match={match}
+      chips={chips}
+      eyebrow={eyebrow}
+      heading={heading ?? fantasyMatchTitle(match, data.teams)}
+      subheading={subheading}
+      defaultExpanded={hasUnanswered}
+    >
+      {anyOpenUnlocked && (
+        <div className="fantasy-poll-actions fantasy-poll-actions--top">
+          <strong>{totalPts} pts</strong>
+          <button disabled={submitPredictions.isPending || changedAnswers.length === 0} onClick={saveChanged} type="button">
+            {bulkLabel}
+          </button>
         </div>
-
-        <div className="poll-group-toggle__right">
-          {/* Always show chips when collapsed; hide when expanded to keep header clean */}
-          <GroupSummaryChips match={match} questions={questions} />
-          <ChevronIcon open={expanded} />
-        </div>
-      </button>
-
-      {/* ── Expanded body ── */}
-      {expanded && (
-        <>
-          {/* Top save row */}
-          <div className="fantasy-poll-actions fantasy-poll-actions--top">
-            <strong>{totalPts} pts</strong>
-            {anyOpenUnlocked && (
-              <button disabled={submitPredictions.isPending || changedAnswers.length === 0} onClick={saveChanged} type="button">
-                {bulkLabel}
-              </button>
-            )}
-          </div>
-
-          <div className="fantasy-poll-list">
-            {questions.map((q) => (
-              <FantasyQuestionCard
-                key={q.id}
-                isSubmitting={submitPrediction.isPending && submitPrediction.variables?.questionId === q.id}
-                isLocked={fantasyQuestionIsLocked(q, data)}
-                onAnswerChange={(answer) => setDraftAnswers((cur) => ({ ...cur, [q.id]: answer }))}
-                onSubmit={(answer) =>
-                  submitPrediction.mutate(
-                    { answer, participantId, questionId: q.id },
-                    { onSuccess: () => clearDrafts([q.id]) },
-                  )
-                }
-                prediction={fantasyPredictionForQuestion(q.id, participantId, data)}
-                question={q}
-                selectedAnswer={selectedAnswer(q)}
-              />
-            ))}
-          </div>
-
-          {/* Bottom save row */}
-          {anyOpenUnlocked && (
-            <div className="fantasy-poll-actions fantasy-poll-actions--bottom">
-              <strong>{changedAnswers.length > 0 ? `${changedAnswers.length} changed` : "All saved"}</strong>
-              <button disabled={submitPredictions.isPending || changedAnswers.length === 0} onClick={saveChanged} type="button">
-                {bulkLabel}
-              </button>
-            </div>
-          )}
-        </>
       )}
-    </section>
+
+      <div className="fantasy-poll-list">
+        {questions.map((q) => (
+          <FantasyQuestionCard
+            key={q.id}
+            isSubmitting={submitPrediction.isPending && submitPrediction.variables?.questionId === q.id}
+            isLocked={fantasyQuestionIsLocked(q, data)}
+            onAnswerChange={(answer) => setDraftAnswers((cur) => ({ ...cur, [q.id]: answer }))}
+            onSubmit={(answer) =>
+              submitPrediction.mutate(
+                { answer, participantId, questionId: q.id },
+                { onSuccess: () => clearDrafts([q.id]) },
+              )
+            }
+            prediction={fantasyPredictionForQuestion(q.id, participantId, data)}
+            question={q}
+            selectedAnswer={selectedAnswer(q)}
+          />
+        ))}
+      </div>
+
+      {anyOpenUnlocked && (
+        <div className="fantasy-poll-actions fantasy-poll-actions--bottom">
+          <strong>{changedAnswers.length > 0 ? `${changedAnswers.length} changed` : "All saved"}</strong>
+          <button disabled={submitPredictions.isPending || changedAnswers.length === 0} onClick={saveChanged} type="button">
+            {bulkLabel}
+          </button>
+        </div>
+      )}
+    </CollapsibleMatchGroup>
   );
 }
